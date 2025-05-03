@@ -40,7 +40,7 @@ class Document(Base):
 
     # Relationships
     user = relationship("User")
-    # extracted_data = relationship("ExtractedData", back_populates="document", uselist=False) # One-to-one
+    extracted_data = relationship("ExtractedData", back_populates="document", uselist=False) # One-to-one
 
     def __repr__(self):
         return f"<Document(id={self.document_id}, filename='{self.original_filename}', user_id='{self.user_id}')>" 

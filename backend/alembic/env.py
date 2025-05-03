@@ -20,6 +20,7 @@ if config.config_file_name is not None:
 from app.db.session import Base
 from app.models.user import User  # Import all models here
 from app.models.document import Document
+from app.models.extracted_data import ExtractedData
 target_metadata = Base.metadata
 
 # Import environment variables and set the database URL

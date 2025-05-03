@@ -31,19 +31,27 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   ├── rate_limit.py   # Rate limiting middleware
 │   │   │   └── security.py     # Security headers middleware
 │   │   ├── models/             # Data models
-│   │   │   └── user.py         # User data model
+│   │   │   ├── user.py         # User data model
+│   │   │   ├── document.py     # Document data model
+│   │   │   └── extracted_data.py # ExtractedData model
 │   │   ├── schemas/            # Pydantic schemas
 │   │   └── utils/              # Utility functions
 │   ├── tests/                  # Test directory
 │   │   ├── unit/               # Unit tests
 │   │   ├── integration/        # Integration tests
 │   │   └── security/           # Security tests
+│   ├── .env.example            # Example environment variables
 │   ├── Dockerfile              # Docker configuration for backend
 │   ├── alembic.ini             # Alembic configuration
 │   ├── requirements.txt        # Python dependencies
 │   └── pytest.ini              # Pytest configuration
 ├── frontend/                   # Frontend codebase
 ├── memory-bank/                # Documentation and planning
+│   ├── architecture.md         # This file
+│   ├── implementation.md       # Implementation plan
+│   ├── progress.md             # Progress tracking
+│   ├── prd.md                  # Product Requirements
+│   └── tech-stack.md           # Tech stack details
 └── package.json                # Root package.json
 ```
 
@@ -73,12 +81,12 @@ Key components:
 
 ### 3. Configuration (`backend/app/core/config.py`)
 
-Manages application configuration using environment variables with sensible defaults. Uses Pydantic Settings for validation and type safety.
+Manages application configuration using environment variables with sensible defaults. Uses Pydantic Settings for validation and type safety. Loads from `.env` file.
 
 Key components:
 - Environment-specific settings
-- Authentication configuration
-- Database connection parameters
+- Authentication configuration (Supabase URL, Key, JWT Secret)
+- Database connection parameters (`DATABASE_URL`)
 - Security settings
 - API configuration
 
@@ -87,20 +95,25 @@ Key components:
 Manages database connections and sessions using SQLAlchemy. Configured with connection pooling for optimized performance.
 
 Key components:
-- SQLAlchemy engine configuration
+- SQLAlchemy engine configuration (using `DATABASE_URL`)
 - Connection pooling settings
-- Session management
-- Base model class for ORM models
+- Session management (`SessionLocal`, `get_db` dependency)
+- Base model class for ORM models (`Base`)
 
 ### 5. Models (`backend/app/models/`)
 
-Contains SQLAlchemy ORM models that represent database tables. Currently includes the User model for authentication and user management.
+Contains SQLAlchemy ORM models that represent database tables.
+
+*   **`User`**: Maps to `users` table. Stores basic user info, links to Supabase Auth via `supabase_id`.
+*   **`Document`**: Maps to `documents` table. Represents an uploaded document (PDF, image), linking to a `User`. Includes details like filename, storage path, type, and processing status.
+*   **`ExtractedData`**: Maps to `extracted_data` table. Stores structured data parsed from a `Document` using a flexible `JSONB` column. Links one-to-one with `Document` and includes review status details.
 
 ### 6. API Endpoints (`backend/app/api/endpoints/`)
 
 Contains route handlers organized by functionality:
-- `health.py`: Health check endpoint to verify API status
-- `me.py`: User information endpoint that requires authentication
+- `health.py`: Health check endpoint (`/api/v1/health`)
+- `me.py`: User information endpoint (`/api/v1/me`, requires authentication)
+- Future endpoints will handle document upload, data retrieval, review, etc.
 
 ### 7. Middleware (`backend/app/middleware/`)
 
@@ -115,32 +128,79 @@ Contains test suites organized by type:
 - Integration tests for API endpoints
 - Security tests for vulnerability checking
 
+## Database Schema Overview
+
+```mermaid
+erDiagram
+    USER ||--o{ DOCUMENT : owns
+    DOCUMENT ||--|| EXTRACTED_DATA : has
+    EXTRACTED_DATA ||--o| USER : reviewed_by
+
+    USER {
+        UUID user_id PK
+        String supabase_id UK "Links to auth.users.id"
+        String email UK
+        DateTime created_at
+        DateTime updated_at
+        DateTime last_login
+        JSON user_metadata
+        JSON app_metadata
+    }
+
+    DOCUMENT {
+        UUID document_id PK
+        UUID user_id FK
+        String original_filename
+        String storage_path UK "GCS Path/ID"
+        DocumentType document_type "Enum (prescription, lab_result, other)"
+        DateTime upload_timestamp
+        ProcessingStatus processing_status "Enum (pending, processing, review_required, completed, failed)"
+        String file_hash "Optional"
+        JSON file_metadata "Optional (content_type, size)"
+    }
+
+    EXTRACTED_DATA {
+        UUID extracted_data_id PK
+        UUID document_id FK, UK "One-to-one with Document"
+        JSONB content "Flexible extracted data"
+        Text raw_text "Optional OCR output"
+        DateTime extraction_timestamp
+        ReviewStatus review_status "Enum (pending_review, reviewed_corrected, reviewed_approved)"
+        UUID reviewed_by_user_id FK "Nullable"
+        DateTime review_timestamp "Nullable"
+    }
+
+```
+*Note: `JSONB` is used for flexible storage in `ExtractedData`. `JSON` is used in `User` for Supabase compatibility.*
+
 ## Authentication Flow
 
-1. User authenticates with Supabase (frontend)
-2. Supabase issues a JWT token
-3. Frontend includes the token in the Authorization header
-4. Backend `verify_token` middleware validates the token
-5. If valid, endpoint handler receives the decoded token data
-6. User information is extracted from the token
+1.  User authenticates with Supabase (frontend).
+2.  Supabase issues a JWT token.
+3.  Frontend includes the token in the Authorization header for backend requests.
+4.  Backend `verify_token` dependency validates the token using `SUPABASE_JWT_SECRET`.
+5.  If valid, endpoint handler receives the decoded token data (including `sub` which is the `auth.uid`).
+6.  Backend logic uses `auth.uid` to find the corresponding user record in the `users` table via the `supabase_id` column.
 
 ## Security Features
 
-1. **JWT Authentication**: Secure token-based authentication with Supabase
-2. **Security Headers**: Protection against common web vulnerabilities
-3. **Rate Limiting**: Prevention of abuse and DoS attacks
-4. **Structured Logging**: Comprehensive logging for security events
-5. **Input Validation**: Pydantic models ensure data validation
-6. **Exception Handling**: Secure error responses that don't leak information
-7. **Database Connection Pooling**: Secure and efficient database access
+1.  **JWT Authentication**: Secure token-based authentication with Supabase.
+2.  **RLS**: Row Level Security enabled on all tables in the `public` schema, with policies restricting access based on the authenticated user (`auth.uid`).
+3.  **Security Headers**: Middleware protection against common web vulnerabilities.
+4.  **Rate Limiting**: Prevention of abuse and DoS attacks.
+5.  **Structured Logging**: Comprehensive logging for security events.
+6.  **Input Validation**: Pydantic schemas ensure data validation at API boundaries.
+7.  **Exception Handling**: Secure error responses that don't leak sensitive information.
+8.  **Database Connection Pooling**: Secure and efficient database access.
+9.  **Environment Variables**: Sensitive credentials (DB URL, JWT Secret) managed via `.env` file (not committed to Git).
 
 ## Development Environment
 
 The application is designed to be developed with Python 3.11 and uses modern tooling:
 - Pytest for testing
 - Alembic for database migrations
-- Docker for containerization
-- Environment variables for configuration
+- Docker for containerization (optional)
+- Environment variables (`.env` file) for configuration
 
 **Important Note**: When running commands locally, make sure to use `python3` explicitly to target Python 3.11. The project requires Python 3.11 for certain language features and library compatibility.
 
@@ -153,12 +213,14 @@ python3 -m pytest backend/tests/
 
 # Start the backend server with Python 3.11
 python3 -m uvicorn app.main:app --reload
+
+# Run Alembic migrations
+alembic upgrade head
 ```
 
 ## Next Steps
 
-As development progresses, this architecture will expand to include:
-- Document storage and processing
-- AI/ML integration for data extraction
-- Advanced querying capabilities
-- Enhanced security features
+- Implement CRUD operations for `Document` and `ExtractedData`.
+- Set up secure file storage (e.g., Google Cloud Storage).
+- Implement document upload endpoint.
+- Begin integration with OCR/NLP services (Phase 2).
