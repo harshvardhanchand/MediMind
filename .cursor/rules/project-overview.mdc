@@ -1,0 +1,21 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Overview and Purpose
+
+This project is an AI-powered mobile application ([prd.md](mdc:prd.md)) designed for patients to manage their medical data, specifically prescriptions and lab results.
+
+**Core Goals:**
+*   Secure upload, storage, and AI-powered parsing (OCR/NLP) of medical documents.
+*   User review and correction of extracted data.
+*   Basic data visualization and listing (e.g., test results over time).
+*   Natural language querying of structured data using Gemini 2.5 Flash ([prd.md](mdc:prd.md)).
+*   Patient empowerment through data access.
+
+**Critical Constraints:**
+*   **No Medical Advice:** The application explicitly avoids providing any medical interpretation, diagnosis, or advice.
+*   **Compliance:** Adherence to data privacy regulations like HIPAA and India's DPDP Act 2023 is essential ([prd.md](mdc:prd.md)).
+
+Refer to the [Product Requirements Document (prd.md)](mdc:prd.md) for full details.
