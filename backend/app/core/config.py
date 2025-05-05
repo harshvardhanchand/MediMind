@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 from pydantic_settings import BaseSettings
 
@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     ]
     
     # Authentication settings
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
-    SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_JWT_SECRET: Optional[str] = None
     
     # Database settings
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # GCP settings
     GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "")
     GCP_STORAGE_BUCKET: str = os.getenv("GCP_STORAGE_BUCKET", "")
+
+    # Google Cloud Storage (GCS)
+    GCS_BUCKET_NAME: Optional[str] = None
 
     class Config:
         env_file = ".env"

@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.api.endpoints.health import router as health_router
 from app.api.endpoints.me import router as me_router
+from app.api.endpoints.documents import router as documents_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.middleware.security import SecurityHeadersMiddleware
@@ -46,6 +47,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(me_router, prefix="/api/v1")
+app.include_router(documents_router, prefix="/api/v1/documents")
 
 # Add root endpoint to redirect to API docs
 @app.get("/", include_in_schema=False)

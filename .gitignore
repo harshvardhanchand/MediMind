@@ -67,6 +67,7 @@ service-account-*.json
 *.pem
 *.crt
 *.key
+fast-mariner-353114-d4105cb6c32e.json
 
 # Mobile
 *.ipa

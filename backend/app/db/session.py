@@ -1,41 +1,58 @@
 import logging
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Create engine with a connection pool
-# The pool_pre_ping argument helps avoid "stale" connections
-engine = create_engine(
-    settings.DATABASE_URL,
+# Ensure the DATABASE_URL uses an async driver (e.g., postgresql+asyncpg)
+async_db_url = settings.DATABASE_URL
+if not async_db_url.startswith("postgresql+asyncpg"):
+    if async_db_url.startswith("postgresql"): 
+        # Attempt to replace sync driver with asyncpg
+        async_db_url = async_db_url.replace("postgresql+psycopg2", "postgresql+asyncpg", 1)
+        async_db_url = async_db_url.replace("postgresql", "postgresql+asyncpg", 1) # If no driver specified
+        logger.warning(f"DATABASE_URL did not specify async driver. Assuming asyncpg: {async_db_url}")
+    else:
+        raise ValueError("DATABASE_URL is not configured for PostgreSQL or asyncpg")
+
+# Create async engine
+engine = create_async_engine(
+    async_db_url,
     pool_pre_ping=True,
-    pool_size=10,
+    pool_size=10,         # Adjust pool size as needed
     max_overflow=20,
-    pool_recycle=3600,  # Recycle connections after 1 hour
-    pool_timeout=30,    # Connection timeout after 30 seconds
+    echo=settings.ENVIRONMENT == "development" # Log SQL in dev
 )
 
-# Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Create async session factory
+AsyncSessionLocal = sessionmaker(
+    bind=engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False, # Recommended for async sessions
+    autocommit=False, 
+    autoflush=False
+)
 
 # Base class for SQLAlchemy models
 Base = declarative_base()
 
-def get_db() -> Session:
+async def get_db() -> AsyncSession:
     """
-    Get a database session from the pool.
+    Get an async database session from the pool.
     
-    This function is designed to be used as a FastAPI dependency.
-    It yields a session and ensures the session is properly closed after use.
-    
-    Returns:
-        SQLAlchemy Session object
+    Designed as a FastAPI dependency.
+    Yields a session and ensures it's closed afterwards.
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close() 
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+# Optional: Add a function to create tables (useful for initial setup/tests without Alembic)
+# async def init_db():
+#     async with engine.begin() as conn:
+#         # await conn.run_sync(Base.metadata.drop_all)
+#         await conn.run_sync(Base.metadata.create_all) 
