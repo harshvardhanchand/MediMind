@@ -1,13 +1,15 @@
 import logging
 import hashlib
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
+from uuid import UUID
 
 from app.db.session import get_db
 from app.core.auth import verify_token
 from app.repository import document_repo, user_repo
 from app.schemas.document import DocumentRead, DocumentCreate
-from app.utils.storage import upload_file_to_gcs
+from app.utils.storage import upload_file_to_gcs, delete_file_from_gcs
 from app.models.document import DocumentType
 
 logger = logging.getLogger(__name__)
@@ -58,10 +60,19 @@ async def upload_document(
          raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not read uploaded file.")
 
     file_hash = calculate_hash(file_content)
-    # Optional: Check if a document with this hash already exists for this user to prevent duplicates
-    # existing_doc = await document_repo.get_by_hash_for_user(db, user_id=internal_user_id, file_hash=file_hash)
-    # if existing_doc:
-    #     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Duplicate file detected")
+    # Check if a document with this hash already exists for this user to prevent duplicates
+    existing_doc = await document_repo.get_by_hash_for_user(db, user_id=internal_user_id, file_hash=file_hash)
+    if existing_doc:
+        # Return a 409 Conflict with information about the existing document
+        logger.info(f"Duplicate file detected for user {internal_user_id}, existing document: {existing_doc.document_id}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, 
+            detail={
+                "message": "Duplicate file detected",
+                "existing_document_id": str(existing_doc.document_id),
+                "uploaded_on": existing_doc.upload_timestamp.isoformat()
+            }
+        )
 
     # Upload to GCS
     gcs_path = await upload_file_to_gcs(file=file, user_id=internal_user_id)
@@ -72,8 +83,11 @@ async def upload_document(
     doc_meta = DocumentCreate(
         original_filename=file.filename,
         document_type=document_type,
-        # Add file_metadata if desired, e.g.:
-        # file_metadata={"content_type": file.content_type, "size": len(file_content)}
+        file_metadata={
+            "content_type": file.content_type, 
+            "size": len(file_content),
+            "filename": file.filename
+        }
     )
 
     # Save document record to database
@@ -93,4 +107,117 @@ async def upload_document(
         # Consider adding GCS cleanup logic here
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save document metadata")
 
-# Add other document endpoints here (GET, LIST, DELETE etc.) later 
+@router.get("/", response_model=List[DocumentRead])
+async def list_documents(
+    *,
+    db: AsyncSession = Depends(get_db),
+    token_data: dict = Depends(verify_token),
+    skip: int = Query(0, ge=0, description="Skip N items"),
+    limit: int = Query(100, ge=1, le=100, description="Limit to N items"),
+):
+    """
+    List all documents belonging to the authenticated user.
+    
+    Results are paginated and ordered by upload timestamp (newest first).
+    """
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        logger.error("Supabase ID not found in token during document listing.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
+    
+    # Get internal user ID from supabase ID
+    user = await user_repo.get_by_supabase_id(db, supabase_id=supabase_id)
+    if not user:
+        logger.error(f"User with supabase_id {supabase_id} not found in internal database.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    documents = await document_repo.get_multi_by_owner(
+        db=db,
+        user_id=user.user_id,
+        skip=skip,
+        limit=limit
+    )
+    
+    return documents
+
+@router.get("/{document_id}", response_model=DocumentRead)
+async def get_document(
+    *,
+    db: AsyncSession = Depends(get_db),
+    token_data: dict = Depends(verify_token),
+    document_id: UUID,
+):
+    """
+    Get details of a specific document by ID.
+    
+    Only returns documents belonging to the authenticated user.
+    """
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        logger.error("Supabase ID not found in token during document retrieval.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
+    
+    # Get internal user ID from supabase ID
+    user = await user_repo.get_by_supabase_id(db, supabase_id=supabase_id)
+    if not user:
+        logger.error(f"User with supabase_id {supabase_id} not found in internal database.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    document = await document_repo.get_by_id(db=db, document_id=document_id)
+    
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    
+    # Ensure the document belongs to the authenticated user
+    if document.user_id != user.user_id:
+        logger.warning(f"User {user.user_id} attempted to access document {document_id} owned by {document.user_id}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this document")
+    
+    return document
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    *,
+    db: AsyncSession = Depends(get_db),
+    token_data: dict = Depends(verify_token),
+    document_id: UUID,
+):
+    """
+    Delete a document by ID.
+    
+    Also removes the document file from storage.
+    Only allows deleting documents belonging to the authenticated user.
+    """
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        logger.error("Supabase ID not found in token during document deletion.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
+    
+    # Get internal user ID from supabase ID
+    user = await user_repo.get_by_supabase_id(db, supabase_id=supabase_id)
+    if not user:
+        logger.error(f"User with supabase_id {supabase_id} not found in internal database.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    document = await document_repo.get_by_id(db=db, document_id=document_id)
+    
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    
+    # Ensure the document belongs to the authenticated user
+    if document.user_id != user.user_id:
+        logger.warning(f"User {user.user_id} attempted to delete document {document_id} owned by {document.user_id}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this document")
+    
+    # Delete the file from GCS storage
+    gcs_path = document.storage_path
+    gcs_deletion_success = await delete_file_from_gcs(gcs_path)
+    
+    if not gcs_deletion_success:
+        logger.warning(f"Failed to delete file from GCS: {gcs_path}")
+        # Continue anyway to delete the database record
+    
+    # Delete the document from database
+    await document_repo.remove(db=db, id=document_id)
+    
+    return None 

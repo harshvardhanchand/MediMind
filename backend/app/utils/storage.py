@@ -2,7 +2,7 @@ import logging
 import uuid
 from google.cloud import storage
 from fastapi import UploadFile
-from typing import Optional
+from typing import Optional, Tuple
 
 from app.core.config import settings
 
@@ -62,4 +62,61 @@ async def upload_file_to_gcs(file: UploadFile, user_id: uuid.UUID) -> Optional[s
         return None
     finally:
         # Ensure the UploadFile is closed
-        await file.close() 
+        await file.close()
+
+def parse_gcs_path(gcs_path: str) -> Tuple[str, str]:
+    """
+    Parses a GCS path into bucket name and blob name.
+    
+    Args:
+        gcs_path: A GCS path in the format 'gs://bucket_name/blob_name'
+        
+    Returns:
+        Tuple of (bucket_name, blob_name)
+    """
+    if not gcs_path.startswith("gs://"):
+        raise ValueError(f"Invalid GCS path format: {gcs_path}")
+    
+    # Remove 'gs://' prefix
+    path = gcs_path[5:]
+    
+    # Split into bucket name and blob name
+    parts = path.split("/", 1)
+    if len(parts) < 2:
+        raise ValueError(f"Invalid GCS path format, missing blob name: {gcs_path}")
+    
+    bucket_name = parts[0]
+    blob_name = parts[1]
+    
+    return bucket_name, blob_name
+
+async def delete_file_from_gcs(gcs_path: str) -> bool:
+    """
+    Deletes a file from Google Cloud Storage.
+    
+    Args:
+        gcs_path: The GCS path of the file to delete (gs://bucket_name/path/to/blob)
+        
+    Returns:
+        True if deletion was successful, False otherwise
+    """
+    if not storage_client:
+        logger.error("GCS client not initialized. Cannot delete file.")
+        return False
+    
+    try:
+        # Parse the GCS path
+        bucket_name, blob_name = parse_gcs_path(gcs_path)
+        
+        # Get the bucket and blob
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        
+        # Delete the blob
+        blob.delete()
+        
+        logger.info(f"File deleted successfully from {gcs_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to delete file from {gcs_path}: {e}", exc_info=True)
+        return False 

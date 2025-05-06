@@ -55,6 +55,31 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         await db.commit()
         await db.refresh(db_obj)
         return db_obj
+        
+    async def get_by_hash_for_user(
+        self, db: AsyncSession, *, user_id: UUID, file_hash: str
+    ) -> Optional[Document]:
+        """Get a document by file hash belonging to a specific user, if it exists."""
+        stmt = (
+            select(self.model)
+            .where(self.model.user_id == user_id, self.model.file_hash == file_hash)
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+        
+    async def get_multi_by_status(
+        self, db: AsyncSession, *, status: ProcessingStatus, skip: int = 0, limit: int = 100
+    ) -> List[Document]:
+        """Get all documents with a specific processing status."""
+        stmt = (
+            select(self.model)
+            .where(self.model.processing_status == status)
+            .order_by(self.model.upload_timestamp.asc())  # Process oldest first
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        return result.scalars().all()
 
 # Create a singleton instance of the CRUDDocument class
 document_repo = CRUDDocument(Document) 
