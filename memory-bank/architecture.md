@@ -9,6 +9,8 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 * **Backend**: Python 3.11 with FastAPI
 * **Authentication**: Supabase
 * **Database**: PostgreSQL with SQLAlchemy ORM
+* **AI Document Processing**: Google Cloud Document AI (for OCR)
+* **AI Language Processing**: Google Gemini (or other LLM, for structured data extraction - planned)
 * **Frontend**: React Native (Mobile)
 * **Cloud Platform**: Google Cloud Platform (GCP)
 
@@ -128,6 +130,15 @@ Contains test suites organized by type:
 - Integration tests for API endpoints
 - Security tests for vulnerability checking
 
+### 9. AI Document Processing (`backend/app/utils/ai_processors.py`)
+
+Handles the initial step of document understanding, which is Optical Character Recognition (OCR).
+
+Key components:
+- **Google Cloud Document AI Integration**: Leverages Google Cloud Document AI for robust text extraction from various document formats (PDFs, images) stored in Google Cloud Storage.
+- **Configuration**: Utilizes environment variables (loaded via `.env` files) for managing sensitive connection details (Project ID, Processor ID) for services like Document AI.
+- **Utility Functions**: Provides functions like `process_document_with_docai` to encapsulate the logic for calling the Document AI service and retrieving raw text output.
+
 ## Database Schema Overview
 
 ```mermaid
@@ -223,4 +234,6 @@ alembic upgrade head
 - Implement CRUD operations for `Document` and `ExtractedData`.
 - Set up secure file storage (e.g., Google Cloud Storage).
 - Implement document upload endpoint.
-- Begin integration with OCR/NLP services (Phase 2).
+- **Integrate LLM (e.g., Gemini Flash) with the OCR output from Document AI for structured data extraction.**
+- **Develop background task processing for the OCR and LLM pipeline.**
+- **Define and implement storage for the structured data extracted by the LLM into the `ExtractedData` model.**

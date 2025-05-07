@@ -40,6 +40,8 @@ pytest-mock==3.11.1
 google-cloud-storage==2.13.0
 google-cloud-tasks==2.13.1
 google-cloud-secret-manager==2.16.4
-# google-cloud-vision==3.4.5 # Placeholder for later
-# google-cloud-healthcare==1.8.0 # Placeholder for later
-# google-cloud-aiplatform==1.36.3 # Placeholder for later 
+google-cloud-documentai==3.5.0
+
+# Placeholder for later AI/ML services if they are different from the above
+# google-cloud-healthcare==1.8.0
+# google-cloud-aiplatform==1.36.3 

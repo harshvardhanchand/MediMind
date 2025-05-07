@@ -116,14 +116,29 @@ The database implementation and core document management functionality are now c
 
 Next phase will focus on implementing the document processing pipeline using OCR and NLP services.
 
-## Phase 2: Document Processing Implementation 
+## Phase 2: Document Processing Implementation
 
 **In Progress: [Current Date]**
 
+The initial step of integrating Optical Character Recognition (OCR) into the document processing pipeline has been completed.
+
+1.  **OCR Integration using Google Document AI**:
+    *   Successfully integrated Google Document AI for performing OCR on uploaded documents (PDFs, images). This provides robust text extraction capabilities.
+    *   The `google-cloud-documentai` library (version `3.5.0`) has been added to the backend dependencies.
+    *   A utility function (`process_document_with_docai` in `backend/app/utils/ai_processors.py`) has been implemented to interact with the Document AI service.
+    *   The function handles processing documents stored in Google Cloud Storage (GCS).
+
+2.  **Testing and Configuration**:
+    *   The Document AI integration has been successfully tested by processing a sample document from GCS.
+    *   The test script within `ai_processors.py` has been refactored to use environment variables (loaded via a `.env` file) for configuration (Project ID, Processor ID, GCS URI), enhancing security and maintainability.
+
 Next steps for Phase 2:
 
-1. Integrate OCR service using Google Cloud Vision API
-2. Implement medical NLP processing using appropriate services
-3. Create background processing tasks for document analysis
-4. Develop user interface for document review and correction
-5. Implement extraction data storage and retrieval
+1.  **Integrate LLM for Structured Data Extraction**:
+    *   Develop functionality to take the raw text output from Document AI (OCR).
+    *   Send this text to a Large Language Model (e.g., Gemini Flash) with a carefully designed prompt to extract structured medical information (patient details, medications, lab results, etc.).
+    *   Define the expected structured output format (e.g., JSON) from the LLM.
+2.  Implement medical NLP processing using appropriate services (This might be covered by or augmented by the LLM step above, to be refined).
+3.  Create background processing tasks for document analysis (OCR + LLM extraction).
+4.  Develop user interface for document review and correction (Frontend task, dependent on backend data structures).
+5.  Implement extraction data storage and retrieval into the `ExtractedData` model.
