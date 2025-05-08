@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum
+from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import enum
@@ -37,6 +37,14 @@ class Document(Base):
     processing_status = Column(SQLAlchemyEnum(ProcessingStatus), default=ProcessingStatus.PENDING, nullable=False)
     file_hash = Column(String, nullable=True, index=True) # Optional: To detect duplicates
     file_metadata = Column(JSON, nullable=True) # Optional: Store content type, size, etc. Renamed from 'metadata'
+
+    # New metadata fields for enhanced filtering
+    document_date = Column(Date, nullable=True) # Actual date on the report/prescription
+    source_name = Column(String, nullable=True) # Doctor, lab, hospital name
+    source_location_city = Column(String, nullable=True) # City of the source
+    tags = Column(JSON, nullable=True) # List of LLM-generated keywords/tags
+    user_added_tags = Column(JSON, nullable=True) # List of user-added tags
+    related_to_health_goal_or_episode = Column(String, nullable=True) # Link to a health goal or episode
 
     # Relationships
     user = relationship("User")

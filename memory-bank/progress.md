@@ -200,3 +200,17 @@ Background processing for document analysis has been implemented using FastAPI's
    * Created separate database transactions for background tasks to ensure proper isolation
 
 The implementation provides a clean, efficient way to process documents asynchronously without adding complex dependencies. Users can upload documents and receive an immediate response, while the system processes the documents in the background using Google Cloud Document AI and Gemini LLM.
+
+## Next Steps
+
+- **Enhanced Natural Language Querying with Metadata Filtering**:
+    - ✅ Added new metadata fields (`document_date`, `source_name`, `source_location_city`, `tags`, `user_added_tags`, `related_to_health_goal_or_episode`) to the `Document` model and database schema.
+    - ✅ Updated Pydantic schemas (`DocumentBase`, `DocumentRead`, `DocumentUpdate`) to include new metadata fields.
+    - 🔄 Implement LLM-based filter extraction (LLM Call 2) from user queries based on the new `Document` metadata.
+    - 🔄 Update document retrieval logic in the query endpoint to use extracted filters.
+    - 🔄 Refine the answering LLM (LLM Call 3) to use the filtered context.
+    - 🔄 Enhance initial document processing (LLM Call 1) to attempt extraction of `document_date`, `source_name`, `source_location_city`, and `tags` to populate new `Document` fields.
+    - 🔄 Develop API endpoints for users to manage `user_added_tags` and `related_to_health_goal_or_episode` for their documents.
+- **Mobile Integration**: Establish connection between backend API and mobile frontend
+- **Performance Testing**: Conduct load and stress testing to ensure API performance
+- **Security Audit**: Perform comprehensive security review

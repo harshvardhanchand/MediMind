@@ -25,7 +25,10 @@ target_metadata = Base.metadata
 
 # Import environment variables and set the database URL
 from app.core.config import settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+if settings.DATABASE_URL:
+    config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
+else:
+    raise ValueError("DATABASE_URL is not set in the application settings, but it is required for Alembic operations.")
 
 # Other values from the config, defined by the needs of env.py,
 # can be acquired:

@@ -1,7 +1,7 @@
 import logging
 import os
 import json # For parsing LLM JSON output
-from typing import Optional
+from typing import Optional, Dict, Any # Added Dict, Any
 
 # Import Document AI Client
 from google.api_core.client_options import ClientOptions
@@ -295,3 +295,91 @@ if __name__ == '__main__':
         print("\n--- Document AI OCR Successful, but no text extracted ---")
     else:
         print(f"\n--- Document AI Processing Failed for: {test_input_gcs_uri} ---") 
+
+# --- New Function for Answering Queries from Context ---
+async def answer_query_from_context(api_key: str, query_text: str, json_data_context: str) -> Optional[str]:
+    """
+    Sends a natural language query and a context of JSON data to Gemini Flash model 
+    to generate a natural language answer.
+
+    Args:
+        api_key: The API key for Google Generative AI.
+        query_text: The natural language query from the user.
+        json_data_context: A string containing all relevant JSON data (e.g., a list of JSON objects)
+                           for the user, which the LLM should use to answer the query.
+
+    Returns:
+        A string containing the LLM's natural language answer, or None on failure.
+    """
+    if not query_text.strip():
+        logger.warning("Received empty query text for answering. Skipping.")
+        return None
+    if not json_data_context.strip():
+        logger.warning("Received empty JSON data context for answering. Skipping.")
+        # Or, alternatively, could try to answer without context if that's ever desired.
+        # For now, assume context is required.
+        return "I don't have any of your medical data to search through. Please upload your documents first."
+
+    system_prompt = f"""
+    You are a helpful AI assistant. Your role is to answer the user's questions based *solely* on the provided medical data context. 
+    The medical data context consists of a collection of JSON objects, where each object represents structured information extracted from one of their medical documents. 
+    Each JSON object typically contains a list of 'medical_events' with fields like 'event_type', 'description', 'value', 'units', 'date_time', and 'raw_text_snippet'.
+
+    User's Question: "{query_text}"
+
+    Provided Medical Data Context (JSON blobs from user's documents):
+    ```json
+    {json_data_context}
+    ```
+
+    Instructions:
+    1. Carefully analyze the User's Question.
+    2. Thoroughly search the Provided Medical Data Context to find relevant information to answer the question.
+    3. Formulate a clear, concise, and natural language answer based *only* on the information found in the Provided Medical Data Context.
+    4. If the answer to the question cannot be found in the provided data, explicitly state that (e.g., "I could not find information about that in your provided documents.").
+    5. Do NOT use any external knowledge or make assumptions beyond what is present in the provided data.
+    6. If quoting specific values or snippets, you can refer to them, but the overall answer should be conversational.
+    7. Do not refer to the data as "JSON blobs" or "medical_events list" in your answer to the user; just use the information naturally.
+    8. Your primary goal is to be helpful and accurate based *only* on the provided documents.
+    Ensure your output is only the natural language answer to the user's question.
+    """
+    
+    logger.info(f"Sending query and JSON context (length: {len(json_data_context)}) to Gemini for answering...")
+    logger.debug(f"Gemini System Prompt for Answering from Context:\n{system_prompt[:1000]}...") # Log a snippet of the prompt
+
+    try:
+        genai.configure(api_key=api_key)
+        
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+
+        # For very long prompts that include a lot of data, it's common to put the entire prompt
+        # (system instructions + user query + data context) directly into the content generation call.
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-flash-latest', 
+            safety_settings=safety_settings,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.2 # Slightly higher temp for more natural language, but still fairly factual
+            )
+        )
+        
+        response = await model.generate_content_async(system_prompt) # Pass the whole crafted prompt
+        
+        if response.parts:
+            answer = response.text
+            logger.info(f"Received answer from Gemini (length: {len(answer)}).")
+            logger.debug(f"Raw LLM answer: {answer}")
+            return answer.strip() # Return the natural language answer
+        else:
+            logger.warning("Gemini response for answering query has no parts or text.")
+            if response.prompt_feedback:
+                logger.warning(f"Prompt Feedback for answering query: {response.prompt_feedback}")
+            return "I encountered an issue trying to generate an answer. Please try again."
+
+    except Exception as e:
+        logger.error(f"Exception during Gemini API call for answering query: {e}", exc_info=True)
+        return "I'm sorry, but I encountered an error while trying to process your request." 

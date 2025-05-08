@@ -37,14 +37,11 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   ├── user.py         # User data model
 │   │   │   ├── document.py     # Document data model
 │   │   │   └── extracted_data.py # ExtractedData model
-│   │   ├── repository/         # Repository pattern (singular) - legacy
-│   │   │   ├── base.py         # Base CRUD repository
-│   │   │   ├── document.py     # Document repository
-│   │   │   └── user.py         # User repository
-│   │   ├── repositories/       # Repository pattern (plural) - preferred
-│   │   │   ├── document_repo.py # Document repository wrapper 
+│   │   ├── repositories/       # Repository pattern implementation
+│   │   │   ├── base.py         # Base CRUD repository 
+│   │   │   ├── document_repo.py # Document repository implementation
 │   │   │   ├── extracted_data_repo.py # ExtractedData repository
-│   │   │   └── user_repo.py    # User repository wrapper
+│   │   │   └── user_repo.py    # User repository implementation
 │   │   ├── schemas/            # Pydantic schemas
 │   │   │   ├── document.py     # Document schemas
 │   │   │   ├── extracted_data.py # ExtractedData schemas
@@ -123,8 +120,14 @@ Key components:
 Contains SQLAlchemy ORM models that represent database tables.
 
 *   **`User`**: Maps to `users` table. Stores basic user info, links to Supabase Auth via `supabase_id`.
-*   **`Document`**: Maps to `documents` table. Represents an uploaded document (PDF, image), linking to a `User`. Includes details like filename, storage path, type, and processing status.
-*   **`ExtractedData`**: Maps to `extracted_data` table. Stores structured data parsed from a `Document` using a flexible `JSONB` column. Links one-to-one with `Document` and includes review status details.
+*   **`Document`**: Maps to `documents` table. Represents an uploaded document (PDF, image), linking to a `User`. Includes details like filename, storage path, type (`prescription`, `lab_result`, `other`), upload timestamp, processing status, and **enhanced metadata for filtering**:
+    *   `document_date` (Date, Optional): Actual date on the report/document.
+    *   `source_name` (String, Optional): Doctor, lab, or hospital name.
+    *   `source_location_city` (String, Optional): City associated with the source.
+    *   `tags` (JSON, Optional): List of LLM-extracted keywords (e.g., conditions, medications).
+    *   `user_added_tags` (JSON, Optional): List of tags added manually by the user.
+    *   `related_to_health_goal_or_episode` (String, Optional): User-defined link to a health goal or event.
+*   **`ExtractedData`**: Maps to `extracted_data` table. Stores structured data parsed from a `Document` using a flexible `JSONB` column (`content`). Links one-to-one with `Document` and includes review status details.
 
 ### 6. API Endpoints (`backend/app/api/endpoints/`)
 
@@ -178,23 +181,57 @@ Contains test suites organized by type:
 
 ### 9. AI Document Processing (`backend/app/utils/ai_processors.py`)
 
-Handles the initial step of document understanding, which is Optical Character Recognition (OCR).
+Handles the initial step of document understanding through Optical Character Recognition (OCR). This component extracts raw text from uploaded medical documents.
 
 Key components:
 - **Google Cloud Document AI Integration**: Leverages Google Cloud Document AI for robust text extraction from various document formats (PDFs, images) stored in Google Cloud Storage.
-- **Configuration**: Utilizes environment variables (loaded via `.env` files) for managing sensitive connection details (Project ID, Processor ID) for services like Document AI.
-- **Utility Functions**: Provides functions like `process_document_with_docai` to encapsulate the logic for calling the Document AI service and retrieving raw text output. The raw text is then passed to the AI Language Processing component.
+- **Configuration**: Utilizes environment variables for managing Google Cloud service connections (Project ID, Processor ID).
+- **Process Flow**:
+  1. Documents are uploaded by users and stored in Google Cloud Storage
+  2. Document processing service retrieves the document path
+  3. `process_document_with_docai` function is called with the document's GCS URI
+  4. Google Cloud Document AI processes the document and returns extracted text
+  5. Extracted text is stored in the `raw_text` field of the `ExtractedData` model
+- **Processor Selection**: Uses a specialized medical document processor trained on healthcare documents for better accuracy with medical terminology and document layouts.
+- **Multilingual Support**: The Document AI processor can handle documents in multiple languages, expanding the application's utility in diverse healthcare environments.
 
 ### 10. AI Language Processing (`backend/app/utils/ai_processors.py`)
 
-This component is responsible for the deep analysis and semantic structuring of the raw text extracted by the OCR process. The core logic is implemented in the `structure_text_with_gemini` function within `backend/app/utils/ai_processors.py`.
+This section describes the different roles LLMs (currently Google Gemini) play in the application.
+
+**A. Initial Document Structuring (`structure_text_with_gemini`)**
+
+This component performs semantic structuring of the raw text extracted by the OCR process, transforming unstructured medical text into structured, queryable data. It is invoked once per document during background processing.
 
 Key components:
-- **LLM Integration (Google Gemini Flash)**: Uses the `google-generativeai` library to interact with the `gemini-1.5-flash-latest` model. The `structure_text_with_gemini` function orchestrates this.
-- **Semantic Structuring**: The LLM is guided by a detailed system prompt (`SYSTEM_PROMPT_MEDICAL_STRUCTURING`) to identify, categorize, and structure medically relevant information from the input text. The goal is to produce a JSON list of "medical_events" or "medical_observations", each with attributes like `event_type`, `description`, `value`, `units`, `date_time`, `qualifiers`, and `raw_text_snippet`.
-- **API Key Management**: The Gemini API key is not directly loaded from environment variables within `ai_processors.py`. Instead, the `structure_text_with_gemini` function expects the API key to be passed as an argument. The calling code (e.g., test scripts, future API endpoints) is responsible for loading the `GEMINI_API_KEY` from an environment variable (typically sourced from a `.env` file) and providing it to the function.
-- **Output for Storage**: The structured JSON string output from the LLM is intended to be stored in the `content` (JSONB) field of the `ExtractedData` model. This structured data will enable advanced querying and analysis.
-- **Configuration**: The LLM call is configured with a low `temperature` (0.1) for more deterministic output and includes safety settings.
+- **LLM Integration**: Uses `gemini-1.5-flash-latest` via the `google-generativeai` library.
+- **Prompt Engineering**: Utilizes `SYSTEM_PROMPT_MEDICAL_STRUCTURING` to guide the LLM.
+- **Output 1 (Structured Content)**: Generates a structured JSON representation (`medical_events` list) stored in the `ExtractedData.content` field (JSONB).
+- **Output 2 (Metadata - Future Enhancement)**: *This process should be enhanced* to also attempt extracting key metadata from the text (e.g., the actual `document_date`, `source_name`, `source_location_city`, and relevant `tags`) to populate the corresponding fields on the `Document` model, aiding later filtering.
+- **Security/Determinism**: Uses API keys securely and low temperature for consistent structuring.
+
+**B. Query Filter Extraction (`extract_query_filters_with_gemini` - New)**
+
+This is the first LLM step in the user query process. It analyzes the user's natural language query to identify potential filter criteria based on the metadata available on the `Document` model.
+
+Key components:
+- **LLM Integration**: Uses `gemini-1.5-flash-latest`.
+- **Input**: User's natural language query and context about filterable `Document` fields (e.g., `document_type`, `document_date`, `upload_timestamp`, `source_name`, `tags`, `user_added_tags`).
+- **Prompt Engineering**: A specialized prompt guides the LLM to translate the query into filters.
+- **Output**: Returns a JSON object representing the identified filters (e.g., `{"document_type": "LAB_RESULT", "date_range": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}, "tags_contain": ["glucose"]}`).
+- **Purpose**: Enables the backend to retrieve a smaller, more relevant subset of documents before the final answering step.
+
+**C. Contextual Query Answering (`answer_query_from_context`)**
+
+This is the second LLM step in the user query process. It generates a natural language answer based on the user's query and the *filtered* set of structured data retrieved from the database.
+
+Key components:
+- **LLM Integration**: Uses `gemini-1.5-flash-latest`.
+- **Input**: Original user query and a context string containing the `ExtractedData.content` JSON blobs from the documents selected by the filtering step.
+- **Prompt Engineering**: A specific prompt instructs the LLM to answer the query *solely* based on the provided JSON context, avoiding external knowledge.
+- **Output**: A natural language string answering the user's question or indicating if the information wasn't found in the provided context.
+
+This multi-stage AI approach aims to provide accurate and relevant answers efficiently by first structuring the data, then intelligently filtering based on the query, and finally synthesizing an answer from the relevant context.
 
 ## Database Schema Overview
 
@@ -225,6 +262,12 @@ erDiagram
         ProcessingStatus processing_status "Enum (pending, processing, review_required, completed, failed)"
         String file_hash "Optional"
         JSON file_metadata "Optional (content_type, size)"
+        Date document_date "Nullable - Actual date on document"
+        String source_name "Nullable - Doctor, Lab, etc."
+        String source_location_city "Nullable - City of source"
+        JSON tags "Nullable - List of LLM-extracted keywords"
+        JSON user_added_tags "Nullable - List of user-added tags"
+        String related_to_health_goal_or_episode "Nullable - Link to goal/episode"
     }
 
     EXTRACTED_DATA {
@@ -239,7 +282,7 @@ erDiagram
     }
 
 ```
-*Note: `JSONB` is used for flexible storage in `ExtractedData`. `JSON` is used in `User` for Supabase compatibility.*
+*Note: `JSONB` is used for flexible storage in `ExtractedData`. `JSON` is used in `User` for Supabase compatibility and for list storage in `Document`.*
 
 ## Repository Structure
 
@@ -359,13 +402,17 @@ alembic upgrade head
 - ✅ GCS storage integration for document storage
 - ✅ Security features (authentication, authorization)
 - ✅ Comprehensive testing framework with mock objects
-
+-✅ Added enhanced metadata fields to Document model and DB schema
+-✅ Updated Pydantic schemas for Document model
 ### In Progress
 
-- 🔄 Natural language querying of extracted medical data
-- 🔄 Enhancing visualization capabilities for medical data
-- 🔄 User interface for review and correction of extracted data
-- 🔄 Documentation updates
+-🔄 Natural Language Querying (Filtered Approach):
+Implement LLM-based filter extraction (LLM Call 2).
+Implement document retrieval logic based on filters.
+Implement contextual answering LLM call (LLM Call 3) using filtered data.
+Refine prompts for all LLM calls.
+-🔄 Enhance initial document processing (LLM Call 1) to extract new metadata (document_date, source_name, tags, etc.).
+-🔄 Develop API endpoints for managing user tags/episodes
 
 ### Upcoming
 
@@ -374,11 +421,3 @@ alembic upgrade head
 - ⏳ Integration with mobile application
 - ⏳ Performance optimizations
 - ⏳ Additional security hardening
-
-## Next Steps
-
-- **Repository Standardization**: Complete the transition to the plural naming convention for repositories
-- **Natural Language Querying**: Implement endpoints for querying extracted data using natural language with Gemini
-- **Mobile Integration**: Establish connection between backend API and mobile frontend
-- **Performance Testing**: Conduct load and stress testing to ensure API performance
-- **Security Audit**: Perform comprehensive security review
