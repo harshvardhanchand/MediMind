@@ -46,6 +46,10 @@ class Document(Base):
     user_added_tags = Column(JSON, nullable=True) # List of user-added tags
     related_to_health_goal_or_episode = Column(String, nullable=True) # Link to a health goal or episode
 
+    # NEW field to store user overrides for specific metadata fields
+    metadata_overrides = Column(JSON, nullable=True) 
+    # Example: {"document_date": "YYYY-MM-DD", "source_name": "User Input Clinic", "tags": ["override_tag"]} 
+
     # Relationships
     user = relationship("User")
     extracted_data = relationship("ExtractedData", back_populates="document", uselist=False) # One-to-one

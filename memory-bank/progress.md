@@ -132,13 +132,14 @@ Significant progress has been made in implementing the document processing pipel
     *   The Document AI integration has been successfully tested by processing a sample document from GCS.
     *   The test script within `ai_processors.py` has been refactored to use environment variables (loaded via a `.env` file) for configuration (Project ID, Processor ID, GCS URI), enhancing security and maintainability.
 
-3.  **LLM Integration for Structured Data Extraction**:
+3.  **LLM Integration for Structured Data Extraction (LLM Call 1 - Structuring & Initial Metadata)**:
     *   Implemented integration with Google Gemini Flash using the `google.generativeai` SDK.
-    *   Created a comprehensive medical data extraction system prompt that instructs the LLM to identify and structure medical information.
-    *   Developed the `structure_text_with_gemini` function that processes OCR output and returns structured JSON.
+    *   Created a comprehensive medical data extraction system prompt that instructs the LLM to identify and structure medical information, and extract initial metadata (`document_date`, `source_name`, `source_location_city`, `tags`).
+    *   Developed the `structure_text_with_gemini` function that processes OCR output and returns structured JSON containing both `medical_events` and `extracted_metadata`.
     *   The JSON format includes detailed medical observations with fields for event types, values, units, dates, and raw text references.
     *   Added error handling and validation to ensure proper JSON format and extraction quality.
     *   Successfully tested the end-to-end OCR → LLM pipeline with sample documents.
+    *   ✅ **Enhanced `structure_text_with_gemini` and `run_document_processing_pipeline` to extract and save `document_date`, `source_name`, `source_location_city`, and `tags` to the `Document` model.** (This was largely in place from previous work on metadata fields, verified complete).
 
 Next steps for Phase 2:
 
@@ -204,13 +205,63 @@ The implementation provides a clean, efficient way to process documents asynchro
 ## Next Steps
 
 - **Enhanced Natural Language Querying with Metadata Filtering**:
-    - ✅ Added new metadata fields (`document_date`, `source_name`, `source_location_city`, `tags`, `user_added_tags`, `related_to_health_goal_or_episode`) to the `Document` model and database schema.
-    - ✅ Updated Pydantic schemas (`DocumentBase`, `DocumentRead`, `DocumentUpdate`) to include new metadata fields.
-    - 🔄 Implement LLM-based filter extraction (LLM Call 2) from user queries based on the new `Document` metadata.
-    - 🔄 Update document retrieval logic in the query endpoint to use extracted filters.
+    - ✅ Added new metadata fields (`document_date`, `source_name`, `source_location_city`, `tags`, `user_added_tags`, `related_to_health_goal_or_episode`, `metadata_overrides`) to the `Document` model and database schema.
+    - ✅ Updated Pydantic schemas (`DocumentBase`, `DocumentRead`, `DocumentMetadataUpdate`) to include new metadata fields and overrides.
+    - ✅ Implemented API endpoint (`PATCH /documents/{id}/metadata`) for users to update metadata overrides.
+    - 🔄 Implement LLM-based filter extraction (LLM Call 2) from user queries based on the `Document` metadata.
+    - 🔄 **Update `DocumentRepository.get_multi_by_filters` to handle `metadata_overrides` when filtering.**
     - 🔄 Refine the answering LLM (LLM Call 3) to use the filtered context.
     - 🔄 Enhance initial document processing (LLM Call 1) to attempt extraction of `document_date`, `source_name`, `source_location_city`, and `tags` to populate new `Document` fields.
-    - 🔄 Develop API endpoints for users to manage `user_added_tags` and `related_to_health_goal_or_episode` for their documents.
 - **Mobile Integration**: Establish connection between backend API and mobile frontend
 - **Performance Testing**: Conduct load and stress testing to ensure API performance
 - **Security Audit**: Perform comprehensive security review
+
+## Phase 3: Natural Language Querying & Advanced Features
+
+**Current Focus**
+
+1.  **Repository Standardization**: ✅ Completed. Updated all instances of "repository" to "repositories" in filenames, imports, and method calls.
+2.  **Documentation Structure**: ✅ Completed. Moved "Next Steps" from `architecture.md` to `progress.md`.
+3.  **NLQ - Initial LLM Approach (Filter Extraction - LLM Call 2)**:
+    *   ✅ Designed 3-step LLM query process: NLQ -> LLM1 (filters) -> Backend (retrieve) -> LLM2 (answer).
+    *   ✅ Added new metadata fields to `Document` model (`document_date`, `source_name`, `source_location_city`, `tags`, `user_added_tags`, `related_to_health_goal_or_episode`).
+    *   ✅ Ran Alembic migrations for new `Document` fields.
+    *   ✅ Updated Pydantic schemas for `Document` model.
+    *   ✅ Updated `architecture.md` with new `Document` fields and 3-step LLM query process.
+    *   ✅ Implemented `extract_query_filters_with_gemini` (LLM Call 2) in `ai_processors.py`.
+    *   ✅ Updated query API endpoint (`endpoints/query.py`) to call `extract_query_filters_with_gemini`.
+    *   ✅ Added `get_multi_by_filters` to `document_repo.py`.
+
+4.  **NLQ - Populate New Metadata (Enhance LLM Call 1 - Structuring)**:
+    *   ✅ Updated `SYSTEM_PROMPT_MEDICAL_STRUCTURING` for new metadata. (Already included needed fields)
+    *   ✅ Updated `structure_text_with_gemini` to handle new output. (Already handled `extracted_metadata` block)
+    *   ✅ Updated `run_document_processing_pipeline` to save new metadata via `document_repo.update_metadata`. (Existing logic covered these fields)
+
+5.  **User Editable Metadata**:
+    *   ✅ Added `metadata_overrides` JSON field to `Document` model (migration done by user).
+    *   ✅ Updated Pydantic schemas (`DocumentRead`, created `DocumentMetadataUpdate`).
+    *   ✅ Added `update_overrides` method to `DocumentRepository`.
+    *   ✅ Implemented `PATCH /documents/{id}/metadata` endpoint.
+
+**Next Steps for Phase 3:**
+
+*   **NLQ - Filter Application**:
+    *   Update `DocumentRepository.get_multi_by_filters` to incorporate `metadata_overrides` logic when filtering.
+*   **NLQ - Contextual Answering (LLM Call 3)**:
+    *   Implement `answer_query_from_context_with_gemini` (or similar) in `ai_processors.py` (this will be LLM Call 3).
+    *   Update the main query endpoint in `endpoints/query.py` to:
+        1.  Call filter extraction (LLM Call 2).
+        2.  Call `document_repo.get_multi_by_filters` (using extracted filters and respecting overrides).
+        3.  Compile the retrieved JSON data from `ExtractedData` for the filtered documents.
+        4.  Call the contextual answering LLM (LLM Call 3) with the original query and the compiled JSON context.
+        5.  Return the LLM's answer.
+*   **Frontend Development**:
+    *   Develop UI for displaying documents and extracted data.
+    *   Implement UI for the natural language query input.
+    *   Display query results.
+    *   Implement UI for users to edit the new metadata fields (and thus populate `metadata_overrides`).
+*   **Testing**:
+    *   Write end-to-end tests for the natural language query flow.
+    *   Test metadata editing functionality.
+*   **Documentation**:
+    *   Update `architecture.md` to reflect the full NLQ pipeline implementation details and final metadata handling.

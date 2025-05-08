@@ -1,6 +1,7 @@
 import uuid
 import logging
 import json # For parsing LLM output if it's a string
+from datetime import date # Import date for type checking
 from sqlalchemy.orm import Session
 
 from app.core.config import settings # For API keys and other settings
@@ -95,22 +96,62 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
                  logger.info(f"Document {document_id} status updated to REVIEW_REQUIRED after skipping LLM.")
         else:
             structured_json_str = structure_text_with_gemini(
-                api_key=settings.GEMINI_API_KEY, # Loaded from .env via Pydantic settings
+                api_key=settings.GEMINI_API_KEY,
                 raw_text=raw_text_content
             )
 
             if structured_json_str:
                 try:
-                    # Validate and parse the JSON string
-                    structured_content = json.loads(structured_json_str)
-                    extracted_data_repo.update_structured_content(document_id, structured_content)
+                    # Parse the full JSON output from the LLM
+                    llm_output = json.loads(structured_json_str)
+                    
+                    # Extract the two main parts
+                    medical_events = llm_output.get("medical_events")
+                    extracted_metadata = llm_output.get("extracted_metadata")
+
+                    if not isinstance(medical_events, list):
+                        logger.error(f"LLM output 'medical_events' is not a list for document {document_id}. Output: {medical_events}")
+                        raise ValueError("Invalid format for medical_events")
+                    if not isinstance(extracted_metadata, dict):
+                        logger.error(f"LLM output 'extracted_metadata' is not a dict for document {document_id}. Output: {extracted_metadata}")
+                        # Allow processing to continue without metadata if events are valid
+                        extracted_metadata = {} # Default to empty dict
+                        
+                    # 1. Update ExtractedData content
+                    extracted_data_repo.update_structured_content(document_id, medical_events)
                     logger.info(f"LLM structuring successful for document {document_id}. Structured content stored.")
+                    
+                    # 2. Update Document metadata (if any extracted)
+                    if extracted_metadata:
+                        # Prepare metadata update dictionary, converting date string if present
+                        metadata_to_update = {}
+                        if extracted_metadata.get("document_date"):
+                            try:
+                                metadata_to_update["document_date"] = date.fromisoformat(extracted_metadata["document_date"])
+                            except (ValueError, TypeError):
+                                logger.warning(f"Could not parse document_date '{extracted_metadata['document_date']}' from LLM for doc {document_id}")
+                        
+                        # Add other fields directly if they exist and are not None
+                        for key in ["source_name", "source_location_city", "tags", "related_to_health_goal_or_episode"]:
+                            if extracted_metadata.get(key) is not None:
+                                metadata_to_update[key] = extracted_metadata[key]
+                        
+                        if metadata_to_update:
+                            logger.info(f"Attempting to update Document metadata for {document_id}: {metadata_to_update}")
+                            # Replace the placeholder pass with the actual repository call
+                            updated_doc = doc_repo.update_metadata(db, document_id=document_id, metadata_updates=metadata_to_update)
+                            if not updated_doc:
+                                logger.error(f"Failed to update document metadata in repository for document {document_id}")
+                                # Decide if this is critical enough to mark the whole process as failed, 
+                                # or just log the warning and continue (as metadata update might be non-critical)
+                                # For now, log error and continue with setting status to REVIEW_REQUIRED
+
+                    # 3. Update Document status
                     doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
-                    # The ExtractedData model defaults review_status to PENDING_REVIEW, which is appropriate here.
-                except json.JSONDecodeError as e:
-                    logger.error(f"LLM output for document {document_id} was not valid JSON: {e}. Output: {structured_json_str[:500]}")
+                    
+                except (json.JSONDecodeError, ValueError, KeyError) as e:
+                    logger.error(f"Error processing LLM JSON output for document {document_id}: {e}. Output: {structured_json_str[:500]}")
                     doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
-                    # Optionally store the problematic string in raw_text or a notes field for debugging
             else:
                 logger.error(f"LLM structuring failed for document {document_id} (no output or error in call).")
                 doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)

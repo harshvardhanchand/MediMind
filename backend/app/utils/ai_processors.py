@@ -73,71 +73,90 @@ def process_document_with_docai(
         logger.error(f"Exception during Document AI processing for {gcs_uri} (Processor: {processor_id}): {e}", exc_info=True)
         return None
 
+# Updated System Prompt for Structuring AND Metadata Extraction
 SYSTEM_PROMPT_MEDICAL_STRUCTURING = '''
-You are an expert AI assistant specialized in deep analysis of medical documents. Your task is to process the provided text, which has been OCR'd from a single medical document (such as a prescription, lab report, patient record, or clinical note). Your goal is to identify, categorize, and structure all medically relevant information within this document to facilitate future analysis and querying across multiple such documents.
-
-The user will provide raw text from ONE medical document.
+You are an expert AI assistant specialized in deep analysis of medical documents. Your task is to process the provided text, which has been OCR'd from a single medical document (such as a prescription, lab report, patient record, or clinical note). Your goal is to:
+1. Identify and structure all medically relevant information (observations, findings, medications, lab results, symptoms, diagnoses, procedures) into a list of "medical_events".
+2. Extract key metadata from the document text itself.
 
 Output Format:
-Provide the extracted and structured information in a JSON format. The JSON should be a list of "medical_events" or "medical_observations". Each item in the list should represent a distinct piece of information, observation, finding, medication, lab result, symptom, diagnosis, or procedure mentioned in the document.
+Provide the output as a single JSON object with two top-level keys: "extracted_metadata" and "medical_events".
 
-For each item, include:
--   `event_type`: A category for the information (e.g., "Symptom", "Diagnosis", "Medication", "LabResult", "VitalSign", "Procedure", "Observation", "Allergy", "Immunization", "ClinicalFinding", "PatientInstruction").
--   `description`: The core piece of information or a concise description of the event/observation (e.g., "headache", "Type 2 Diabetes Mellitus", "Lisinopril 10mg", "Fasting Blood Sugar", "Appendectomy").
--   `value`: The specific value associated with the event, if applicable (e.g., for a lab result: "120", for a medication dosage: "10mg").
--   `units`: Units for the value, if applicable (e.g., "mg/dL", "mg", "bpm").
--   `date_time`: The most relevant date and/or time associated with this specific event within the document (YYYY-MM-DD HH:MM:SS if possible, otherwise as written). If a general document date applies and no specific event date is found, use the document date.
--   `body_location`: If applicable, the body location related to the event (e.g., "left arm", "abdomen").
--   `qualifiers`: Any modifiers, severity, status, or temporal context (e.g., "mild", "acute", "chronic", "history of", "resolved", "ongoing", "pre-operative", "post-operative", "for 2 weeks"). This can be a string or an array of strings.
--   `raw_text_snippet`: The exact snippet from the original text that this structured item was derived from. This is crucial for future reference and verification.
--   `notes`: Any additional relevant context or notes extracted by you that don't fit cleanly into other fields.
+1.  **`extracted_metadata`** (Object, all fields are optional - return null if not found):
+    *   `document_date` (String | Null): The primary date associated with the document (e.g., report date, visit date, prescription date) in "YYYY-MM-DD" format. If multiple dates exist, choose the most representative one for the document as a whole.
+    *   `source_name` (String | Null): The primary source of the document (e.g., Doctor's name, Clinic name, Hospital name, Lab name).
+    *   `source_location_city` (String | Null): The city associated with the source, if mentioned.
+    *   `tags` (List[String] | Null): A list of 5-10 key medical terms, conditions, medications, procedures, or topics found in the document. Choose the most salient terms.
 
-Example for a lab result snippet "Fasting Blood Sugar: 110 mg/dL on 2024-03-15":
+2.  **`medical_events`** (List[Object]): Each object in the list represents a distinct piece of information from the document. Include the following fields for each event object:
+    *   `event_type` (String): Category (e.g., "Symptom", "Diagnosis", "Medication", "LabResult", "VitalSign", "Procedure", "Observation", "Allergy", "Immunization", "ClinicalFinding", "PatientInstruction").
+    *   `description` (String): Core information or description (e.g., "headache", "Type 2 Diabetes Mellitus", "Lisinopril 10mg", "Fasting Blood Sugar", "Appendectomy").
+    *   `value` (String | Null): Specific value, if applicable (e.g., "120", "10mg").
+    *   `units` (String | Null): Units for the value, if applicable (e.g., "mg/dL", "mg", "bpm").
+    *   `date_time` (String | Null): Specific date/time for this event (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD), potentially different from the overall document_date.
+    *   `body_location` (String | Null): Body location, if applicable (e.g., "left arm", "abdomen").
+    *   `qualifiers` (String or List[String] | Null): Modifiers, status, context (e.g., "mild", "acute", "chronic", "history of", "resolved", "ongoing").
+    *   `raw_text_snippet` (String): The exact snippet from the original text this item was derived from (IMPORTANT!).
+    *   `notes` (String | Null): Any additional relevant context or notes.
+
+Example Output Structure:
+```json
 {
-    "event_type": "LabResult",
-    "description": "Fasting Blood Sugar",
-    "value": "110",
-    "units": "mg/dL",
-    "date_time": "2024-03-15",
-    "raw_text_snippet": "Fasting Blood Sugar: 110 mg/dL on 2024-03-15",
-    "qualifiers": null,
-    "notes": null
+  "extracted_metadata": {
+    "document_date": "2024-03-15",
+    "source_name": "Central City Laboratory",
+    "source_location_city": "Central City",
+    "tags": ["Blood Test", "Metabolic Panel", "Glucose", "Cholesterol", "Routine Checkup"]
+  },
+  "medical_events": [
+    {
+      "event_type": "LabResult",
+      "description": "Fasting Blood Sugar",
+      "value": "110",
+      "units": "mg/dL",
+      "date_time": "2024-03-15",
+      "body_location": null,
+      "qualifiers": null,
+      "raw_text_snippet": "Fasting Blood Sugar: 110 mg/dL on 2024-03-15",
+      "notes": "Reference Range: 70-100 mg/dL"
+    },
+    {
+      "event_type": "LabResult",
+      "description": "Total Cholesterol",
+      "value": "190",
+      "units": "mg/dL",
+      "date_time": "2024-03-15",
+      "body_location": null,
+      "qualifiers": null,
+      "raw_text_snippet": "Total Cholesterol ............. 190 mg/dL",
+      "notes": "Desirable: < 200 mg/dL"
+    }
+    // ... more medical_events ...
+  ]
 }
-
-Example for a medication snippet "Prescribed Amoxicillin 500mg t.i.d. for 7 days":
-{
-    "event_type": "Medication",
-    "description": "Amoxicillin",
-    "value": "500mg",
-    "units": "mg",
-    "date_time": "YYYY-MM-DD", // (Use document date if prescription date not in snippet)
-    "raw_text_snippet": "Amoxicillin 500mg t.i.d. for 7 days",
-    "qualifiers": ["t.i.d.", "for 7 days"],
-    "notes": "Prescribed"
-}
+```
 
 Guidelines:
-*   Aim to capture as much medically relevant detail as possible in this structured list format.
-*   The `raw_text_snippet` is very important for traceability.
-*   If the document contains a narrative, try to break it down into discrete observations or findings.
-*   For lists (e.g., a list of allergies), create a separate JSON object for each item in the list.
-*   Infer `event_type` based on medical knowledge.
-*   If information is directly tied together (e.g., a test name, its value, units, and reference range), try to keep them within the same structured object, possibly using the `notes` field for related parts like reference ranges if they don't fit the primary `value`/`units`.
-*   The main date of the document (report date, visit date) should be identified and can be used for events that don't have a more specific timestamp.
-
-Do not attempt to analyze across documents in this step. Focus solely on structuring the information from the single document provided.
+*   Ensure the entire output is a single, valid JSON object starting with `{` and ending with `}`.
+*   For `extracted_metadata`, prioritize finding the single most representative date and source for the whole document.
+*   For `tags`, select terms that best summarize the document's key content.
+*   For `medical_events`, capture as much detail as possible. The `raw_text_snippet` is crucial.
+*   If the document contains a narrative, break it down into discrete observations within `medical_events`.
+*   Focus solely on structuring the information from the single document provided.
 '''
 
 def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
     """
-    Sends raw text to Gemini Flash model for structured data extraction based on a medical system prompt.
+    Sends raw text to Gemini Flash model for structured data and metadata extraction 
+    based on the enhanced medical system prompt.
 
     Args:
         api_key: The API key for Google Generative AI.
         raw_text: The raw text extracted from a document.
 
     Returns:
-        A string containing the LLM's response (hopefully a JSON string), or None on failure.
+        A JSON string representing an object with keys 'extracted_metadata' and 'medical_events',
+        or None on failure or if the output format is invalid.
     """
     if not raw_text.strip():
         logger.warning("Received empty raw text for Gemini processing. Skipping.")
@@ -185,31 +204,43 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
         response = model.generate_content(raw_text)
         
         if response.parts:
-            # Assuming the response text is in the first part and contains the JSON string
-            # Need to handle cases where response.text might be empty or not JSON
             llm_output = response.text
-            logger.info(f"Received response from Gemini Flash (length: {len(llm_output)}).")
+            logger.info(f"Received response from Gemini Flash (length: {len(llm_output)}) for structuring.")
             
-            # Basic check if it looks like JSON before returning
-            # More robust validation can be added later
-            if llm_output.strip().startswith("[") and llm_output.strip().endswith("]") or \
-               llm_output.strip().startswith("{") and llm_output.strip().endswith("}"):
-                return llm_output
+            # Basic check: Should be a JSON object now, not potentially a list
+            if llm_output.strip().startswith("{") and llm_output.strip().endswith("}"):
+                # Deeper validation (optional but recommended): Check for required keys
+                try:
+                    parsed_output = json.loads(llm_output)
+                    if 'extracted_metadata' in parsed_output and 'medical_events' in parsed_output:
+                        logger.info("Gemini output format validated (contains top-level keys).")
+                        return llm_output
+                    else:
+                        logger.warning("Gemini output is JSON object but missing required top-level keys ('extracted_metadata', 'medical_events').")
+                        return None # Treat as invalid format
+                except json.JSONDecodeError:
+                    logger.warning("Gemini output starts/ends with {} but is not valid JSON.")
+                    return None # Invalid JSON
             else:
-                logger.warning(f"Gemini output does not appear to be valid JSON. Output: {llm_output[:500]}...")
-                # Fallback: attempt to extract JSON from markdown code blocks if present
+                logger.warning(f"Gemini output does not appear to be a valid JSON object. Output: {llm_output[:500]}...")
+                # Fallback: attempt to extract JSON object from markdown code blocks
                 if "```json" in llm_output:
                     try:
                         json_block = llm_output.split("```json")[1].split("```")[0].strip()
-                        if json_block.strip().startswith("[") and json_block.strip().endswith("]") or \
-                           json_block.strip().startswith("{") and json_block.strip().endswith("}"):
-                            logger.info("Successfully extracted JSON from markdown code block.")
-                            return json_block
-                    except IndexError:
-                        logger.warning("Could not extract JSON from markdown block despite presence of ```json.")
-                return None # Or return the raw output if we want to inspect non-JSON responses
+                        if json_block.strip().startswith("{") and json_block.strip().endswith("}"):
+                            # Perform deeper validation on extracted block too
+                            parsed_output = json.loads(json_block)
+                            if 'extracted_metadata' in parsed_output and 'medical_events' in parsed_output:
+                                logger.info("Successfully extracted and validated JSON object from markdown block.")
+                                return json_block
+                            else:
+                                logger.warning("Extracted JSON object from markdown block is missing required keys.")
+                                return None
+                    except Exception as parse_error: # Broader exception for parsing/splitting issues
+                        logger.warning(f"Could not extract valid JSON object from markdown block: {parse_error}")
+                return None # Output wasn't a JSON object
         else:
-            logger.warning("Gemini response has no parts or text.")
+            logger.warning("Gemini response has no parts or text for structuring.")
             if response.prompt_feedback:
                 logger.warning(f"Prompt Feedback: {response.prompt_feedback}")
             return None
@@ -383,3 +414,240 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
     except Exception as e:
         logger.error(f"Exception during Gemini API call for answering query: {e}", exc_info=True)
         return "I'm sorry, but I encountered an error while trying to process your request." 
+
+# --- New Function for Query Filter Extraction (LLM Call 2) ---
+async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Optional[str]:
+    """
+    Analyzes a natural language query to extract structured filter parameters 
+    based on available Document metadata.
+
+    Args:
+        api_key: The API key for Google Generative AI.
+        query_text: The natural language query from the user.
+
+    Returns:
+        A JSON string representing the extracted filters, or None on failure.
+        Returns an empty JSON object string '{}' if no specific filters are identified.
+    """
+    if not query_text.strip():
+        logger.warning("Received empty query text for filter extraction. Returning no filters.")
+        return "{}" # Return empty JSON object
+
+    # Define the filterable fields from the Document model
+    # Keep this updated if the Document model changes
+    filterable_fields_context = {
+        "description": "Extract filter parameters based on these Document metadata fields:",
+        "fields": [
+            {"name": "document_type", "type": "Enum", "values": ["PRESCRIPTION", "LAB_RESULT", "OTHER"], "description": "Type of document"},
+            {"name": "document_date", "type": "Date (YYYY-MM-DD)", "description": "Actual date on the document"},
+            {"name": "upload_timestamp", "type": "DateTime (YYYY-MM-DD HH:MM:SS)", "description": "When the document was uploaded"},
+            {"name": "source_name", "type": "String", "description": "Doctor, lab, hospital, etc."}, 
+            {"name": "source_location_city", "type": "String", "description": "City of the source"},
+            {"name": "tags", "type": "List[String]", "description": "Keywords extracted from document content by AI"},
+            {"name": "user_added_tags", "type": "List[String]", "description": "Tags added manually by the user"},
+            {"name": "related_to_health_goal_or_episode", "type": "String", "description": "User-defined health goal or episode link"},
+            {"name": "original_filename", "type": "String", "description": "The original uploaded filename"}
+        ],
+        "notes": "Focus on extracting criteria that match these fields. Date comparisons should consider ranges (e.g., 'last year', 'March 2023'). Text matching should often be case-insensitive and partial (contains). Multiple tags can be combined."
+    }
+
+    # Define the desired output structure
+    output_format_instructions = {
+        "description": "Return a JSON object containing identified filters. Use the keys below. Omit keys if no corresponding filter is found in the query. If no filters are found, return an empty JSON object {}.",
+        "keys": {
+            "document_type": "String (e.g., 'LAB_RESULT')",
+            "date_range": "Object with 'start_date' and 'end_date' (YYYY-MM-DD)",
+            "source_name_contains": "String (for partial match)",
+            "source_location_city_equals": "String (for exact match)",
+            "tags_include_all": "List[String] (all tags must be present)",
+            "tags_include_any": "List[String] (any of these tags must be present)", 
+            "user_tags_include_all": "List[String]",
+            "user_tags_include_any": "List[String]",
+            "episode_equals": "String (exact match)",
+            "filename_contains": "String (for partial match)"
+        },
+        "example_output_for_query_glucose_labs_last_year": {
+            "document_type": "LAB_RESULT",
+            "date_range": {"start_date": "YYYY-01-01", "end_date": "YYYY-12-31"}, # Assuming YYYY is last year
+            "tags_include_any": ["glucose", "blood sugar"]
+        }
+    }
+
+    system_prompt = f"""
+    You are an AI assistant specialized in analyzing user queries about their medical documents.
+    Your task is to extract filter parameters from the user's query based on the available metadata fields of the documents. 
+    Do not answer the query itself; only extract the filter criteria.
+
+    Available filterable fields on documents:
+    {json.dumps(filterable_fields_context, indent=2)}
+
+    Desired output format instructions:
+    {json.dumps(output_format_instructions, indent=2)}
+
+    User Query: "{query_text}"
+
+    Analyze the User Query and return ONLY a single JSON object containing the identified filters according to the Desired output format instructions. 
+    If the query doesn't seem to imply any specific filters based on the available fields, return an empty JSON object: {{}}.
+    Handle date expressions like 'last month', 'this year', 'January 2023' by defining a 'date_range' with 'start_date' and 'end_date' in 'YYYY-MM-DD' format. You might need to infer the current date to calculate ranges like 'last month' - assume today's date if needed for calculation, but return specific dates. 
+    For text fields like source_name or filename, prefer 'contains' style matching unless exact match is implied.
+    For tags, try to determine if the user means ALL specified tags must match ('tags_include_all') or if ANY of the tags matching is sufficient ('tags_include_any'). Default to 'tags_include_any' if ambiguous.
+    Ensure the output is only the JSON object, with no surrounding text or markdown formatting.
+    """
+    
+    logger.info(f"Sending query to Gemini for filter extraction: '{query_text}'")
+    logger.debug(f"Gemini System Prompt for Filter Extraction:\n{system_prompt}")
+
+    try:
+        genai.configure(api_key=api_key)
+        
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-flash-latest',
+            system_instruction=system_prompt, # Pass prompt via system_instruction
+            safety_settings=safety_settings,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1, # Low temperature for deterministic JSON output
+                response_mime_type="application/json" # Request JSON output explicitly
+            )
+        )
+        
+        # Pass empty content as the prompt is in system_instruction now for Gemini 1.5
+        # Or pass the query again if system_instruction doesn't fully take complex prompts.
+        # Let's try passing the query again in the content for clarity.
+        response = await model.generate_content_async(query_text)
+        
+        if response.parts:
+            filter_json_str = response.text
+            logger.info(f"Received filter parameters from Gemini: {filter_json_str}")
+            # Validate if it looks like JSON
+            if filter_json_str.strip().startswith("{") and filter_json_str.strip().endswith("}"):
+                return filter_json_str
+            else:
+                logger.warning(f"LLM output for filter extraction does not appear to be valid JSON: {filter_json_str[:500]}")
+                # Attempt extraction from markdown, although mime_type should prevent it.
+                if "```json" in filter_json_str:
+                    try:
+                        json_block = filter_json_str.split("```json")[1].split("```")[0].strip()
+                        if json_block.strip().startswith("{") and json_block.strip().endswith("}"):
+                           logger.info("Successfully extracted JSON filters from markdown code block.")
+                           return json_block
+                    except IndexError:
+                       logger.warning("Could not extract JSON filters from markdown block.")
+                logger.warning("Returning empty filters due to invalid JSON format from LLM.")
+                return "{}" # Return empty JSON if parsing failed or format is wrong
+        else:
+            logger.warning("Gemini response for filter extraction has no parts or text.")
+            if response.prompt_feedback:
+                logger.warning(f"Prompt Feedback for filter extraction: {response.prompt_feedback}")
+            return None # Indicate failure
+
+    except Exception as e:
+        logger.error(f"Exception during Gemini API call for filter extraction: {e}", exc_info=True)
+        return None 
+
+# System Prompt for Answering Questions based on Filtered Context (LLM Call 3)
+SYSTEM_PROMPT_ANSWER_FROM_FILTERED_CONTEXT = '''
+You are a helpful AI assistant. Your task is to answer the user's question based *solely* on the provided JSON context.
+The JSON context contains a list of "medical_events" extracted from relevant medical documents. Each event has details like type, description, value, units, date, etc.
+
+User's Question: {query_text}
+
+JSON Context:
+```json
+{json_data_context}
+```
+
+Guidelines:
+- Answer the question clearly and concisely.
+- Base your answer *only* on the information found in the provided JSON context. Do not use any external knowledge or make assumptions.
+- If the answer cannot be found in the provided context, explicitly state that the information is not available in the provided documents.
+- If relevant, you can refer to specific details from the `medical_events` in your answer.
+- Present the answer in a natural, human-readable format.
+'''
+
+async def answer_query_with_filtered_context_gemini(api_key: str, query_text: str, json_data_context: str) -> Optional[str]:
+    """
+    Answers a user's query based on a provided filtered JSON context using Gemini. (LLM Call 3)
+
+    Args:
+        api_key: The API key for Google Generative AI.
+        query_text: The user's original natural language query.
+        json_data_context: A string containing the JSON data (list of medical_events)
+                           from filtered documents, to be used as context.
+
+    Returns:
+        A string containing the LLM's answer, or None on failure.
+    """
+    if not query_text.strip():
+        logger.warning("Received empty query text for Gemini answering. Skipping.")
+        return None
+    if not json_data_context.strip():
+        logger.warning("Received empty JSON data context for Gemini answering. Skipping.")
+        # Or, could return a message like "No relevant documents found to answer your query."
+        return "No information was found in your documents that could answer this query."
+
+
+    logger.info(f"Sending query and filtered context (context length: {len(json_data_context)}) to Gemini for answering...")
+    try:
+        genai.configure(api_key=api_key)
+
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+
+        # Format the full prompt including the user's query and the context
+        # We'll pass the system prompt as a system_instruction and the combined user query + context as the main content.
+        # The prompt template approach is better handled by f-string for this model's API.
+        
+        # The user's "turn" or prompt to the model will be the question plus the context.
+        # The system prompt will guide its overall behavior.
+        # The `SYSTEM_PROMPT_ANSWER_FROM_FILTERED_CONTEXT` is a bit meta here, as it describes the whole interaction.
+        # A more direct system instruction for Gemini would be:
+        # "You are a helpful AI assistant. Answer the user's question based *solely* on the provided JSON context..."
+        # And then the user content would be:
+        # "User's Question: {query_text}\n\nJSON Context:\n```json\n{json_data_context}\n```"
+
+        system_instruction = (
+            "You are a helpful AI assistant. Your task is to answer the user's question based "
+            "*solely* on the provided JSON context. The JSON context contains a list of 'medical_events' "
+            "extracted from relevant medical documents. Each event has details like type, description, value, "
+            "units, date, etc. If the answer cannot be found in the provided context, explicitly state that "
+            "the information is not available in the provided documents. Present the answer in a natural, "
+            "human-readable format."
+        )
+        
+        prompt_content = f"User's Question: {query_text}\\n\\nJSON Context:\\n```json\\n{json_data_context}\\n```"
+
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-flash-latest', # Using 1.5 flash for potentially better reasoning
+            system_instruction=system_instruction,
+            safety_settings=safety_settings,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.2 # Slightly higher for more natural language answers, but still grounded
+            )
+        )
+        
+        response = await model.generate_content_async(prompt_content) # Use async version
+        
+        if response.parts:
+            answer = response.text
+            logger.info(f"Received answer from Gemini (length: {len(answer)}).")
+            return answer
+        else:
+            logger.warning("Gemini response for answering has no parts or text.")
+            if response.prompt_feedback:
+                logger.warning(f"Prompt Feedback for answering: {response.prompt_feedback}")
+            return "I apologize, I encountered an issue generating an answer. Please try again."
+
+    except Exception as e:
+        logger.error(f"Exception during Gemini API call for answering: {e}", exc_info=True)
+        return "I apologize, an error occurred while trying to answer your question." 

@@ -12,7 +12,7 @@ from app.core.auth import verify_token
 # Update to use repositories (plural)
 from app.repositories.document_repo import document_repo
 from app.repositories.user_repo import user_repo
-from app.schemas.document import DocumentRead, DocumentCreate
+from app.schemas.document import DocumentRead, DocumentCreate, DocumentMetadataUpdate
 # Assuming sync storage utils or that they handle sync calls
 from app.utils.storage import upload_file_to_gcs, delete_file_from_gcs 
 from app.models.document import DocumentType
@@ -206,6 +206,67 @@ def get_document(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this document")
     
     return document
+
+@router.patch("/{document_id}/metadata", response_model=DocumentRead)
+def update_document_metadata(
+    *, 
+    db: Session = Depends(get_db),
+    token_data: dict = Depends(verify_token),
+    document_id: UUID,
+    metadata_in: DocumentMetadataUpdate # Use the new schema
+):
+    """
+    Update user-editable metadata fields for a specific document.
+    
+    This endpoint allows users to override system-extracted metadata 
+    or set user-specific fields like tags and health context.
+    Only fields provided in the request body will be updated in the overrides.
+    To clear an override, provide the field with a null value (though Pydantic
+    optional fields might need specific handling or explicit `None` checking).
+    """
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        logger.error("Supabase ID not found in token during metadata update.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
+    
+    # Get internal user ID
+    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
+    if not user:
+        logger.error(f"User with supabase_id {supabase_id} not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Verify document exists and belongs to user (get_by_id fetches the object)
+    document = document_repo.get_by_id(db=db, document_id=document_id)
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if document.user_id != user.user_id:
+        logger.warning(f"User {user.user_id} attempted to update metadata for document {document_id} owned by {document.user_id}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to update this document's metadata")
+        
+    # Convert Pydantic model to dict, excluding unset fields to handle PATCH correctly
+    # Only include fields that the user actually sent in the request
+    update_data = metadata_in.model_dump(exclude_unset=True)
+
+    if not update_data:
+         # If the request body was empty or only contained nulls that didn't change anything
+         logger.info(f"No metadata fields provided to update for document {document_id}")
+         # Return the current document state without attempting an update
+         return document
+
+    # Call the repository method to update the overrides
+    updated_document = document_repo.update_overrides(
+        db=db, 
+        document_id=document_id, 
+        overrides_in=update_data
+    )
+
+    if not updated_document:
+        # This could happen if the document was deleted between check and update, or DB error
+        logger.error(f"Failed to update metadata overrides for document {document_id} in repository.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update document metadata")
+
+    # Return the updated document data (DocumentRead schema includes overrides field)
+    return updated_document
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
