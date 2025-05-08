@@ -1,0 +1,139 @@
+import uuid
+import logging
+import json # For parsing LLM output if it's a string
+from sqlalchemy.orm import Session
+
+from app.core.config import settings # For API keys and other settings
+from app.db.session import SessionLocal # To create a new session for the background task
+from app.models.document import Document, ProcessingStatus
+from app.repositories.document_repo import DocumentRepository
+from app.repositories.extracted_data_repo import ExtractedDataRepository
+from app.utils.ai_processors import process_document_with_docai, structure_text_with_gemini
+from app.utils.storage import get_gcs_uri
+
+logger = logging.getLogger(__name__)
+
+def run_document_processing_pipeline(document_id: uuid.UUID):
+    """
+    Background task to process a document through OCR and LLM structuring.
+    """
+    logger.info(f"Starting document processing pipeline for document_id: {document_id}")
+    
+    db: Session = SessionLocal() # Create a new session for this background task
+    doc_repo = DocumentRepository(db)
+    extracted_data_repo = ExtractedDataRepository(db)
+
+    try:
+        document = doc_repo.get_document(db=db, document_id=document_id)
+        if not document:
+            logger.error(f"Document with id {document_id} not found. Exiting pipeline.")
+            db.close() # Close session before returning
+            return
+
+        # Caching Check 1: Already completed or in review
+        if document.processing_status in [ProcessingStatus.COMPLETED, ProcessingStatus.REVIEW_REQUIRED]:
+            logger.info(f"Document {document_id} already processed (status: {document.processing_status}). Skipping.")
+            db.close() # Close session before returning
+            return
+
+        # Caching Check 2: Already processed based on ExtractedData content (more granular if needed)
+        # This might be redundant if processing_status is managed well, but can be an extra safeguard.
+        # For instance, if a previous run failed after OCR but before LLM.
+        existing_extracted_data = extracted_data_repo.get_by_document_id(document_id)
+        if existing_extracted_data and existing_extracted_data.content and existing_extracted_data.content != {}: # content is not empty
+             if document.processing_status != ProcessingStatus.FAILED: # If not failed, assume it's done or in review
+                logger.info(f"Document {document_id} appears to have structured content already. Status: {document.processing_status}. Skipping LLM if applicable.")
+                # Potentially skip only the LLM part if raw_text is also present and status indicates OCR done.
+                # For now, assume we proceed but skip LLM step later
+
+        doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.PROCESSING)
+        logger.info(f"Document {document_id} status updated to PROCESSING.")
+
+        # --- OCR Step ---
+        raw_text_content = None
+        if not (existing_extracted_data and existing_extracted_data.raw_text):
+            logger.info(f"Performing OCR for document {document_id}...")
+            # Ensure all necessary GCS/DocumentAI configs are loaded via settings
+            doc_ai_result = process_document_with_docai(
+                project_id=settings.GCP_PROJECT_ID,
+                location=settings.DOCUMENT_AI_PROCESSOR_LOCATION,
+                processor_id=settings.DOCUMENT_AI_PROCESSOR_ID,
+                gcs_uri=document.storage_path, # Assuming storage_path is the GCS URI
+                mime_type=document.file_metadata.get("content_type", "application/pdf") if document.file_metadata else "application/pdf"
+            )
+
+            if doc_ai_result and doc_ai_result.text:
+                raw_text_content = doc_ai_result.text
+                extracted_data_repo.update_raw_text(document_id, raw_text_content)
+                logger.info(f"OCR successful for document {document_id}. Raw text stored.")
+                # Optionally update status to an intermediate one like 'OCR_COMPLETED'
+                # doc_repo.update_status(document_id, ProcessingStatus.OCR_COMPLETED) 
+            else:
+                logger.error(f"OCR processing failed for document {document_id}.")
+                doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                db.close() # Close session before returning
+                return
+        else:
+            logger.info(f"Raw text already exists for document {document_id}. Skipping OCR.")
+            raw_text_content = existing_extracted_data.raw_text
+        
+        if not raw_text_content:
+            logger.error(f"No raw text available for document {document_id} after OCR step. Exiting LLM processing.")
+            doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
+            db.close() # Close session before returning
+            return
+
+        # --- LLM Structuring Step ---
+        logger.info(f"Performing LLM structuring for document {document_id}...")
+        
+        # Caching: Check if content is already richly populated (not just '{}')
+        if existing_extracted_data and existing_extracted_data.content and existing_extracted_data.content != {}:
+             logger.info(f"Structured content already exists for document {document_id}. Skipping LLM structuring.")
+             # If skipping LLM, ensure final status is set correctly if it wasn't already
+             if document.processing_status != ProcessingStatus.REVIEW_REQUIRED and document.processing_status != ProcessingStatus.COMPLETED:
+                 doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
+                 logger.info(f"Document {document_id} status updated to REVIEW_REQUIRED after skipping LLM.")
+        else:
+            structured_json_str = structure_text_with_gemini(
+                api_key=settings.GEMINI_API_KEY, # Loaded from .env via Pydantic settings
+                raw_text=raw_text_content
+            )
+
+            if structured_json_str:
+                try:
+                    # Validate and parse the JSON string
+                    structured_content = json.loads(structured_json_str)
+                    extracted_data_repo.update_structured_content(document_id, structured_content)
+                    logger.info(f"LLM structuring successful for document {document_id}. Structured content stored.")
+                    doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
+                    # The ExtractedData model defaults review_status to PENDING_REVIEW, which is appropriate here.
+                except json.JSONDecodeError as e:
+                    logger.error(f"LLM output for document {document_id} was not valid JSON: {e}. Output: {structured_json_str[:500]}")
+                    doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                    # Optionally store the problematic string in raw_text or a notes field for debugging
+            else:
+                logger.error(f"LLM structuring failed for document {document_id} (no output or error in call).")
+                doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                db.close() # Close session before returning
+                return
+        
+        logger.info(f"Document processing pipeline completed for document_id: {document_id}")
+
+    except Exception as e:
+        logger.error(f"Unhandled exception in processing pipeline for document {document_id}: {e}", exc_info=True)
+        # Attempt to set status to FAILED if possible
+        try:
+            # Pass db session to repo methods
+            doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
+        except Exception as inner_e:
+            logger.error(f"Additionally failed to update document status to FAILED for {document_id}: {inner_e}", exc_info=True)
+    finally:
+        db.close()
+        logger.info(f"Database session closed for document_id: {document_id} processing.")
+
+# Note: Ensure DocumentRepository has get_by_id and update_status methods.
+# Ensure settings in app.core.config correctly load:
+# GOOGLE_CLOUD_PROJECT, DOCUMENT_AI_PROCESSOR_LOCATION, DOCUMENT_AI_PROCESSOR_ID, GEMINI_API_KEY
+# Assumed Document model has file_metadata JSON field with content_type.
+# Assumed Document model ProcessingStatus enum includes: PENDING, PROCESSING, REVIEW_REQUIRED, COMPLETED, FAILED
+# (and potentially OCR_COMPLETED if more granular status is desired) 

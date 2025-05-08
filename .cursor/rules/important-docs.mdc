@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Important Documentation Guidelines
+
+## Before Coding
+- Always read [memory-bank/architecture.md](mdc:memory-bank/architecture.md) before writing any code. This includes understanding the entire database schema.
+- Always read [memory-bank/prd.md](mdc:memory-bank/prd.md) before writing any code as it contains product requirements.
+
+## After Feature Completion
+- After adding a major feature or completing a milestone, update [memory-bank/architecture.md](mdc:memory-bank/architecture.md) to reflect the changes.
+- Keep all documentation synchronized with code changes.

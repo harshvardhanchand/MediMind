@@ -1,12 +1,14 @@
+import os
 import pytest
 from fastapi import FastAPI, Depends
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
+from unittest.mock import patch, MagicMock
 
+from app.repositories.document_repo import document_repo
 from app.main import app # Import your main app instance
 from app.db.session import get_db
-from app.repository import document_repo
 from app.models import User # Import User model if needed for foreign key relation
 
 # We might need a fixture to create a dummy user if document creation requires it

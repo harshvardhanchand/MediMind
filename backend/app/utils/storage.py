@@ -51,8 +51,8 @@ async def upload_file_to_gcs(file: UploadFile, user_id: uuid.UUID) -> Optional[s
         content = await file.read()
         
         # Upload the file content
-        # Use upload_from_string for in-memory content
-        await blob.upload_from_string(content, content_type=file.content_type)
+        # Use upload_from_string for in-memory content (synchronous call)
+        blob.upload_from_string(content, content_type=file.content_type)
         
         gcs_path = f"gs://{settings.GCS_BUCKET_NAME}/{blob_name}"
         logger.info(f"File {file.filename} uploaded successfully to {gcs_path}")
@@ -120,3 +120,24 @@ async def delete_file_from_gcs(gcs_path: str) -> bool:
     except Exception as e:
         logger.error(f"Failed to delete file from {gcs_path}: {e}", exc_info=True)
         return False 
+
+def get_gcs_uri(storage_path: str) -> str:
+    """
+    Converts a storage path to a GCS URI if it isn't already.
+    
+    Args:
+        storage_path: Either a full GCS URI (gs://bucket/path) or a relative path in the default bucket
+        
+    Returns:
+        A properly formatted GCS URI (gs://bucket_name/path)
+    """
+    if storage_path.startswith("gs://"):
+        # Already a GCS URI
+        return storage_path
+    
+    # Assume it's a relative path in the default bucket
+    if not settings.GCS_BUCKET_NAME:
+        logger.error("GCS_BUCKET_NAME not configured. Cannot construct GCS URI.")
+        raise ValueError("GCS_BUCKET_NAME not configured")
+        
+    return f"gs://{settings.GCS_BUCKET_NAME}/{storage_path}" 

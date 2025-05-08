@@ -7,10 +7,11 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 ## Tech Stack
 
 * **Backend**: Python 3.11 with FastAPI
+  * Always use `python3` command instead of `python` to ensure the correct Python version is used
 * **Authentication**: Supabase
 * **Database**: PostgreSQL with SQLAlchemy ORM
-* **AI Document Processing**: Google Cloud Document AI (for OCR)
-* **AI Language Processing**: Google Gemini (or other LLM, for structured data extraction - planned)
+* **AI Document Processing (OCR)**: Google Cloud Document AI
+* **AI Language Processing (Semantic Structuring & Future Analysis)**: Google Gemini (or other LLM)
 * **Frontend**: React Native (Mobile)
 * **Cloud Platform**: Google Cloud Platform (GCP)
 
@@ -36,8 +37,23 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   ├── user.py         # User data model
 │   │   │   ├── document.py     # Document data model
 │   │   │   └── extracted_data.py # ExtractedData model
+│   │   ├── repository/         # Repository pattern (singular) - legacy
+│   │   │   ├── base.py         # Base CRUD repository
+│   │   │   ├── document.py     # Document repository
+│   │   │   └── user.py         # User repository
+│   │   ├── repositories/       # Repository pattern (plural) - preferred
+│   │   │   ├── document_repo.py # Document repository wrapper 
+│   │   │   ├── extracted_data_repo.py # ExtractedData repository
+│   │   │   └── user_repo.py    # User repository wrapper
 │   │   ├── schemas/            # Pydantic schemas
+│   │   │   ├── document.py     # Document schemas
+│   │   │   ├── extracted_data.py # ExtractedData schemas
+│   │   │   └── user.py         # User schemas
+│   │   ├── services/           # Business logic services
+│   │   │   └── document_processing_service.py # Document processing pipeline
 │   │   └── utils/              # Utility functions
+│   │       ├── ai_processors.py # OCR and LLM utilities
+│   │       └── storage.py      # Cloud storage utilities
 │   ├── tests/                  # Test directory
 │   │   ├── unit/               # Unit tests
 │   │   ├── integration/        # Integration tests
@@ -115,7 +131,37 @@ Contains SQLAlchemy ORM models that represent database tables.
 Contains route handlers organized by functionality:
 - `health.py`: Health check endpoint (`/api/v1/health`)
 - `me.py`: User information endpoint (`/api/v1/me`, requires authentication)
-- Future endpoints will handle document upload, data retrieval, review, etc.
+- `extracted_data.py`: Endpoints for accessing and managing structured extracted medical data
+
+#### ExtractedData API Endpoints
+
+The ExtractedData API provides endpoints for retrieving and updating structured medical data extracted from user documents:
+
+**Endpoint Summary:**
+- `GET /api/v1/extracted_data/{document_id}`: Retrieve extracted data for a specific document
+- `GET /api/v1/extracted_data/all/{document_id}`: Get combined document and extracted data details
+- `PUT /api/v1/extracted_data/{document_id}/status`: Update the review status of extracted data
+- `PUT /api/v1/extracted_data/{document_id}/content`: Update the structured content of extracted data
+
+**Authentication and Authorization:**
+- All endpoints require a valid JWT token from Supabase
+- Document ownership is verified on each request
+- Users can only access and modify their own data
+
+**Security Features:**
+- Token-based authentication with Supabase JWT
+- User ID extraction from token for authorization
+- Document ownership validation
+- Comprehensive error handling with appropriate HTTP status codes
+
+**Data Flow:**
+1. Client sends request with document ID and JWT token
+2. Backend validates token and extracts user ID
+3. Backend verifies document ownership
+4. Repository layer handles database operations
+5. Response includes extracted data or confirmation
+
+These endpoints enable users to view and correct AI-extracted medical data before using it for analysis, ensuring data quality and accuracy.
 
 ### 7. Middleware (`backend/app/middleware/`)
 
@@ -137,7 +183,18 @@ Handles the initial step of document understanding, which is Optical Character R
 Key components:
 - **Google Cloud Document AI Integration**: Leverages Google Cloud Document AI for robust text extraction from various document formats (PDFs, images) stored in Google Cloud Storage.
 - **Configuration**: Utilizes environment variables (loaded via `.env` files) for managing sensitive connection details (Project ID, Processor ID) for services like Document AI.
-- **Utility Functions**: Provides functions like `process_document_with_docai` to encapsulate the logic for calling the Document AI service and retrieving raw text output.
+- **Utility Functions**: Provides functions like `process_document_with_docai` to encapsulate the logic for calling the Document AI service and retrieving raw text output. The raw text is then passed to the AI Language Processing component.
+
+### 10. AI Language Processing (`backend/app/utils/ai_processors.py`)
+
+This component is responsible for the deep analysis and semantic structuring of the raw text extracted by the OCR process. The core logic is implemented in the `structure_text_with_gemini` function within `backend/app/utils/ai_processors.py`.
+
+Key components:
+- **LLM Integration (Google Gemini Flash)**: Uses the `google-generativeai` library to interact with the `gemini-1.5-flash-latest` model. The `structure_text_with_gemini` function orchestrates this.
+- **Semantic Structuring**: The LLM is guided by a detailed system prompt (`SYSTEM_PROMPT_MEDICAL_STRUCTURING`) to identify, categorize, and structure medically relevant information from the input text. The goal is to produce a JSON list of "medical_events" or "medical_observations", each with attributes like `event_type`, `description`, `value`, `units`, `date_time`, `qualifiers`, and `raw_text_snippet`.
+- **API Key Management**: The Gemini API key is not directly loaded from environment variables within `ai_processors.py`. Instead, the `structure_text_with_gemini` function expects the API key to be passed as an argument. The calling code (e.g., test scripts, future API endpoints) is responsible for loading the `GEMINI_API_KEY` from an environment variable (typically sourced from a `.env` file) and providing it to the function.
+- **Output for Storage**: The structured JSON string output from the LLM is intended to be stored in the `content` (JSONB) field of the `ExtractedData` model. This structured data will enable advanced querying and analysis.
+- **Configuration**: The LLM call is configured with a low `temperature` (0.1) for more deterministic output and includes safety settings.
 
 ## Database Schema Overview
 
@@ -184,6 +241,64 @@ erDiagram
 ```
 *Note: `JSONB` is used for flexible storage in `ExtractedData`. `JSON` is used in `User` for Supabase compatibility.*
 
+## Repository Structure
+
+The application uses a consistent repository pattern for database access with all repositories in the `repositories` directory:
+
+```
+app/
+└── repositories/          # Main repository directory with plural naming convention
+    ├── base.py            # Base CRUD repository with generic operations
+    ├── document_repo.py   # Document repository implementation
+    ├── user_repo.py       # User repository implementation
+    └── extracted_data_repo.py # ExtractedData repository implementation
+```
+
+### Repository Pattern Implementation
+
+The application uses the repository pattern to separate data access logic from business logic:
+
+1. **Base Repository Class** (`app/repositories/base.py`):
+   - Implements generic CRUD operations (Create, Read, Update, Delete)
+   - Uses SQLAlchemy ORM for database operations
+   - Leverages type variables for model and schema typing
+
+2. **Specific Repository Classes**:
+   - `DocumentRepository` - Handles document-related operations
+   - `UserRepository` - Handles user-related operations
+   - `ExtractedDataRepository` - Handles operations on extracted medical data
+
+3. **Repository Usage Pattern**:
+   - Some repositories (document_repo, user_repo) export singleton instances for direct use
+   - Others (extracted_data_repo) need to be instantiated with a database session
+
+### Repository Usage Example
+
+Repositories are injected into services and API endpoints:
+
+```python
+# Example repository usage in API endpoint
+@router.get("/{document_id}", response_model=ExtractedDataResponse)
+def get_extracted_data(
+    document_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    token_data: dict = Depends(verify_token)
+):
+    # Get user ID from token
+    user_id = get_user_id_from_token(db, token_data)
+    
+    # Use document repository (singleton)
+    document = document_repo.get_document(db, document_id=document_id)
+    
+    # Use extracted data repository (instantiated)
+    extracted_data_repo = ExtractedDataRepository(db)
+    extracted_data = extracted_data_repo.get_by_document_id(document_id)
+    
+    return extracted_data
+```
+
+This structure ensures clear separation of concerns, consistent database access patterns, and testability.
+
 ## Authentication Flow
 
 1.  User authenticates with Supabase (frontend).
@@ -229,11 +344,41 @@ python3 -m uvicorn app.main:app --reload
 alembic upgrade head
 ```
 
+## Implementation Status
+
+### Completed Components
+
+- ✅ Core application structure and FastAPI configuration
+- ✅ Basic authentication with Supabase JWT verification
+- ✅ Database models (User, Document, ExtractedData)
+- ✅ Repository pattern implementation with standardized naming conventions
+- ✅ Document AI integration for OCR processing
+- ✅ Gemini LLM integration for semantic structuring
+- ✅ ExtractedData API endpoints for data retrieval and updates
+- ✅ Background task processing pipeline for document analysis
+- ✅ GCS storage integration for document storage
+- ✅ Security features (authentication, authorization)
+- ✅ Comprehensive testing framework with mock objects
+
+### In Progress
+
+- 🔄 Natural language querying of extracted medical data
+- 🔄 Enhancing visualization capabilities for medical data
+- 🔄 User interface for review and correction of extracted data
+- 🔄 Documentation updates
+
+### Upcoming
+
+- ⏳ Data export functionality
+- ⏳ Advanced search capabilities
+- ⏳ Integration with mobile application
+- ⏳ Performance optimizations
+- ⏳ Additional security hardening
+
 ## Next Steps
 
-- Implement CRUD operations for `Document` and `ExtractedData`.
-- Set up secure file storage (e.g., Google Cloud Storage).
-- Implement document upload endpoint.
-- **Integrate LLM (e.g., Gemini Flash) with the OCR output from Document AI for structured data extraction.**
-- **Develop background task processing for the OCR and LLM pipeline.**
-- **Define and implement storage for the structured data extracted by the LLM into the `ExtractedData` model.**
+- **Repository Standardization**: Complete the transition to the plural naming convention for repositories
+- **Natural Language Querying**: Implement endpoints for querying extracted data using natural language with Gemini
+- **Mobile Integration**: Establish connection between backend API and mobile frontend
+- **Performance Testing**: Conduct load and stress testing to ensure API performance
+- **Security Audit**: Perform comprehensive security review

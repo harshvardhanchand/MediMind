@@ -120,7 +120,7 @@ Next phase will focus on implementing the document processing pipeline using OCR
 
 **In Progress: [Current Date]**
 
-The initial step of integrating Optical Character Recognition (OCR) into the document processing pipeline has been completed.
+Significant progress has been made in implementing the document processing pipeline:
 
 1.  **OCR Integration using Google Document AI**:
     *   Successfully integrated Google Document AI for performing OCR on uploaded documents (PDFs, images). This provides robust text extraction capabilities.
@@ -132,13 +132,71 @@ The initial step of integrating Optical Character Recognition (OCR) into the doc
     *   The Document AI integration has been successfully tested by processing a sample document from GCS.
     *   The test script within `ai_processors.py` has been refactored to use environment variables (loaded via a `.env` file) for configuration (Project ID, Processor ID, GCS URI), enhancing security and maintainability.
 
+3.  **LLM Integration for Structured Data Extraction**:
+    *   Implemented integration with Google Gemini Flash using the `google.generativeai` SDK.
+    *   Created a comprehensive medical data extraction system prompt that instructs the LLM to identify and structure medical information.
+    *   Developed the `structure_text_with_gemini` function that processes OCR output and returns structured JSON.
+    *   The JSON format includes detailed medical observations with fields for event types, values, units, dates, and raw text references.
+    *   Added error handling and validation to ensure proper JSON format and extraction quality.
+    *   Successfully tested the end-to-end OCR → LLM pipeline with sample documents.
+
 Next steps for Phase 2:
 
-1.  **Integrate LLM for Structured Data Extraction**:
-    *   Develop functionality to take the raw text output from Document AI (OCR).
-    *   Send this text to a Large Language Model (e.g., Gemini Flash) with a carefully designed prompt to extract structured medical information (patient details, medications, lab results, etc.).
-    *   Define the expected structured output format (e.g., JSON) from the LLM.
-2.  Implement medical NLP processing using appropriate services (This might be covered by or augmented by the LLM step above, to be refined).
-3.  Create background processing tasks for document analysis (OCR + LLM extraction).
-4.  Develop user interface for document review and correction (Frontend task, dependent on backend data structures).
-5.  Implement extraction data storage and retrieval into the `ExtractedData` model.
+1.  ~~Create background processing tasks for document analysis (OCR + LLM extraction):~~
+    *   ~~Implement a queue-based system using Google Cloud Tasks.~~
+    *   ~~Set up worker functions to process documents asynchronously.~~
+    *   ~~Add error handling, retry logic, and monitoring.~~
+
+2.  ~~Implement extraction data storage and retrieval into the `ExtractedData` model:~~
+    *   ~~Finalize database functions to store the structured JSON from the LLM.~~
+    *   ~~Create APIs for retrieving and searching the extracted information.~~
+
+3.  Develop user interface for document review and correction (Frontend task, dependent on backend data structures).
+
+## Phase 2: ExtractedData Storage Implementation Complete
+
+**Completed: [Previous Date]**
+
+The database and API implementation for storing and retrieving structured medical data has been completed:
+
+1. **ExtractedData Repository Enhancement**:
+   * Refined the `ExtractedDataRepository` with comprehensive CRUD operations
+   * Implemented methods to update raw text, structured content, and review status
+   * Added proper error handling and transaction management
+   * Integrated repository with the OCR and LLM processing pipeline
+
+2. **API Endpoints for ExtractedData**:
+   * Created endpoint to retrieve extracted data by document ID (`GET /api/v1/extracted_data/{document_id}`)
+   * Implemented endpoint to update review status (`PUT /api/v1/extracted_data/{document_id}/status`)
+   * Added endpoint to update structured content for manual corrections (`PUT /api/v1/extracted_data/{document_id}/content`)
+   * Created a combined endpoint that returns both document info and extraction data (`GET /api/v1/extracted_data/all/{document_id}`)
+   * Ensured all endpoints verify document ownership and handle errors appropriately
+
+3. **Pydantic Schema Enhancements**:
+   * Added specific schema types for status updates and content corrections
+   * Created response models for API consistency
+   * Enhanced validation for the structured JSON data
+
+## Phase 2: Background Processing Implementation Complete
+
+**Completed: [Current Date]**
+
+Background processing for document analysis has been implemented using FastAPI's built-in BackgroundTasks:
+
+1. **Document Processing Pipeline**:
+   * Implemented a comprehensive background processing function in `document_processing_service.py`
+   * Created a processing pipeline that handles both OCR and LLM extraction steps
+   * Added proper status tracking throughout the pipeline
+   * Implemented error handling with appropriate status updates
+
+2. **Integration with Document Upload**:
+   * Connected the background processing to the document upload endpoint
+   * Ensured that document upload responds quickly to the user while processing happens in the background
+   * Implemented status tracking via the Document model's processing_status field
+
+3. **Optimizations and Caching**:
+   * Added caching logic to avoid unnecessary reprocessing of documents
+   * Implemented partial processing recovery if one step fails
+   * Created separate database transactions for background tasks to ensure proper isolation
+
+The implementation provides a clean, efficient way to process documents asynchronously without adding complex dependencies. Users can upload documents and receive an immediate response, while the system processes the documents in the background using Google Cloud Document AI and Gemini LLM.

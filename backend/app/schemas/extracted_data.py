@@ -33,4 +33,15 @@ class ExtractedDataRead(ExtractedDataBase):
 class ExtractedDataUpdate(BaseModel):
     content: Optional[Dict[str, Any]] = Field(None, description="Corrected structured data")
     review_status: Optional[ReviewStatus] = Field(None, description="Updated review status (e.g., approved, corrected)")
-    # reviewed_by_user_id and review_timestamp should be set by the backend upon update 
+    # reviewed_by_user_id and review_timestamp should be set by the backend upon update
+
+# Alias for API responses to use with FastAPI's response_model
+ExtractedDataResponse = ExtractedDataRead
+
+# Schema specifically for updating the review status
+class ExtractedDataStatusUpdate(BaseModel):
+    review_status: ReviewStatus = Field(..., description="New review status to set")
+
+# Schema specifically for updating the content
+class ExtractedDataContentUpdate(BaseModel):
+    content: Dict[str, Any] = Field(..., description="Updated structured content") 
