@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import logging
 import json # For formatting the JSON context
-from datetime import date, datetime, timedelta # Added for date range handling
+from datetime import date # Added for date range handling
 from typing import Any, Optional, Tuple
 
 from app.schemas.query import QueryRequest, NaturalLanguageQueryResponse # Updated schema
 from app.core.auth import verify_token, get_user_id_from_token # Added get_user_id_from_token
 from app.db.session import get_db
 # Renamed and changed signature for the AI processor function
-from app.utils.ai_processors import answer_query_from_context, extract_query_filters_with_gemini 
+from app.utils.ai_processors import extract_query_filters_with_gemini, answer_query_with_filtered_context_gemini
 from app.core.config import settings
 # Need ExtractedDataRepository to fetch user's data
 from app.repositories.extracted_data_repo import ExtractedDataRepository
@@ -114,24 +114,32 @@ async def natural_language_query_endpoint(
         # --- Step 3: Prepare Context and Answer using LLM --- 
         logger.debug(f"Step 3: Preparing context from {len(filtered_documents)} documents and generating answer...")
         extracted_data_repo = ExtractedDataRepository(db)
-        user_json_contents = []
+        user_json_contents = [] # This will become a list of medical_events lists
+        all_medical_events = [] # This will be a flat list of all medical_events objects
+
         for doc in filtered_documents:
             # Fetch associated ExtractedData
             extracted_data = extracted_data_repo.get_by_document_id(doc.document_id)
             if extracted_data and extracted_data.content:
-                # Optionally add document metadata to the context for the answering LLM?
-                # context_item = {"document_metadata": doc_schema.model_dump(), "extracted_content": extracted_data.content}
-                user_json_contents.append(extracted_data.content)
+                # Check if 'medical_events' key exists and is a list
+                medical_events_from_doc = extracted_data.content.get("medical_events")
+                if isinstance(medical_events_from_doc, list):
+                    all_medical_events.extend(medical_events_from_doc)
+                else:
+                    logger.warning(f"Document {doc.document_id} has content but no 'medical_events' list or it's not a list.")
+            else:
+                logger.warning(f"No ExtractedData or no content for document_id: {doc.document_id}")
 
-        if not user_json_contents:
-            logger.warning(f"Filtered documents found, but no extractable content for query: {query_request.query_text}")
-            # This might happen if documents were filtered but their processing hasn't completed or content is empty
+
+        if not all_medical_events: # Check if we gathered any medical events
+            logger.warning(f"Filtered documents found, but no extractable medical_events for query: {query_request.query_text}")
+            # This might happen if documents were filtered but their processing hasn't completed or content is empty/malformed
             return NaturalLanguageQueryResponse(
                 query_text=query_request.query_text,
-                answer="I found some documents that might match, but I couldn't retrieve the specific details needed to answer your question from them."
+                answer="I found some documents that might match, but I couldn't retrieve the specific medical details needed to answer your question from them."
             )
         
-        json_data_context_str = json.dumps(user_json_contents, indent=2)
+        json_data_context_str = json.dumps(all_medical_events, indent=2) # Use all_medical_events
         
         # Limit context size if necessary (crude example)
         MAX_CONTEXT_TOKENS = 200000 # Example limit, adjust based on model and cost
@@ -141,7 +149,7 @@ async def natural_language_query_endpoint(
             json_data_context_str = json_data_context_str[:MAX_CONTEXT_TOKENS * 4] + "... [CONTEXT TRUNCATED] ..."
 
         # Call the answering LLM
-        llm_answer = await answer_query_from_context(
+        llm_answer = await answer_query_with_filtered_context_gemini( # Changed function call
             api_key=settings.GEMINI_API_KEY,
             query_text=query_request.query_text,
             json_data_context=json_data_context_str

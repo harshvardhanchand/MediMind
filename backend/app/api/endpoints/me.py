@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, Request
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+
 
 from app.core.auth import verify_token
-from app.middleware.rate_limit import limiter, get_client_ip
+from app.middleware.rate_limit import limiter
 
 router = APIRouter(tags=["user"])
 

@@ -6,8 +6,10 @@ from typing import List, Optional, Dict, Any
 from datetime import date
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.types import Date as SQLDate
+
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
@@ -105,62 +107,104 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         skip: int = 0, 
         limit: int = 100
     ) -> List[Document]:
-        """Get multiple documents for a user based on dynamic filter criteria."""
-        
-        # TODO: Implement override handling for filters.
-        # The current implementation only filters on the base/system fields.
-        # It needs to be updated to check the 'metadata_overrides' JSON field first
-        # for each relevant filter key (e.g., document_date, source_name, tags, etc.)
-        # and use the override value if present, otherwise fall back to the base field.
-        # This requires using appropriate JSON functions/operators for the specific database (e.g., PostgreSQL JSONB).
+        """Get multiple documents for a user based on dynamic filter criteria,
+        considering metadata_overrides first for filterable fields."""
         
         stmt = select(self.model).where(self.model.user_id == user_id)
         
-        # Apply filters dynamically (CURRENTLY ONLY ON BASE FIELDS)
         conditions = []
         for key, value in filters.items():
-            if value is None or value == '' or value == []: # Skip empty filters
+            if value is None or value == '' or (isinstance(value, list) and not value): # Skip empty/null filters
                 continue
 
+            # Helper to get overridden value or base value
+            # metadata_overrides field is assumed to be JSON or JSONB
+            # Base fields are actual columns
+            
             if key == "document_type" and value in DocumentType.__members__:
-                 conditions.append(self.model.document_type == DocumentType[value])
+                # document_type is not typically overridden in metadata_overrides as per current model structure.
+                # If it were, similar coalesce logic would apply.
+                conditions.append(self.model.document_type == DocumentType[value])
+
             elif key == "document_date_range" and isinstance(value, (list, tuple)) and len(value) == 2:
                 start_date, end_date = value
                 if isinstance(start_date, date) and isinstance(end_date, date):
-                    conditions.append(self.model.document_date.between(start_date, end_date))
+                    # Coalesce logic: metadata_overrides['document_date'] (as text, then cast to Date) OR model.document_date
+                    override_val = self.model.metadata_overrides['document_date'].astext.cast(SQLDate)
+                    actual_val = func.coalesce(override_val, self.model.document_date)
+                    conditions.append(actual_val.between(start_date, end_date))
+
             elif key == "source_name_contains" and isinstance(value, str):
-                conditions.append(self.model.source_name.ilike(f"%{value}%"))
+                override_val = self.model.metadata_overrides['source_name'].astext
+                actual_val = func.coalesce(override_val, self.model.source_name)
+                conditions.append(actual_val.ilike(f"%{value}%"))
+
             elif key == "source_location_city_equals" and isinstance(value, str):
-                conditions.append(self.model.source_location_city == value)
+                override_val = self.model.metadata_overrides['source_location_city'].astext
+                actual_val = func.coalesce(override_val, self.model.source_location_city)
+                conditions.append(actual_val == value)
+            
+            # For tags, metadata_overrides might store tags as a JSON array.
+            # Base model.tags is also JSON.
+            # We need to ensure the JSON operators work on the result of coalesce.
+            # The .astext might not be needed if the column is JSONB and op works directly.
+            # Assuming PostgreSQL specific JSON operators:
+            # '?|' (jsonb_exists_any) and '@>' (jsonb_contains)
+
             elif key == "tags_include_any" and isinstance(value, list) and value:
-                 # Assumes PostgreSQL JSONB and tags stored as list of strings
-                 # Uses the '?|' operator (jsonb_exists_any)
-                 conditions.append(self.model.tags.op('?|')(value))
+                # Coalesce returns a JSON(B) array if override exists, else the base tags JSON(B) field
+                # Ensure value is a list of strings for the ?| operator
+                string_values = [str(v) for v in value]
+                override_tags = self.model.metadata_overrides['tags'] # Assuming it's a JSON array
+                actual_tags_json = func.coalesce(override_tags, self.model.tags)
+                # The op('?|') requires the left side to be a JSONB expression usually.
+                # If 'tags' and 'metadata_overrides.tags' are JSONB, this should work.
+                # If they are JSON, some DBs might require casting to JSONB for these operators.
+                # For simplicity, assuming direct op works or casting happens implicitly/configured.
+                conditions.append(actual_tags_json.op('?|')(string_values))
+
+
             elif key == "tags_include_all" and isinstance(value, list) and value:
-                 # Assumes PostgreSQL JSONB and tags stored as list of strings
-                 # Uses the '@>' operator (jsonb_contains)
-                 conditions.append(self.model.tags.op('@>')(value))
+                string_values = [str(v) for v in value] # Ensure list of strings for @>
+                override_tags = self.model.metadata_overrides['tags']
+                actual_tags_json = func.coalesce(override_tags, self.model.tags)
+                # The contains operator (@>) typically works with JSONB arrays on the left
+                # and a JSONB array on the right.
+                conditions.append(actual_tags_json.op('@>')(string_values))
+
+
+            # user_added_tags are not typically in metadata_overrides, they are a separate field.
+            # If they were part of overrides, similar logic to 'tags' would apply.
             elif key == "user_tags_include_any" and isinstance(value, list) and value:
                  conditions.append(self.model.user_added_tags.op('?|')(value))
             elif key == "user_tags_include_all" and isinstance(value, list) and value:
                  conditions.append(self.model.user_added_tags.op('@>')(value))
+            
             elif key == "episode_equals" and isinstance(value, str):
-                 conditions.append(self.model.related_to_health_goal_or_episode == value)
+                # Assuming 'related_to_health_goal_or_episode' can be overridden
+                override_val = self.model.metadata_overrides['related_to_health_goal_or_episode'].astext
+                actual_val = func.coalesce(override_val, self.model.related_to_health_goal_or_episode)
+                conditions.append(actual_val == value)
+
             elif key == "filename_contains" and isinstance(value, str):
+                 # original_filename is not typically overridden.
                  conditions.append(self.model.original_filename.ilike(f"%{value}%"))
-            # Add more filter key handlers here as needed
         
         if conditions:
             stmt = stmt.where(and_(*conditions))
             
-        # Add ordering - default to document_date descending, then upload_timestamp descending
-        stmt = stmt.order_by(self.model.document_date.desc().nullslast(), self.model.upload_timestamp.desc())
-        
-        # Add pagination
-        stmt = stmt.offset(skip).limit(limit)
-        
-        result = db.execute(stmt)
-        return result.scalars().all()
+            # Add ordering - default to document_date descending, then upload_timestamp descending
+            # If document_date is overridden, we should order by the actual_date used for filtering.
+            override_order_date = self.model.metadata_overrides['document_date'].astext.cast(SQLDate)
+            actual_order_date = func.coalesce(override_order_date, self.model.document_date)
+            
+            stmt = stmt.order_by(actual_order_date.desc().nullslast(), self.model.upload_timestamp.desc())
+            
+            # Add pagination
+            stmt = stmt.offset(skip).limit(limit)
+            
+            result = db.execute(stmt)
+            return result.scalars().all()
 
     def update_overrides(self, db: Session, *, document_id: UUID, overrides_in: Dict[str, Any]) -> Optional[Document]:
         """Update the metadata_overrides JSON field for a specific document."""

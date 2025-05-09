@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import uuid
 
 from app.db.session import get_db
-from app.core.auth import verify_token
+from app.core.auth import verify_token, get_user_id_from_token
 from app.models.extracted_data import ReviewStatus
 from app.repositories.extracted_data_repo import ExtractedDataRepository
 from app.repositories.document_repo import document_repo
@@ -54,27 +54,6 @@ def get_extracted_data(
         )
     
     return extracted_data
-
-# Helper function to get user_id from token
-def get_user_id_from_token(db, token_data: dict) -> uuid.UUID:
-    """Extract and validate user ID from token data"""
-    
-    supabase_id = token_data.get("sub")
-    if not supabase_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Invalid authentication token payload"
-        )
-    
-    # Get user by supabase ID
-    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="User not found"
-        )
-    
-    return user.user_id
 
 @router.put("/{document_id}/status", response_model=ExtractedDataResponse)
 def update_extracted_data_status(

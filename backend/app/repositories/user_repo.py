@@ -1,7 +1,7 @@
 """
 UserRepository module - Full implementation of the user repository
+
 """
-from uuid import UUID
 from typing import Optional, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession

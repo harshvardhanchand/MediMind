@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import  _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.endpoints.health import router as health_router
 from app.api.endpoints.me import router as me_router
 from app.api.endpoints.documents import router as documents_router
+from app.api.endpoints.query import router as query_router
 from app.api.v1.endpoints.extracted_data import router as extracted_data_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging
@@ -50,6 +51,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(me_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1/documents")
 app.include_router(extracted_data_router, prefix="/api/v1/extracted_data")
+app.include_router(query_router, prefix="/api/v1/query")
 
 # Add root endpoint to redirect to API docs
 @app.get("/", include_in_schema=False)

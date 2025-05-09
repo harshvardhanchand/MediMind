@@ -8,8 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 
 from app.models.extracted_data import ExtractedData, ReviewStatus
-from app.schemas.extracted_data import ExtractedDataCreate # For initial creation if needed from a full schema
-                                                        # but typically we'll create with minimal data first.
+
 
 logger = logging.getLogger(__name__)
 

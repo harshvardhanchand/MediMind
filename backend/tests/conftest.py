@@ -1,8 +1,11 @@
 import os
+os.environ["ENVIRONMENT"] = "test" # Set ENVIRONMENT to test as early as possible
+
 import pytest
 from unittest.mock import patch, Mock
 
 # Set environment variables for tests
+# Defaults to SQLite if TEST_DATABASE_URL is not set in the environment (e.g., via pytest.ini)
 os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", "sqlite:///./test.db")
 os.environ["SUPABASE_URL"] = "https://test.supabase.co"
 os.environ["SUPABASE_KEY"] = "test-key"
@@ -29,16 +32,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
+from app.db.session import Base # Import the actual Base
+
 # Mock the Base object with its metadata
-@pytest.fixture(scope="session")
-def mock_base():
-    """Create a mock for Base that will be used in tests"""
-    with patch("app.db.session.Base") as mock_base:
-        # Mock the metadata attribute with a create_all method
-        mock_base.metadata = Mock()
-        mock_base.metadata.create_all = Mock()
-        mock_base.metadata.drop_all = Mock()
-        yield mock_base
+# @pytest.fixture(scope="session") # Commented out or remove if not needed elsewhere
+# def mock_base():
+#     """Create a mock for Base that will be used in tests"""
+#     with patch("app.db.session.Base") as mock_base:
+#         # Mock the metadata attribute with a create_all method
+#         mock_base.metadata = Mock()
+#         mock_base.metadata.create_all = Mock()
+#         mock_base.metadata.drop_all = Mock()
+#         yield mock_base
 
 @pytest.fixture(scope="session")
 def engine():
@@ -55,10 +60,11 @@ def engine():
             pass
 
 @pytest.fixture(scope="session")
-def tables(engine, mock_base):
-    """Create all tables in the test database"""
-    # We're using the mock Base, just return
+def tables(engine): # Removed mock_base dependency
+    """Create all tables in the test database before tests and drop after."""
+    Base.metadata.create_all(bind=engine) # Use the actual Base
     yield
+    Base.metadata.drop_all(bind=engine) # Cleanup after tests
 
 @pytest.fixture
 def db_session(engine, tables):

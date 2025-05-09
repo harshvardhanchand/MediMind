@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings # For API keys and other settings
 from app.db.session import SessionLocal # To create a new session for the background task
-from app.models.document import Document, ProcessingStatus
+from app.models.document import  ProcessingStatus
 from app.repositories.document_repo import DocumentRepository
 from app.repositories.extracted_data_repo import ExtractedDataRepository
 from app.utils.ai_processors import process_document_with_docai, structure_text_with_gemini

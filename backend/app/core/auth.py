@@ -5,6 +5,8 @@ import jwt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import create_client, Client
+from sqlalchemy.orm import Session
+import uuid
 
 from app.core.config import settings
 from app.middleware.rate_limit import get_client_ip
@@ -15,7 +17,9 @@ logger = logging.getLogger(__name__)
 supabase: Optional[Client] = None
 try:
     if settings.SUPABASE_URL and settings.SUPABASE_KEY:
-        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        # Convert AnyHttpUrl to string for the client
+        supabase_url_str = str(settings.SUPABASE_URL)
+        supabase = create_client(supabase_url_str, settings.SUPABASE_KEY)
         logger.info("Supabase client initialized successfully")
     else:
         logger.error("Supabase URL or key not provided")
@@ -132,4 +136,29 @@ async def verify_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication failed"
-        ) 
+        )
+
+# --- Helper function to get internal user ID from token data ---
+def get_user_id_from_token(db: Session, token_data: dict) -> uuid.UUID:
+    """Extract and validate internal application user ID from decoded token data."""
+    
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        logger.error("Supabase ID (sub) not found in token payload.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid authentication token payload: Missing 'sub' claim."
+        )
+    
+    # Import user_repo locally to avoid circular imports if auth is imported by models/repositories
+    from app.repositories.user_repo import user_repo 
+
+    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
+    if not user:
+        logger.warning(f"User with Supabase ID '{supabase_id}' not found in the database.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, # Or 403 if preferred for "valid token, but no app user"
+            detail="User associated with this token not found in the application."
+        )
+    
+    return user.user_id 
