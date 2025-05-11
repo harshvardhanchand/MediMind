@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
 from app.models.extracted_data import ReviewStatus
+from app.schemas.document import DocumentRead
 
 # Base schema for extracted data attributes
 class ExtractedDataBase(BaseModel):
@@ -44,4 +45,12 @@ class ExtractedDataStatusUpdate(BaseModel):
 
 # Schema specifically for updating the content
 class ExtractedDataContentUpdate(BaseModel):
-    content: Dict[str, Any] = Field(..., description="Updated structured content") 
+    content: Dict[str, Any] = Field(..., description="Updated structured content")
+
+# New schema for combined document and extracted data details
+class ExtractionDetailsResponse(BaseModel):
+    document: DocumentRead
+    extracted_data: ExtractedDataRead
+
+    class Config:
+        orm_mode = True 

@@ -11,9 +11,11 @@ logger = logging.getLogger(__name__)
 # Initialize GCS client
 # Handles authentication via GOOGLE_APPLICATION_CREDENTIALS implicitly
 try:
-    storage_client = storage.Client()
+    if not settings.GCP_PROJECT_ID:
+        raise EnvironmentError("GCP_PROJECT_ID not set in environment/config.")
+    storage_client = storage.Client(project=settings.GCP_PROJECT_ID)
 except Exception as e:
-    logger.error(f"Failed to initialize Google Cloud Storage client: {e}. Ensure credentials are set.", exc_info=True)
+    logger.error(f"Failed to initialize Google Cloud Storage client: {e}. Ensure credentials are set and GCP_PROJECT_ID is configured.", exc_info=True)
     storage_client = None # Set to None if init fails
 
 async def upload_file_to_gcs(file: UploadFile, user_id: uuid.UUID) -> Optional[str]:

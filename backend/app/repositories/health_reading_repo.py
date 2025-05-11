@@ -1,14 +1,17 @@
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete, update
 
 from app.models.health_reading import HealthReading, HealthReadingType
 from app.schemas.health_reading import HealthReadingCreate, HealthReadingUpdate
-from app.repositories.base import BaseRepository
+from app.repositories.base import CRUDBase
 
-class HealthReadingRepository(BaseRepository[HealthReading, HealthReadingCreate, HealthReadingUpdate]):
+class HealthReadingRepository(CRUDBase[HealthReading, HealthReadingCreate, HealthReadingUpdate]):
+    def __init__(self, model: Type[HealthReading] = HealthReading):
+        super().__init__(model)
+
     def get_by_id(self, db: Session, health_reading_id: uuid.UUID) -> Optional[HealthReading]:
         statement = select(self.model).where(self.model.health_reading_id == health_reading_id)
         return db.execute(statement).scalar_one_or_none()

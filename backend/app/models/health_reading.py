@@ -1,9 +1,9 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Text, Enum as SQLAlchemyEnum
+from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Text, Enum as SQLAlchemyEnum, Integer, Float
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from app.db.session import Base # Assuming Base is in app.db.session
 
@@ -57,4 +57,4 @@ class HealthReading(Base):
     def __repr__(self):
         return f"<HealthReading(id={self.health_reading_id}, type='{self.reading_type}', user_id='{self.user_id}')>"
 
-from sqlalchemy import Integer 
+# from sqlalchemy import Integer # Removed redundant import 
