@@ -68,6 +68,34 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   ├── requirements.txt        # Python dependencies
 │   └── pytest.ini              # Pytest configuration
 ├── frontend/                   # Frontend codebase
+│   ├── src/                    # Main source code directory
+│   │   ├── api/                # API client and service definitions (e.g., client.ts, services.ts)
+│   │   ├── assets/             # Static assets like images, fonts (if not at root)
+│   │   ├── components/         # Reusable UI components (e.g., Button.tsx, Card.tsx)
+│   │   ├── config/             # Application configuration (e.g., API_URL, constants)
+│   │   ├── data/               # Mock data or static data sets
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── navigation/         # Navigation setup (e.g., stack navigators, tab navigators)
+│   │   ├── screens/            # Top-level screen components (e.g., HomeScreen.tsx, LoginScreen.tsx)
+│   │   ├── services/           # Specific service integrations (e.g., supabaseClient.ts)
+│   │   ├── store/              # Global state management (e.g., Redux, Zustand, Context API)
+│   │   ├── theme/              # Styling and theme configuration (e.g., colors, typography)
+│   │   ├── types/              # TypeScript type definitions (e.g., api.ts, navigation.ts)
+│   │   ├── utils/              # Utility functions
+│   │   └── global.css          # Global stylesheets (if any, or specific to components)
+│   ├── assets/                 # Root assets directory (alternative to src/assets)
+│   ├── .expo/                  # Expo configuration and build files (managed by Expo)
+│   ├── web-build/              # Web build output (if applicable)
+│   ├── App.tsx                 # Main application component
+│   ├── app.config.js           # Expo app configuration
+│   ├── babel.config.js         # Babel configuration
+│   ├── index.js                # Entry point for the application
+│   ├── metro.config.js         # Metro bundler configuration
+│   ├── package.json            # Project dependencies and scripts
+│   ├── README.md               # Frontend specific README
+│   ├── tailwind.config.js      # Tailwind CSS configuration (if used)
+│   ├── tsconfig.json           # TypeScript configuration
+│   └── webpack.config.js       # Webpack configuration (for web builds)
 ├── memory-bank/                # Documentation and planning
 │   ├── architecture.md         # This file
 │   ├── implementation.md       # Implementation plan
@@ -247,6 +275,125 @@ Key components:
 - **Output**: A natural language string answering the user's question or indicating if the information wasn't found in the provided context.
 
 This multi-stage AI approach aims to provide accurate and relevant answers efficiently by first structuring the data, then intelligently filtering based on the query, and finally synthesizing an answer from the relevant context.
+
+## Application Flow Diagram
+
+This diagram illustrates the major data flows and component interactions within the Medical Data Hub application.
+
+```mermaid
+flowchart TD
+    subgraph User Interaction Layer
+        User[User via Mobile App]
+    end
+
+    subgraph Frontend (React Native)
+        direction LR
+        FE_AuthUI[Authentication UI (Login/Signup)]
+        FE_DocUpload[Document Upload UI]
+        FE_DataView[Data Viewing/Correction UI]
+        FE_QueryUI[Natural Language Query UI]
+        FE_SecureStore[Secure Store (JWT)]
+        FE_APIServices[API Service Calls (axios)]
+    end
+
+    subgraph Backend API (FastAPI)
+        direction LR
+        BE_Router[API Router (/api)]
+        BE_AuthVerify[Auth Middleware (verify_token)]
+        BE_DocEndpoints[Document Endpoints]
+        BE_ExtractedDataEndpoints[ExtractedData Endpoints]
+        BE_QueryEndpoint[Query Endpoint]
+        BE_UserEndpoint[User Endpoints]
+        BE_BackgroundTasks[Background Tasks (Doc Processing)]
+    end
+
+    subgraph External Services & Storage
+        direction LR
+        Supabase[Supabase Auth]
+        GCS[Google Cloud Storage (Documents)]
+        DocAI[Google Document AI (OCR)]
+        Gemini[Google Gemini LLM]
+        DB[(PostgreSQL Database)]
+    end
+
+    %% Authentication Flow
+    User -- Interacts --> FE_AuthUI
+    FE_AuthUI -- Uses Supabase SDK --> Supabase
+    Supabase -- JWT Token --> FE_AuthUI
+    FE_AuthUI -- Stores Token --> FE_SecureStore
+    FE_APIServices -- Reads Token --> FE_SecureStore
+    FE_APIServices -- Attaches JWT to Requests --> BE_Router
+    BE_Router -- Auth Required --> BE_AuthVerify
+    BE_AuthVerify -- Verifies Token (using Supabase JWT Secret) --> Supabase
+
+    %% User Profile Flow
+    User -- Accesses Profile --> FE_DataView
+    FE_DataView -- Request /api/users/me --> FE_APIServices
+    FE_APIServices -- GET /api/users/me --> BE_UserEndpoint
+    BE_UserEndpoint -- Uses get_current_user --> BE_AuthVerify
+    BE_UserEndpoint -- Retrieves User Model --> DB
+    DB -- User Data --> BE_UserEndpoint
+    BE_UserEndpoint -- UserResponse --> FE_APIServices
+    FE_APIServices -- Displays User Data --> FE_DataView
+
+    %% Document Upload and Processing Flow
+    User -- Selects Document --> FE_DocUpload
+    FE_DocUpload -- POST /api/documents/upload (File + Type) --> FE_APIServices
+    FE_APIServices --> BE_DocEndpoints
+    BE_DocEndpoints -- Verifies Auth --> BE_AuthVerify
+    BE_DocEndpoints -- Uploads File --> GCS
+    GCS -- File Path --> BE_DocEndpoints
+    BE_DocEndpoints -- Creates Document & ExtractedData records (status: PENDING) --> DB
+    BE_DocEndpoints -- Triggers --> BE_BackgroundTasks
+
+    BE_BackgroundTasks -- Document ID --> DocAI_Process{Process Document}
+    DocAI_Process -- Gets File from --> GCS
+    DocAI_Process -- Sends to Document AI --> DocAI
+    DocAI -- Raw Text --> DocAI_Process
+    DocAI_Process -- Updates ExtractedData (raw_text) --> DB
+    DocAI_Process -- Sends Raw Text --> Gemini_Structure{Gemini: Structure & Initial Metadata}
+    Gemini_Structure -- Uses Gemini LLM (Call 1) --> Gemini
+    Gemini -- Structured JSON (medical_events) & Extracted Metadata --> Gemini_Structure
+    Gemini_Structure -- Updates ExtractedData (content) & Document (metadata, status: REVIEW_REQUIRED/COMPLETED) --> DB
+
+    %% Viewing Documents & Extracted Data Flow
+    User -- Views Documents/Data --> FE_DataView
+    FE_DataView -- Request (e.g., /api/documents, /api/extracted_data/all/{id}) --> FE_APIServices
+    FE_APIServices -- GET request --> BE_Router
+    BE_Router -- (BE_DocEndpoints / BE_ExtractedDataEndpoints) --> BE_AuthVerify
+    BE_Router -- Retrieves Data --> DB
+    DB -- Document/ExtractedData records --> BE_Router
+    BE_Router -- Returns Data --> FE_APIServices
+    FE_APIServices -- Displays Data --> FE_DataView
+
+    %% User Correcting Extracted Data Flow
+    User -- Corrects Data --> FE_DataView
+    FE_DataView -- PUT /api/extracted_data/{id}/content or /status --> FE_APIServices
+    FE_APIServices --> BE_ExtractedDataEndpoints
+    BE_ExtractedDataEndpoints -- Verifies Auth & Ownership --> BE_AuthVerify
+    BE_ExtractedDataEndpoints -- Updates ExtractedData (content, review_status) --> DB
+    DB -- Confirmation --> BE_ExtractedDataEndpoints
+    BE_ExtractedDataEndpoints -- Returns Updated Data --> FE_APIServices
+
+    %% Natural Language Query Flow
+    User -- Types Query --> FE_QueryUI
+    FE_QueryUI -- POST /api/query (query_text) --> FE_APIServices
+    FE_APIServices --> BE_QueryEndpoint
+    BE_QueryEndpoint -- Verifies Auth --> BE_AuthVerify
+    BE_QueryEndpoint -- Sends Query Text --> Gemini_Filter{Gemini: Extract Filters}
+    Gemini_Filter -- Uses Gemini LLM (Call 2) --> Gemini
+    Gemini -- Filter JSON --> Gemini_Filter
+    BE_QueryEndpoint -- Uses Filters (Document Repo) --> DB
+    DB -- Filtered Documents --> BE_QueryEndpoint
+    BE_QueryEndpoint -- Retrieves ExtractedData.content for filtered docs --> DB
+    DB -- Extracted medical_events --> BE_QueryEndpoint
+    BE_QueryEndpoint -- Compiles JSON Context & Sends Query+Context --> Gemini_Answer{Gemini: Answer from Context}
+    Gemini_Answer -- Uses Gemini LLM (Call 3) --> Gemini
+    Gemini -- Natural Language Answer --> Gemini_Answer
+    BE_QueryEndpoint -- Returns QueryResponse (answer, doc_ids) --> FE_APIServices
+    FE_APIServices -- Displays Answer --> FE_QueryUI
+
+```
 
 ## Database Schema Overview
 
