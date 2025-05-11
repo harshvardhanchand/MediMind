@@ -28,7 +28,7 @@ class ExtractedDataRead(ExtractedDataBase):
     extraction_timestamp: datetime = Field(..., description="Timestamp when the data was extracted")
 
     class Config:
-        orm_mode = True # Compatibility with SQLAlchemy models
+        from_attributes = True # Compatibility with SQLAlchemy models
 
 # Schema for updating extracted data (e.g., during user review)
 class ExtractedDataUpdate(BaseModel):
@@ -53,4 +53,4 @@ class ExtractionDetailsResponse(BaseModel):
     extracted_data: ExtractedDataRead
 
     class Config:
-        orm_mode = True 
+        from_attributes = True 
