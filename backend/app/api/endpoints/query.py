@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 import logging
 import json # For formatting the JSON context
 from datetime import date # Added for date range handling
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, List
+import uuid
 
 from app.schemas.query import QueryRequest, NaturalLanguageQueryResponse # Updated schema
 from app.core.auth import verify_token, get_user_id_from_token # Added get_user_id_from_token
@@ -108,7 +109,8 @@ async def natural_language_query_endpoint(
             logger.info(f"No documents found matching filters for user_id: {user_id}")
             return NaturalLanguageQueryResponse(
                 query_text=query_request.query_text,
-                answer="I couldn't find any documents matching your specific criteria. You might want to broaden your search."
+                answer="I couldn't find any documents matching your specific criteria. You might want to broaden your search.",
+                relevant_document_ids=[] # Return empty list
             )
 
         # --- Step 3: Prepare Context and Answer using LLM --- 
@@ -116,6 +118,8 @@ async def natural_language_query_endpoint(
         extracted_data_repo = ExtractedDataRepository(db)
         user_json_contents = [] # This will become a list of medical_events lists
         all_medical_events = [] # This will be a flat list of all medical_events objects
+        # Collect document IDs used for context
+        context_document_ids: List[uuid.UUID] = [] 
 
         for doc in filtered_documents:
             # Fetch associated ExtractedData
@@ -125,6 +129,7 @@ async def natural_language_query_endpoint(
                 medical_events_from_doc = extracted_data.content.get("medical_events")
                 if isinstance(medical_events_from_doc, list):
                     all_medical_events.extend(medical_events_from_doc)
+                    context_document_ids.append(doc.document_id) # Add doc ID if content used
                 else:
                     logger.warning(f"Document {doc.document_id} has content but no 'medical_events' list or it's not a list.")
             else:
@@ -136,7 +141,8 @@ async def natural_language_query_endpoint(
             # This might happen if documents were filtered but their processing hasn't completed or content is empty/malformed
             return NaturalLanguageQueryResponse(
                 query_text=query_request.query_text,
-                answer="I found some documents that might match, but I couldn't retrieve the specific medical details needed to answer your question from them."
+                answer="I found some documents that might match, but I couldn't retrieve the specific medical details needed to answer your question from them.",
+                relevant_document_ids=[doc.document_id for doc in filtered_documents] # Return all filtered doc IDs
             )
         
         json_data_context_str = json.dumps(all_medical_events, indent=2) # Use all_medical_events
@@ -163,7 +169,8 @@ async def natural_language_query_endpoint(
 
         return NaturalLanguageQueryResponse(
             query_text=query_request.query_text,
-            answer=llm_answer
+            answer=llm_answer,
+            relevant_document_ids=context_document_ids # Use the collected document_ids
         )
     
     except HTTPException: # Re-raise HTTPExceptions directly

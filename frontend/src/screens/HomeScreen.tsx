@@ -3,70 +3,54 @@ import { View, StyleSheet, FlatList, RefreshControl, ScrollView } from 'react-na
 import { Appbar, FAB, Card, Title, Paragraph, Divider, Chip, Button, ActivityIndicator, Text, IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-// import * as SecureStore from 'expo-secure-store'; // Commented out for mock data
-// import axios from 'axios'; // Commented out for mock data
+import { RootStackParamList } from '../navigation/types';
 import { supabaseClient } from '../services/supabase'; // Keep for logout
-// import { API_URL } from '../config'; // Commented out for mock data
+import { documentServices } from '../api/services';
+import { DocumentRead } from '../types/api'; // Import DocumentRead
 
-// Import mock data
-import { mockDocuments, MockDocument } from '../data/mockData';
-
+// Import mock data as fallback
+import { mockDocuments } from '../data/mockData'; // Keep mockDocuments for fallback logic
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
-// Document type definition based on API response (using MockDocument now)
-interface Document extends MockDocument {}
+// Document type definition based on API response
+interface Document extends DocumentRead {} // Use DocumentRead from api.ts
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true); // Set to false initially for mock data
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [useMockData, setUseMockData] = useState(false);
 
   const fetchDocuments = async () => {
-    // setLoading(true); // Already handled by useEffect or initial state for mock data
-    // try {
-    //   const token = await SecureStore.getItemAsync(\'authToken\');
-      
-    //   if (!token) {
-    //     throw new Error(\'Not authenticated\');
-    //   }
-      
-    //   const response = await axios.get(`${API_URL}/api/v1/documents`, {
-    //     headers: {
-    //       Authorization: `Bearer ${token}`,
-    //     },
-    //   });
-      
-    //   setDocuments(response.data.items || []);
-    //   setError(\'\');
-    // } catch (err: any) {
-    //   console.error(\'Error fetching documents:\', err);
-    //   setError(\'Failed to load documents. Please try again.\');
-    // } finally {
-    //   setLoading(false);
-    //   setRefreshing(false);
-    // }
-
-    // Simulate API call for mock data
-    console.log('Using mock documents for HomeScreen');
-    setDocuments(mockDocuments);
-    setLoading(false);
-    setRefreshing(false);
-    setError('');
+    setLoading(true);
+    try {
+      // Try to fetch from real API
+      const response = await documentServices.getDocuments();
+      setDocuments(response.data || []);
+      setError('');
+      setUseMockData(false);
+    } catch (err: any) {
+      console.log('Error fetching documents:', err);
+      // Fallback to mock data in development
+      console.log('Using mock documents for HomeScreen');
+      setDocuments(mockDocuments as Document[]);
+      setUseMockData(true);
+      setError(useMockData ? '' : 'Failed to load documents. Using sample data instead.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   const handleLogout = async () => {
     try {
       await supabaseClient.auth.signOut();
-      // await SecureStore.deleteItemAsync(\'authToken\'); // Handled by AppNavigator logic too
-      // await SecureStore.deleteItemAsync(\'refreshToken\');
       
       // AppNavigator will detect the authentication state change
       // and redirect to Login screen based on its own SecureStore check.
-      // Forcing navigation reset here ensures a clean state if AppNavigator\'s effect is delayed.
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],

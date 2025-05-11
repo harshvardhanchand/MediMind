@@ -1,4 +1,6 @@
-{
+import 'dotenv/config';
+
+export default {
   "expo": {
     "name": "Medical Data Hub",
     "slug": "medical-data-hub",
@@ -30,6 +32,10 @@
       "expo-secure-store",
       "expo-document-picker",
       "expo-file-system"
-    ]
+    ],
+    "extra": {
+      "supabaseUrl": process.env.SUPABASE_URL,
+      "supabaseAnonKey": process.env.SUPABASE_ANON_KEY
+    }
   }
 }

@@ -22,10 +22,11 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 ├── backend/                    # Backend API codebase
 │   ├── alembic/                # Database migration scripts
 │   ├── app/                    # Application code
-│   │   ├── api/                # API endpoints
-│   │   │   ├── endpoints/      # API route handlers
+│   │   ├── api/                # API related modules
+│   │   │   ├── endpoints/      # API route handler modules (e.g., documents.py, users.py)
+│   │   │   └── router.py       # Main API router (aggregates endpoint routers, mounted at /api)
 │   │   ├── core/               # Core functionality
-│   │   │   ├── auth.py         # Authentication logic
+│   │   │   ├── auth.py         # Authentication logic (token verification, user retrieval)
 │   │   │   ├── config.py       # Application configuration
 │   │   │   └── logging_config.py # Logging configuration
 │   │   ├── db/                 # Database management
@@ -36,16 +37,22 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   ├── models/             # Data models
 │   │   │   ├── user.py         # User data model
 │   │   │   ├── document.py     # Document data model
-│   │   │   └── extracted_data.py # ExtractedData model
+│   │   │   ├── extracted_data.py # ExtractedData model
+│   │   │   ├── medication.py   # Medication data model
+│   │   │   └── health_reading.py # HealthReading data model
 │   │   ├── repositories/       # Repository pattern implementation
 │   │   │   ├── base.py         # Base CRUD repository 
 │   │   │   ├── document_repo.py # Document repository implementation
 │   │   │   ├── extracted_data_repo.py # ExtractedData repository
-│   │   │   └── user_repo.py    # User repository implementation
+│   │   │   ├── user_repo.py    # User repository implementation
+│   │   │   ├── medication_repo.py # Medication repository
+│   │   │   └── health_reading_repo.py # HealthReading repository
 │   │   ├── schemas/            # Pydantic schemas
 │   │   │   ├── document.py     # Document schemas
 │   │   │   ├── extracted_data.py # ExtractedData schemas
-│   │   │   └── user.py         # User schemas
+│   │   │   ├── user.py         # User schemas
+│   │   │   ├── medication.py   # Medication schemas
+│   │   │   └── health_reading.py # HealthReading schemas
 │   │   ├── services/           # Business logic services
 │   │   │   └── document_processing_service.py # Document processing pipeline
 │   │   └── utils/              # Utility functions
@@ -128,23 +135,31 @@ Contains SQLAlchemy ORM models that represent database tables.
     *   `user_added_tags` (JSON, Optional): List of tags added manually by the user.
     *   `related_to_health_goal_or_episode` (String, Optional): User-defined link to a health goal or event.
 *   **`ExtractedData`**: Maps to `extracted_data` table. Stores structured data parsed from a `Document` using a flexible `JSONB` column (`content`). Links one-to-one with `Document` and includes review status details.
+*   **`Medication`**: Maps to `medications` table. Stores user-entered medication details.
+*   **`HealthReading`**: Maps to `health_readings` table. Stores user-entered health metrics.
 
 ### 6. API Endpoints (`backend/app/api/endpoints/`)
 
-Contains route handlers organized by functionality:
-- `health.py`: Health check endpoint (`/api/v1/health`)
-- `me.py`: User information endpoint (`/api/v1/me`, requires authentication)
-- `extracted_data.py`: Endpoints for accessing and managing structured extracted medical data
+Contains route handler modules (e.g., `documents.py`, `users.py`, `medications.py`, `extracted_data.py`, `query.py`, `health_readings.py`, `health.py`). These are aggregated by `backend/app/api/router.py` and mounted under `/api` in `backend/app/main.py`.
+
+Example main endpoints (all prefixed with `/api`):
+- `health.py`: Health check endpoint (e.g., `/api/health/health`)
+- `users.py`: User related endpoints, including:
+    - `/users/me`: User information endpoint for the authenticated user (full path: `/api/users/me`).
+- `documents.py`: Endpoints for document management (e.g., `/documents/upload`, `/documents/{document_id}`).
+- `extracted_data.py`: Endpoints for accessing and managing structured extracted medical data (e.g., `/extracted_data/{document_id}`).
+- `medications.py`: Endpoints for medication management (e.g., `/medications/`, `/medications/{medication_id}`).
+- `query.py`: Endpoint for natural language querying (e.g., `/query/`).
+- `health_readings.py`: Endpoints for health reading management (e.g., `/health_readings/`, `/health_readings/{reading_id}`).
 
 #### ExtractedData API Endpoints
-
-The ExtractedData API provides endpoints for retrieving and updating structured medical data extracted from user documents:
+The ExtractedData API provides endpoints for retrieving and updating structured medical data extracted from user documents. All paths are now prefixed with `/api` (e.g. `/api/extracted_data/...`).
 
 **Endpoint Summary:**
-- `GET /api/v1/extracted_data/{document_id}`: Retrieve extracted data for a specific document
-- `GET /api/v1/extracted_data/all/{document_id}`: Get combined document and extracted data details
-- `PUT /api/v1/extracted_data/{document_id}/status`: Update the review status of extracted data
-- `PUT /api/v1/extracted_data/{document_id}/content`: Update the structured content of extracted data
+- `GET /api/extracted_data/{document_id}`: Retrieve extracted data for a specific document
+- `GET /api/extracted_data/all/{document_id}`: Get combined document and extracted data details
+- `PUT /api/extracted_data/{document_id}/status`: Update the review status of extracted data
+- `PUT /api/extracted_data/{document_id}/content`: Update the structured content of extracted data
 
 **Authentication and Authorization:**
 - All endpoints require a valid JWT token from Supabase
@@ -421,3 +436,63 @@ Refine prompts for all LLM calls.
 - ⏳ Integration with mobile application
 - ⏳ Performance optimizations
 - ⏳ Additional security hardening
+
+## Frontend-Backend Integration
+
+### API Client
+
+The frontend communicates with the backend using a centralized API client built with Axios. This client:
+
+1. Automatically attaches authentication tokens to requests
+2. Handles common error responses (401, 500, etc.)
+3. Provides consistent response handling
+
+```typescript
+// API client configuration
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Authentication token handling
+apiClient.interceptors.request.use(
+  async (config) => {
+    const token = await SecureStore.getItemAsync('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  }
+);
+```
+
+### API Services
+
+API functionality is organized into service modules:
+
+- `authServices` - Authentication endpoints
+- `documentServices` - Document management endpoints
+- `extractedDataServices` - Extracted data endpoints
+- `healthReadingsServices` - Health readings endpoints
+- `medicationServices` - Medication management endpoints
+- `queryServices` - AI query endpoints
+
+### Authentication Flow
+
+The application uses a token-based authentication system:
+
+1. User logs in via the frontend authentication screens
+2. Authentication token is stored securely using Expo SecureStore
+3. API client automatically attaches the token to all requests
+4. Backend validates the token and authorizes access to resources
+
+### Error Handling
+
+API errors are handled with a fallback strategy:
+
+1. Attempt to use real API endpoints
+2. On failure, fall back to mock data in development environments
+3. Display appropriate error messages to users
+4. Provide retry mechanisms for failed requests

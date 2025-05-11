@@ -202,6 +202,38 @@ Background processing for document analysis has been implemented using FastAPI's
 
 The implementation provides a clean, efficient way to process documents asynchronously without adding complex dependencies. Users can upload documents and receive an immediate response, while the system processes the documents in the background using Google Cloud Document AI and Gemini LLM.
 
+## [Current Date] - API Synchronization and Refactor
+
+**Completed Tasks:**
+
+1.  **API Endpoint and Schema Synchronization:**
+    *   Reviewed and synchronized backend API endpoint definitions with frontend service calls for Documents, ExtractedData, Medications, Query, and HealthReadings.
+    *   Compared and aligned backend Pydantic schemas with frontend TypeScript types for all major entities.
+    *   Corrected discrepancies in field names, data types (especially date/datetime handling), and expected structures.
+    *   Specifically updated `HealthReading` types on the frontend to be more specific and match the detailed backend structure (including adding `HealthReadingType` enum).
+    *   Created a new frontend type `ExtractionDetailsResponse` for the combined data returned by `/api/extracted_data/all/{document_id}`.
+
+2.  **API Structure Refactor (No `/v1`):**
+    *   Removed `/v1` API versioning from URL paths for simplification at the MVP stage.
+    *   Consolidated backend API routing: `backend/app/api/router.py` now aggregates endpoint routers, mounted under `/api` in `main.py`.
+    *   Updated all frontend API service calls in `frontend/src/api/services.ts` to use the new non-versioned paths.
+    *   Adjusted `backend/app/main.py` to use the new main router.
+    *   **User Action Required**: Ensured all backend API endpoint files are now located in `backend/app/api/endpoints/` and the old `backend/app/api/v1/` directory has been removed.
+
+3.  **Error Resolution and Missing Components:**
+    *   Addressed various import errors and missing component issues:
+        *   Created `backend/app/api/endpoints/users.py` with a `/users/me` endpoint.
+        *   Updated `backend/app/schemas/user.py` to align `UserRead` with the `/me` endpoint's expected response.
+        *   Removed unused `auth` router from `backend/app/api/router.py` as authentication is handled client-side by Supabase.
+        *   Fixed minor import issues in `backend/app/api/endpoints/health_readings.py` and `backend/app/models/health_reading.py`.
+        *   Corrected attribute access in `backend/app/api/endpoints/extracted_data.py`.
+
+**Outcome:**
+*   Improved consistency and synchronization between frontend and backend API contracts.
+*   Simplified API URL structure.
+*   Resolved several potential runtime errors and missing file/code issues.
+*   The API is now better structured for continued development.
+
 ## Next Steps
 
 - **Enhanced Natural Language Querying with Metadata Filtering**:
@@ -265,3 +297,43 @@ The implementation provides a clean, efficient way to process documents asynchro
     *   Test metadata editing functionality.
 *   **Documentation**:
     *   Update `architecture.md` to reflect the full NLQ pipeline implementation details and final metadata handling.
+
+## May 11, 2023 - API Integration Implementation
+
+### Completed
+- Created a centralized API client in the frontend with Axios
+- Implemented authentication token management using Expo SecureStore
+- Developed structured API service modules for different resources (documents, health readings, etc.)
+- Connected the HomeScreen to use real API with fallback to mock data
+- Implemented Health Readings API endpoint in the backend
+- Created comprehensive documentation for remaining integration tasks
+
+### In Progress
+- Implementing Medications API endpoint
+- Standardizing authentication across the application
+- Updating remaining screens to use the API services
+
+### Next Steps
+- Implement comprehensive error handling and loading states
+- Complete backend authentication endpoints
+- Set up proper environment configuration for different deployment scenarios
+- Update all frontend components to use the API client
+
+## May 12, 2023 - Authentication Consistency Update
+
+### Completed
+- Created a consistent `get_current_user` dependency function in `auth.py`
+- Implemented a skeleton Medications API endpoint using the new dependency
+- Updated FastAPI app to include the new endpoints
+- Ensured backward compatibility with existing endpoints
+
+### Benefits
+- More consistent authentication pattern across all API endpoints
+- Direct access to the authenticated User model in route handlers
+- Reduced code duplication in endpoints
+- Improved security by centralizing authentication logic
+
+### Next Steps
+- Update existing endpoints to use the new `get_current_user` dependency where appropriate
+- Complete the Medications endpoints with proper database models and schemas
+- Continue frontend-backend integration work

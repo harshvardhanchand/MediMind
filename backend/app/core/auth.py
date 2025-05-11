@@ -10,6 +10,8 @@ import uuid
 
 from app.core.config import settings
 from app.middleware.rate_limit import get_client_ip
+from app.db.session import get_db
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -161,4 +163,49 @@ def get_user_id_from_token(db: Session, token_data: dict) -> uuid.UUID:
             detail="User associated with this token not found in the application."
         )
     
-    return user.user_id 
+    return user.user_id
+
+# --- Dependency to get current user ---
+async def get_current_user(
+    token_data: Dict[str, Any] = Depends(verify_token),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Get the current authenticated user from the database.
+    
+    This dependency can be used in endpoints to directly access the User model
+    of the currently authenticated user. It builds on the verify_token dependency
+    to ensure proper authentication.
+    
+    Args:
+        token_data: The decoded JWT token data (from verify_token dependency)
+        db: Database session (from get_db dependency)
+        
+    Returns:
+        User: The authenticated user's database model
+        
+    Raises:
+        HTTPException: If user is not found in the database or token is invalid
+    """
+    # Get the Supabase user ID from the token
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        logger.error("Supabase ID (sub) not found in token payload.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid authentication token payload: Missing 'sub' claim."
+        )
+    
+    # Import user_repo locally to avoid circular imports
+    from app.repositories.user_repo import user_repo
+    
+    # Get the user from the database using Supabase ID
+    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
+    if not user:
+        logger.warning(f"User with Supabase ID '{supabase_id}' not found in the database.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User associated with this token not found in the application."
+        )
+    
+    return user 

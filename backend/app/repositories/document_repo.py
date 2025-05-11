@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any
 from datetime import date
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, or_, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import Date as SQLDate
 
@@ -286,6 +286,126 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         else:
             logger.info(f"No metadata changes detected for document {document_id}. No update performed.")
             return db_obj # Return the object even if no changes were made
+
+    def search_documents(
+        self,
+        db: Session,
+        *,
+        user_id: UUID, 
+        search_query: str,
+        document_type: Optional[DocumentType] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Document]:
+        """
+        Search documents using PostgreSQL full-text search.
+        
+        This method creates a full-text search query across multiple fields:
+        - original_filename
+        - source_name
+        - source_location_city
+        - tags (as text)
+        - user_added_tags (as text)
+        - related_to_health_goal_or_episode
+        - extracted text from ExtractedData.raw_text (via join)
+        
+        Args:
+            db: Database session
+            user_id: User ID to restrict search to
+            search_query: Text to search for
+            document_type: Optional filter for document type
+            skip: Number of records to skip (pagination)
+            limit: Maximum number of records to return
+            
+        Returns:
+            List of Document objects matching the search criteria
+        """
+        # Sanitize the search query to prevent SQL injection
+        search_query = search_query.strip()
+        if not search_query:
+            # If empty search, just return documents by recency
+            return self.get_multi_by_owner(db=db, user_id=user_id, skip=skip, limit=limit)
+            
+        try:
+            # Create a query that joins Document with ExtractedData to search in raw_text as well
+            stmt = (
+                select(self.model)
+                .join(
+                    self.model.extracted_data, 
+                    isouter=True
+                )
+                .where(self.model.user_id == user_id)
+            )
+            
+            # Add document_type filter if provided
+            if document_type:
+                stmt = stmt.where(self.model.document_type == document_type)
+                
+            # Create conditions for full-text search across various fields
+            # PostgreSQL's to_tsvector converts text to searchable tokens
+            # and to_tsquery converts the search query to a query object
+            
+            # Search terms for simple string matching on various fields
+            search_term = f"%{search_query}%"
+            
+            # Use a combination of ilike for simple text fields and array operators for JSON array fields
+            search_conditions = [
+                self.model.original_filename.ilike(search_term),
+                func.coalesce(self.model.metadata_overrides['source_name'].astext, self.model.source_name).ilike(search_term),
+                func.coalesce(self.model.metadata_overrides['source_location_city'].astext, self.model.source_location_city).ilike(search_term),
+                func.coalesce(self.model.metadata_overrides['related_to_health_goal_or_episode'].astext, self.model.related_to_health_goal_or_episode).ilike(search_term),
+            ]
+            
+            # Add condition for searching within ExtractedData.raw_text
+            # Only search if there's a join to ExtractedData (raw_text is not null)
+            search_conditions.append(
+                self.model.extracted_data.has(text("raw_text ILIKE :search_term"))
+            )
+            
+            # PostgreSQL full-text search using tsvector/tsquery for better search quality
+            # Convert the search query to tsquery format, normalizing it
+            tsquery = func.plainto_tsquery('english', search_query)
+            
+            # Search in document fields using tsvector
+            # Convert multiple fields to tsvectors and combine them
+            tsvector_expr = func.to_tsvector(
+                'english',
+                func.concat_ws(
+                    ' ',
+                    self.model.original_filename,
+                    func.coalesce(self.model.metadata_overrides['source_name'].astext, self.model.source_name),
+                    func.coalesce(self.model.metadata_overrides['source_location_city'].astext, self.model.source_location_city),
+                    func.coalesce(self.model.metadata_overrides['related_to_health_goal_or_episode'].astext, self.model.related_to_health_goal_or_episode)
+                )
+            )
+            
+            # Add full-text search condition
+            search_conditions.append(tsvector_expr.op('@@')(tsquery))
+            
+            # Add combined search conditions to the query
+            stmt = stmt.where(or_(*search_conditions))
+            
+            # Order by relevance and recency
+            # For relevance ranking, use ts_rank with normalized tsvector
+            stmt = stmt.order_by(
+                # Rank by text search relevance (higher is better)
+                func.ts_rank(tsvector_expr, tsquery).desc(),
+                # Then by upload timestamp (newer first)
+                self.model.upload_timestamp.desc()
+            )
+            
+            # Add pagination
+            stmt = stmt.offset(skip).limit(limit)
+            
+            # Parameterize the query to safely handle the search term
+            # This is important for security against SQL injection
+            result = db.execute(stmt, {"search_term": search_term})
+            return result.scalars().all()
+            
+        except Exception as e:
+            logger.error(f"Error during document search: {str(e)}", exc_info=True)
+            # In case of error, return empty list rather than crashing
+            return []
 
 # Create a singleton instance
 document_repo = DocumentRepository(Document) 

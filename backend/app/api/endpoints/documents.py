@@ -3,12 +3,12 @@ import hashlib
 # Use sync Session
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form, Query, BackgroundTasks
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from uuid import UUID
 
 # Use sync get_db
 from app.db.session import get_db
-from app.core.auth import verify_token
+from app.core.auth import verify_token, get_user_id_from_token
 # Update to use repositories (plural)
 from app.repositories.document_repo import document_repo
 from app.repositories.user_repo import user_repo
@@ -314,3 +314,60 @@ def delete_document(
     document_repo.remove(db=db, id=document_id)
     
     return None 
+
+@router.get("/search", response_model=List[DocumentRead], summary="Search documents")
+def search_documents(
+    *,
+    db: Session = Depends(get_db),
+    token_data: dict = Depends(verify_token),
+    query: str = Query(..., description="Search query"),
+    document_type: Optional[DocumentType] = Query(None, description="Filter by document type"),
+    skip: int = Query(0, ge=0, description="Number of documents to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of documents to return"),
+):
+    """
+    Search for documents using full-text search.
+    
+    This endpoint searches across multiple fields including:
+    - File name
+    - Source name
+    - Source location
+    - Document content (extracted text)
+    - Tags
+    
+    Results are ranked by relevance and filtered to only include the authenticated user's documents.
+    """
+    # Get user ID from token
+    user_id = get_user_id_from_token(db, token_data)
+    
+    try:
+        # Search documents using the repository method
+        documents = document_repo.search_documents(
+            db=db, 
+            user_id=user_id, 
+            search_query=query,
+            document_type=document_type,
+            skip=skip, 
+            limit=limit
+        )
+        
+        # Log search for analytics purposes
+        logger.info(
+            f"Document search performed", 
+            extra={
+                "structured_data": {
+                    "user_id": user_id,
+                    "query": query,
+                    "document_type": document_type.value if document_type else None,
+                    "results_count": len(documents)
+                }
+            }
+        )
+        
+        return documents
+    except Exception as e:
+        logger.error(f"Error during document search: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while searching for documents"
+        ) 

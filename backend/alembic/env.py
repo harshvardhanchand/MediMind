@@ -1,4 +1,5 @@
 import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -6,7 +7,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# This is the Alembic Config object, which provides
+# this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
@@ -15,22 +16,26 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Add your model's MetaData object here
-# for 'autogenerate' support
-from app.db.session import Base
-from app.models.user import User  # Import all models here
+# Add the project's root directory (backend) to the Python path
+# This allows Alembic to find your application modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Import your Base from your application. Adjust the import path as necessary.
+# Common locations might be app.db.base.Base or app.db.session.Base
+from app.db.session import Base  # Assuming Base is in app.db.session
+# Import all your models here so Base.metadata knows about them
+from app.models.user import User
 from app.models.document import Document
 from app.models.extracted_data import ExtractedData
+from app.models.medication import Medication
+# Add other models if you have them, e.g.:
+# from app.models.some_other_model import SomeOtherModel
+
+# target_metadata for 'autogenerate' support
+# For autogenerate to work, Base.metadata needs to be populated with all your models.
 target_metadata = Base.metadata
 
-# Import environment variables and set the database URL
-from app.core.config import settings
-if settings.DATABASE_URL:
-    config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
-else:
-    raise ValueError("DATABASE_URL is not set in the application settings, but it is required for Alembic operations.")
-
-# Other values from the config, defined by the needs of env.py,
+# other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
@@ -85,4 +90,4 @@ def run_migrations_online() -> None:
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online() 
+    run_migrations_online()
