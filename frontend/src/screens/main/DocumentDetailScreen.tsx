@@ -1,55 +1,287 @@
-import React from 'react';
-import { View, Text, Button, ScrollView } from 'react-native';
+import React, { useLayoutEffect, useState } from 'react';
+import { ScrollView, View, TouchableOpacity, Alert, Dimensions, Platform, ActivityIndicator, Image, Modal, Pressable } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainAppStackParamList } from '../../navigation/types';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import Pdf from 'react-native-pdf';
+
+import ScreenContainer from '../../components/layout/ScreenContainer';
+import StyledText from '../../components/common/StyledText';
+import StyledButton from '../../components/common/StyledButton';
+import Card from '../../components/common/Card';
+import ListItem from '../../components/common/ListItem';
+import { useTheme } from '../../theme';
 
 const StyledView = styled(View);
-const StyledText = styled(Text);
 const StyledScrollView = styled(ScrollView);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledPressable = styled(Pressable);
 
 type DocumentDetailScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'DocumentDetail'>;
 type DocumentDetailScreenRouteProp = RouteProp<MainAppStackParamList, 'DocumentDetail'>;
 
+// Mock Document Data Structure (more detailed for display)
+interface ExtractedField {
+  label: string;
+  value: string | number | null;
+  unit?: string;
+}
+interface MockDocument {
+  id: string;
+  name: string;
+  type: string;
+  date: string;
+  originalFilename?: string;
+  processingStatus?: string; // e.g., 'Pending Review', 'Reviewed'
+  extractedContent?: {
+    // Example for a lab report
+    lab_results?: ExtractedField[];
+    // Example for a prescription
+    medications?: Array<{
+      name: ExtractedField;
+      dosage: ExtractedField;
+      frequency: ExtractedField;
+    }>;
+    notes?: string;
+  };
+  // Placeholder for actual document URI
+  documentUri?: string; 
+  documentType?: 'pdf' | 'image' | 'other'; // To determine viewer
+}
+
 const DocumentDetailScreen = () => {
   const navigation = useNavigation<DocumentDetailScreenNavigationProp>();
   const route = useRoute<DocumentDetailScreenRouteProp>();
+  const { colors } = useTheme();
   const { documentId } = route.params;
 
-  // In a real app, fetch document details using documentId
-  const document = {
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageUriForModal, setImageUriForModal] = useState<string | undefined>(undefined);
+
+  // Mock data - conditionally make one an image for testing
+  const isImageDoc = documentId.includes('img'); // Simple way to toggle mock data type for testing
+  const document: MockDocument = {
     id: documentId,
-    name: `Details for Document ${documentId}`,
-    type: 'Sample Type',
-    date: '2023-10-01',
-    content: 'This is the full content or extracted data of the document. It could be a long string or a structured object.',
-    extractedDataSummary: 'AI Extracted: Glucose level: 120 mg/dL, Cholesterol: 190 mg/dL. Review needed.'
+    name: isImageDoc ? 'Chest X-Ray Image' : `Lab Report - CBC`, 
+    type: isImageDoc ? 'Imaging Result' : 'Lab Result',
+    date: '2023-10-18',
+    originalFilename: isImageDoc ? 'xray_chest.jpg' : 'lab_report_oct18.pdf',
+    processingStatus: 'Reviewed',
+    extractedContent: { /* ... as before, or tailor to image/pdf ... */ },
+    documentUri: isImageDoc 
+      ? 'https://images.unsplash.com/photo-1581091226809-50038c009EMW?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60' // Placeholder image
+      : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', 
+    documentType: isImageDoc ? 'image' : 'pdf',
+  };
+
+  const { width } = Dimensions.get('window');
+
+  useLayoutEffect(() => {
+    if (document) {
+      navigation.setOptions({
+        headerTitle: document.name, 
+        headerRight: () => (
+          <StyledTouchableOpacity 
+            onPress={() => alert(`TODO: Edit ${document.name}`)}
+            tw="p-1.5"
+          >
+            <StyledText style={{ color: colors.accentPrimary, fontSize: 17 }}>Edit</StyledText>
+          </StyledTouchableOpacity>
+        ),
+        headerStyle: { backgroundColor: colors.backgroundSecondary },
+        headerTitleStyle: { color: colors.textPrimary },
+        headerTintColor: colors.accentPrimary,
+      });
+    }
+  }, [navigation, colors, document]);
+
+  if (!document) {
+    return (
+      <ScreenContainer>
+        <StyledView className="flex-1 justify-center items-center"><StyledText>Document not found.</StyledText></StyledView>
+      </ScreenContainer>
+    );
+  }
+
+  const documentInfoItems = [
+    { label: 'Type', value: document.type, icon: 'document-text-outline' },
+    { label: 'Date', value: document.date, icon: 'calendar-outline' },
+    { label: 'Status', value: document.processingStatus, icon: 'information-circle-outline' },
+    { label: 'Original File', value: document.originalFilename, icon: 'attach-outline' },
+  ];
+
+  const togglePdfViewer = () => setShowPdfViewer(!showPdfViewer);
+
+  const openImageViewer = (uri: string) => {
+      setImageUriForModal(uri);
+      setShowImageViewer(true);
+  };
+
+  const closeImageViewer = () => {
+      setShowImageViewer(false);
+      setImageUriForModal(undefined);
   };
 
   return (
-    <StyledScrollView className="flex-1 p-4 bg-gray-50">
-      <StyledText className="text-2xl font-bold mb-2">{document.name}</StyledText>
-      <StyledText className="text-md text-gray-600 mb-1">Type: {document.type}</StyledText>
-      <StyledText className="text-md text-gray-600 mb-4">Date: {document.date}</StyledText>
-      
-      <StyledView className="p-3 mb-4 bg-white rounded-lg shadow">
-        <StyledText className="text-lg font-semibold mb-2">Extracted Data Summary</StyledText>
-        <StyledText className="text-gray-700 mb-3">{document.extractedDataSummary}</StyledText>
-        <Button 
-          title="Review & Correct Data" 
-          onPress={() => navigation.navigate('DataReview', { documentId })}
-        />
+    <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundPrimary}>
+      {/* Custom Header */}
+      <StyledView className="flex-row items-center px-3 py-3 border-b border-borderSubtle bg-backgroundSecondary">
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1 mr-2">
+          <Ionicons name="chevron-back-outline" size={28} color={colors.accentPrimary} />
+        </StyledTouchableOpacity>
+        <StyledText variant="h3" tw="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
+          {document.name}
+        </StyledText>
+        <StyledView className="w-8" /> {/* Spacer to balance back button */}
       </StyledView>
 
-      <StyledView className="p-3 mb-4 bg-white rounded-lg shadow">
-        <StyledText className="text-lg font-semibold mb-2">Full Document Content/Image</StyledText>
-        <StyledText className="text-gray-700">{/* Placeholder for actual document view (e.g., PDF or Image) */}</StyledText>
-        <StyledText className="text-gray-700">{document.content}</StyledText>
-      </StyledView>
+      <StyledScrollView className="flex-1">
+        <StyledView className="p-4">
+          <Card title="Document Information" tw="mb-6">
+            {documentInfoItems.map((item, index) => (
+              item.value && (
+                <ListItem
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  iconLeft={item.icon}
+                  iconLeftColor={colors.textSecondary}
+                  showBottomBorder={index < documentInfoItems.filter(i => i.value).length - 1}
+                />
+              )
+            ))}
+          </Card>
 
-      <Button title="Back to Documents" onPress={() => navigation.goBack()} />
-    </StyledScrollView>
+          {/* View Original Document Card */}
+          {document.documentUri && (
+            <Card title="Original Document" tw="mb-6">
+              {document.documentType === 'pdf' && (
+                <>
+                  <ListItem 
+                    label={showPdfViewer ? 'Hide Document' : (document.originalFilename || 'View PDF')}
+                    iconLeft={showPdfViewer ? 'eye-off-outline' : 'eye-outline'}
+                    iconLeftColor={colors.accentPrimary}
+                    onPress={togglePdfViewer}
+                  />
+                  {showPdfViewer && (
+                    <StyledView className="mt-3 h-96 border border-borderSubtle rounded-md overflow-hidden">
+                      {isLoadingPdf && <ActivityIndicator size="large" color={colors.accentPrimary} style={{ position: 'absolute', top: '50%', left: '50%', transform: [{translateX: -15}, {translateY: -15}] }}/>}
+                      {pdfError && <StyledText color="accentDestructive" tw="p-4 text-center">Error loading PDF: {pdfError}</StyledText>}
+                      {!isLoadingPdf && !pdfError && document.documentUri && (
+                          <Pdf
+                              trustAllCerts={Platform.OS === 'ios'}
+                              source={{ uri: document.documentUri, cache: true }}
+                              onLoadProgress={(percent) => { if (!isLoadingPdf && percent > 0) setIsLoadingPdf(true); if (percent === 1) setIsLoadingPdf(false); }}
+                              onLoadComplete={(numberOfPages) => { setIsLoadingPdf(false); setPdfError(null); console.log(`Number of pages: ${numberOfPages}`); }}
+                              onError={(error: any) => { setIsLoadingPdf(false); setPdfError(String(error)); console.error("Error loading PDF:", error); }}
+                              style={{ flex: 1, width: '100%', height: '100%' }}
+                          />
+                      )}
+                    </StyledView>
+                  )}
+                </>
+              )}
+              {document.documentType === 'image' && (
+                <ListItem 
+                  label={document.originalFilename || 'View Image'}
+                  iconLeft="image-outline"
+                  iconLeftColor={colors.accentPrimary}
+                  onPress={() => document.documentUri && openImageViewer(document.documentUri)}
+                />
+                // Inline image preview - small thumbnail, could be shown by default
+                // <Image source={{ uri: document.documentUri }} className="w-full h-48 mt-2 rounded-md" resizeMode="contain" />
+              )}
+            </Card>
+          )}
+
+          <Card title="Extracted Data" tw="mb-6">
+            {/* Medications Section */}
+            {document.extractedContent?.medications && document.extractedContent.medications.length > 0 && (
+              <StyledView className="mb-3">
+                <StyledText variant="h4" tw="font-semibold mb-2 text-textPrimary">Medications</StyledText>
+                {document.extractedContent.medications.map((med, index) => (
+                  <ListItem
+                    key={index} // Use index or a generated med ID if available
+                    label={`${med.name.value}`}
+                    subtitle={`${med.dosage.value}${med.dosage.unit || ''} - ${med.frequency.value}`}
+                    iconLeft="medkit-outline" // Or a more specific pill icon if available
+                    iconLeftColor={colors.dataColor5} // Purple for medications
+                    showBottomBorder={index < document.extractedContent!.medications!.length - 1}
+                    // onPress={() => { /* Navigate to medication detail or edit? */ }}
+                  />
+                ))}
+              </StyledView>
+            )}
+
+            {/* Lab Results Section */}
+            {document.extractedContent?.lab_results && document.extractedContent.lab_results.length > 0 && (
+              <StyledView className="mb-3">
+                <StyledText variant="h4" tw="font-semibold mb-2 text-textPrimary">Lab Results</StyledText>
+                {document.extractedContent.lab_results.map((field, index) => (
+                  <ListItem
+                    key={field.label}
+                    label={field.label}
+                    value={`${field.value} ${field.unit || ''}`}
+                    showBottomBorder={index < document.extractedContent!.lab_results!.length - 1}
+                  />
+                ))}
+              </StyledView>
+            )}
+            
+            {/* Notes Section */}
+            {document.extractedContent?.notes && (
+              <StyledView className="mt-2">
+                <StyledText variant="h4" tw="font-semibold mb-1 text-textPrimary">Notes</StyledText>
+                <StyledText variant="body1" color="textSecondary">{document.extractedContent.notes}</StyledText>
+              </StyledView>
+            )}
+
+            {/* Fallback if no content sections rendered (e.g. completely empty extraction) */}
+            {!(document.extractedContent?.medications && document.extractedContent.medications.length > 0) &&
+             !(document.extractedContent?.lab_results && document.extractedContent.lab_results.length > 0) &&
+             !document.extractedContent?.notes && (
+                <StyledText color="textMuted" tw="py-3 text-center">No specific data extracted or pending extraction.</StyledText>
+            )}
+
+            <StyledButton 
+              variant="filledPrimary" 
+              tw="mt-4"
+              onPress={() => navigation.navigate('DataReview', { documentId })}
+              iconNameLeft="checkmark-circle-outline"
+            >
+              Review & Correct Data
+            </StyledButton>
+          </Card>
+
+        </StyledView>
+      </StyledScrollView>
+
+      {/* Image Viewer Modal */}
+      {document.documentType === 'image' && imageUriForModal && (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={showImageViewer}
+            onRequestClose={closeImageViewer}
+        >
+            <StyledView className="flex-1 justify-center items-center bg-black/80">
+                <StyledPressable className="absolute top-10 right-5 z-10 p-2" onPress={closeImageViewer}>
+                    <Ionicons name="close-circle-outline" size={32} color="white" />
+                </StyledPressable>
+                <Image 
+                    source={{ uri: imageUriForModal }}
+                    style={{ width: '90%', height: '80%'}}
+                    resizeMode="contain"
+                />
+            </StyledView>
+        </Modal>
+      )}
+    </ScreenContainer>
   );
 };
 

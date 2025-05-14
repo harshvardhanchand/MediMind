@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Appbar, Button, TextInput, Title, Paragraph, HelperText, Card, Divider, Switch, Text, RadioButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 
 type AddHealthReadingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddHealthReading'>;
 

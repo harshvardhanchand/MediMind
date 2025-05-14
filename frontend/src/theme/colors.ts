@@ -1,69 +1,104 @@
-// Modern medical app color palette inspired by professional healthcare applications
+// Apple Health Inspired Color Palette
+// References: iOS Human Interface Guidelines, common Health app visual language.
+
 export const colors = {
-  // Primary brand colors
-  primary: '#0EA5E9', // Vibrant medical blue (updated from iOS blue to a softer blue)
-  primaryDark: '#0284C7', // Darker shade for hover/press states
-  primaryLight: '#D3E4FD', // Light shade for backgrounds or highlights
+  // --- Core Palette (Apple Health Inspired) ---
+  // Backgrounds
+  backgroundPrimary: '#F9F9F9',    // Standard screen background (very light gray)
+  backgroundSecondary: '#FFFFFF',  // Card and primary content areas (pure white)
+  backgroundTertiary: '#EFEFF4',   // Grouped table view style backgrounds, subtle divisions
 
-  // Secondary colors
-  secondary: '#F1F0FB', // Light background for secondary elements
-  secondaryDark: '#E2E0F5', // Darker shade for hover/press states
-  secondaryLight: '#F8F7FE', // Lightest shade for subtle highlights
+  // Text
+  textPrimary: '#000000',          // Primary text (black for high contrast)
+  textSecondary: '#8A8A8E',        // Secondary text (iOS secondary label color)
+  textMuted: '#AEAEB2',            // Muted text for less emphasis, placeholders (iOS tertiary label color)
+  textOnPrimaryColor: '#FFFFFF',   // Text that appears on primary accent colored backgrounds
+  textOnDestructiveColor: '#FFFFFF',// Text that appears on destructive accent colored backgrounds
 
-  // Accent colors
-  accent: '#4ADE80', // Refreshing green for positive actions/success
-  accentDark: '#22C55E', // Darker shade for hover/press states
-  accentLight: '#F2FCE2', // Light shade for backgrounds
+  // Accents & Interactive Elements
+  accentPrimary: '#007AFF',        // Standard Apple blue for interactive elements
+  accentPrimaryPressed: '#0056B3', // Darker shade for pressed state of accentPrimary
+  accentDestructive: '#FF3B30',    // Standard Apple red for errors, destructive actions
+  accentDestructivePressed: '#D32F2F', // Darker shade for pressed state of accentDestructive
 
-  // Additional medical palette
-  medical: {
-    blue: '#0EA5E9', // Main medical blue
-    lightblue: '#D3E4FD', // Light blue background
-    green: '#4ADE80', // Healthy green
-    lightgreen: '#F2FCE2', // Light green background
-    purple: '#9b87f5', // Medical purple (for medication related elements)
-    lightpurple: '#E5DEFF', // Light purple background
-    red: '#ea384c', // Warning/alert red
-    lightred: '#FEE2E2', // Light red background
-    gray: '#403E43', // Medical dark gray
-    lightgray: '#F1F0FB', // Medical light gray background
+  // Borders & Dividers
+  borderSubtle: '#E5E5EA',        // Light gray for subtle borders, list separators (iOS separator color)
+  borderStrong: '#D1D1D6',          // More prominent borders if needed
+
+  // --- Categorical & Data Visualization Colors (Inspired by Apple Health graph colors) ---
+  // These can be expanded. Names are generic for flexibility.
+  dataColor1: '#5AC8FA', // Light Blue
+  dataColor2: '#34C759', // Green
+  dataColor3: '#FF9500', // Orange
+  dataColor4: '#FF2D55', // Pink
+  dataColor5: '#AF52DE', // Purple (similar to iOS purple)
+  dataColor6: '#FF6B2D', // A reddish-orange or coral
+  dataColor7: '#00C7BE', // Teal / Aqua
+  dataColor8: '#5856D6', // Indigo
+
+  // --- Semantic UI Colors (Derived from core palette for consistency) ---
+  success: '#34C759',             // Green (same as dataColor2 for consistency)
+  warning: '#FF9500',             // Orange (same as dataColor3)
+  error: '#FF3B30',               // Red (same as accentDestructive)
+  info: '#007AFF',                // Blue (same as accentPrimary)
+
+  // --- Component-Specific Overrides or Unique Colors (Legacy or Specific Needs) ---
+  // These are from your old palette. Review if they are still needed or can be mapped to the new system.
+  // If kept, consider renaming for clarity if their semantic meaning has changed.
+  legacyPrimary: '#0EA5E9',
+  legacyPrimaryDark: '#0284C7',
+  legacyPrimaryLight: '#D3E4FD',
+
+  legacySecondary: '#F1F0FB',
+  legacySecondaryDark: '#E2E0F5',
+  legacySecondaryLight: '#F8F7FE',
+
+  legacyAccent: '#4ADE80',
+  legacyAccentDark: '#22C55E',
+  legacyAccentLight: '#F2FCE2',
+
+  legacyMedical: {
+    blue: '#0EA5E9',
+    lightblue: '#D3E4FD',
+    green: '#4ADE80',
+    lightgreen: '#F2FCE2',
+    purple: '#9b87f5',
+    lightpurple: '#E5DEFF',
+    red: '#ea384c',
+    lightred: '#FEE2E2',
+    gray: '#403E43',
+    lightgray: '#F1F0FB',
   },
 
-  // Neutrals - a comprehensive set of grays
-  black: '#121212', // True black for high contrast text or elements
-  gray900: '#1F2937', // Very dark gray, near black
-  gray800: '#374151', // Dark gray
-  gray700: '#4B5563', // Medium-dark gray
-  gray600: '#6B7280', // Standard gray for secondary text
-  gray500: '#9CA3AF', // Medium gray for borders, icons
-  gray400: '#D1D5DB', // Light gray
-  gray300: '#E5E7EB', // Very light gray, for dividers
-  gray200: '#F3F4F6', // Background grays
-  gray100: '#F9FAFB', // Lightest gray, often for page backgrounds
-  gray50:  '#F9FAFB', // Almost white (updated to be closer to white for cleaner look)
-  white: '#FFFFFF', // True white
+  // Neutrals (mostly covered by new text/background/border definitions, review for redundancy)
+  // Some specific grays might still be useful if the semantic ones aren't enough.
+  legacyBlack: '#121212',
+  legacyGray900: '#1F2937', 
+  legacyGray800: '#374151',
+  legacyGray700: '#4B5563',
+  legacyGray600: '#6B7280',
+  legacyGray500: '#9CA3AF',
+  legacyGray400: '#D1D5DB',
+  legacyGray300: '#E5E7EB',
+  legacyGray200: '#F3F4F6',
 
-  // Semantic colors
-  success: '#4ADE80', // Green for success messages, confirmations
-  warning: '#F59E0B', // Orange for warnings, attention needed
-  error: '#ea384c', // Red for errors, critical alerts
-  info: '#3B82F6', // Blue for informational messages
+  // Old Semantic (mostly covered by new semantic colors using Apple accents)
+  legacySuccess: '#4ADE80',
+  legacyWarning: '#F59E0B',
+  legacyError: '#ea384c',
+  legacyInfo: '#3B82F6',
 
-  // Backgrounds
-  backgroundScreen: '#F9FAFB', // Default screen background (updated to lighter color)
-  backgroundCard: '#FFFFFF', // Default card/modal background (white)
-  backgroundInput: '#F9FAFB', // Input field background
-  backgroundSurface: '#FFFFFF', // Surface background
+  // Old Backgrounds (mostly covered by new backgroundPrimary/Secondary/Tertiary)
+  legacyBackgroundInput: '#F9FAFB',
 
-  // Text colors
-  textPrimary: '#1F2937', // For primary text, headings (updated to more modern gray)
-  textSecondary: '#6B7280', // For secondary text, descriptions
-  textDisabled: '#9CA3AF', // For disabled text
-  textPlaceholder: '#9CA3AF', // For input placeholders
+  // Old Text (mostly covered by new textPrimary/Secondary/Muted)
+  legacyTextPrimary: '#1F2937',
+  legacyTextSecondary: '#6B7280',
+  legacyTextDisabled: '#9CA3AF',
+  legacyTextPlaceholder: '#9CA3AF',
 
-  // Border colors
-  border: '#E5E7EB', // Default border color
-  borderFocus: '#0EA5E9', // Border color when element is focused
+  // Old Borders (mostly covered by new borderSubtle/Strong)
+  legacyBorderFocus: '#0EA5E9',
 };
 
 export type AppColors = typeof colors; 

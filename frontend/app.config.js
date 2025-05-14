@@ -17,7 +17,11 @@ export default {
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.medicaldatahub",
+      "infoPlist": {
+      "ITSAppUsesNonExemptEncryption": false
+    }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,11 +35,15 @@ export default {
     "plugins": [
       "expo-secure-store",
       "expo-document-picker",
-      "expo-file-system"
+      "expo-file-system",
+      "expo-build-properties"
     ],
     "extra": {
       "supabaseUrl": process.env.SUPABASE_URL,
-      "supabaseAnonKey": process.env.SUPABASE_ANON_KEY
+      "supabaseAnonKey": process.env.SUPABASE_ANON_KEY,
+      "eas": {
+        "projectId": "1d4df6d4-eb0c-41b2-b0df-5d68fbda7ba6"
+      }
     }
   }
 }

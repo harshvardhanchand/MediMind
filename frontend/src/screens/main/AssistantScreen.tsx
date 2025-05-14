@@ -1,19 +1,19 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, TextInput } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainAppStackParamList } from '../../navigation/types';
-import { Send, ArrowLeft, Bot } from 'lucide-react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledInput from '../../components/common/StyledInput';
+import StyledButton from '../../components/common/StyledButton';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledTextInputCustom = styled(TextInput);
 
 interface Message {
   id: string;
@@ -26,7 +26,7 @@ type AssistantScreenNavigationProp = NativeStackNavigationProp<MainAppStackParam
 
 const AssistantScreen = () => {
   const navigation = useNavigation<AssistantScreenNavigationProp>();
-  const theme = useTheme();
+  const { colors } = useTheme();
   const [messages, setMessages] = useState<Message[]>([
     { 
       id: '1', 
@@ -53,7 +53,6 @@ const AssistantScreen = () => {
     setInputText('');
     setIsTyping(true);
     
-    // Simulate assistant response
     setTimeout(() => {
       setIsTyping(false);
       const assistantResponse: Message = {
@@ -66,10 +65,8 @@ const AssistantScreen = () => {
     }, 1500);
   };
 
-  // Get a relevant response based on user's input
   const getAssistantResponse = (input: string) => {
     const lowercaseInput = input.toLowerCase();
-    
     if (lowercaseInput.includes('blood pressure') || lowercaseInput.includes('bp')) {
       return "Your most recent blood pressure reading was 120/80 mmHg, taken yesterday at 9:00 AM. This is within the normal range. Would you like to see your blood pressure trends over the past month?";
     } else if (lowercaseInput.includes('medication') || lowercaseInput.includes('medicine')) {
@@ -83,55 +80,49 @@ const AssistantScreen = () => {
     }
   };
 
-  // Scroll to end when messages change
-  React.useEffect(() => {
+  useEffect(() => {
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, [messages]);
 
-  // Render a chat bubble
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
     
+    // Base bubble style
+    let bubbleTw = 'my-1.5 mx-3 max-w-[80%] rounded-2xl p-3 shadow-sm'; // Added slightly more horizontal margin and subtle shadow
+    let specificCornerTw = '';
+
+    if (isUser) {
+      bubbleTw += ' bg-accentPrimary self-end';
+      specificCornerTw = 'rounded-br-lg'; // Sharper bottom-right corner for user
+    } else {
+      bubbleTw += ' bg-backgroundSecondary self-start'; // Changed assistant to white for better contrast, similar to iMessage
+      specificCornerTw = 'rounded-bl-lg'; // Sharper bottom-left corner for assistant
+    }
+
     return (
-      <StyledView 
-        // Dynamic styling for user vs. assistant messages
-        tw={`my-1.5 mx-2 max-w-[80%] rounded-2xl ${
-          isUser 
-            ? 'bg-primary self-end rounded-br-md'  // User: Primary color, right, specific corner rounded
-            : 'bg-gray-200 self-start rounded-bl-md' // Assistant: Gray, left, specific corner rounded
-        }`}
-        style={{
-          // Adding distinct border radius for a more modern bubble feel
-          borderTopLeftRadius: isUser ? 16 : 4,
-          borderTopRightRadius: isUser ? 4 : 16,
-          borderBottomLeftRadius: 16,
-          borderBottomRightRadius: 16,
-          paddingHorizontal: 14, // Increased padding
-          paddingVertical: 10,
-        }}
-      >
+      <StyledView tw={`${bubbleTw} ${specificCornerTw}`.trim()}>
         {!isUser && (
-          <StyledView tw="flex-row items-center mb-1.5">
-            <Bot size={16} color={isUser ? "#FFFFFF" : "#0EA5E9"} />
-            <StyledText variant="label" tw="ml-1.5 font-medium" color={isUser ? "white" : "primaryDark"}>
+          <StyledView tw="flex-row items-center mb-1">
+            <Ionicons name="sparkles-outline" size={16} color={colors.accentPrimary} />
+            <StyledText variant="label" tw="ml-1.5 font-semibold" color="accentPrimary">
               Health Assistant
             </StyledText>
           </StyledView>
         )}
-        
         <StyledText 
           variant="body1" 
-          style={{ lineHeight: 20 }} // Improved line height for readability
-          tw={isUser ? 'text-white' : 'text-gray-800'}
+          style={{ lineHeight: 21 }} // Slightly increased line height
+          color={isUser ? 'textOnPrimaryColor' : 'textPrimary'}
         >
           {item.text}
         </StyledText>
-        
         <StyledText 
           variant="caption" 
-          tw={`mt-1.5 text-xs ${isUser ? 'text-white/80 text-right' : 'text-gray-500 text-left'}`}
+          // For assistant, use textMuted. For user, slightly lighter than main bubble text.
+          style={{color: isUser ? colors.textOnPrimaryColor : colors.textMuted, opacity: isUser ? 0.75 : 1}}
+          tw={`mt-1.5 text-xs ${isUser ? 'text-right' : 'text-left'}`}
         >
           {formatTime(item.timestamp)}
         </StyledText>
@@ -139,75 +130,68 @@ const AssistantScreen = () => {
     );
   };
 
-  // Format timestamp to display only time (e.g., "2:30 PM")
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <ScreenContainer scrollable={false} withPadding={false} backgroundColor={theme.colors.backgroundScreen}>
+    <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundPrimary}>
       {/* Header */}
-      <StyledView tw="flex-row items-center px-4 py-3 border-b border-gray-200 bg-white">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} >
-          <ArrowLeft size={24} color="#6B7280" />
+      <StyledView className="flex-row items-center px-4 py-3 border-b border-borderSubtle bg-backgroundSecondary">
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1">
+          <Ionicons name="chevron-back-outline" size={28} color={colors.accentPrimary} />
         </StyledTouchableOpacity>
-        <StyledView tw="flex-1 items-center">
-          <StyledText variant="h3" color="primary">Health Assistant</StyledText>
+        <StyledView className="flex-1 items-center">
+          <StyledText variant="body1" tw="font-semibold" color="textPrimary">Health Assistant</StyledText>
         </StyledView>
-        <StyledView tw="w-6" /> {/* Space balancer for header */}
+        <StyledView className="w-8" />
       </StyledView>
 
-      {/* Chat Area */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1, backgroundColor: theme.colors.backgroundScreen }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
-        <StyledView tw="flex-1">
+        <StyledView className="flex-1">
           <FlatList
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={renderMessage}
-            contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 8 }} // Added horizontal padding
+            contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 10 }} // Adjusted horizontal padding
             showsVerticalScrollIndicator={false}
           />
-
-          {/* Typing indicator */}
           {isTyping && (
-            <StyledView tw="flex-row items-center px-4 py-3 mb-1 ml-2 self-start">
-              <StyledView tw="bg-gray-200 px-4 py-2.5 rounded-full flex-row items-center rounded-bl-md">
-                <Bot size={14} color="#0EA5E9" style={{marginRight: 6}}/>
-                <StyledText variant="body2" color="textSecondary">Assistant is typing...</StyledText>
+            <StyledView tw="self-start ml-3 mb-2">
+              <StyledView tw="bg-backgroundSecondary px-4 py-2.5 rounded-2xl rounded-bl-lg shadow-sm flex-row items-center">
+                <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+                {/* <StyledText variant="body2" color="textSecondary">Assistant is typing...</StyledText> */}
               </StyledView>
             </StyledView>
           )}
         </StyledView>
 
         {/* Message Input Area */}
-        <StyledView tw="px-3 py-2.5 border-t border-gray-200 bg-white">
-          <StyledView tw="flex-row items-center">
-            <StyledTextInputCustom
-              tw="flex-1 py-2.5 px-4 bg-gray-100 rounded-full mr-2 border border-gray-200"
-              placeholder="Ask MedInsight..."
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              style={{ maxHeight: 120, fontSize: 16, lineHeight: 20 }}
-              placeholderTextColor="#9CA3AF"
-              onSubmitEditing={handleSendMessage}
-              blurOnSubmit={Platform.OS === 'android'} // Keep true for Android, false for iOS to allow easy resend
-            />
-            <StyledTouchableOpacity 
-              tw={`p-2.5 rounded-full ${
-                inputText.trim() === '' ? 'bg-gray-300' : 'bg-primary'
-              }`}
-              onPress={handleSendMessage}
-              disabled={inputText.trim() === ''}
-            >
-              <Send size={22} color="#FFFFFF" />
-            </StyledTouchableOpacity>
-          </StyledView>
+        <StyledView className="flex-row items-center px-3 py-2.5 border-t border-borderSubtle bg-backgroundSecondary">
+          <StyledInput
+            placeholder="Ask anything..."
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            inputStyle={{ maxHeight: 100, paddingTop: Platform.OS === 'ios' ? 8 : 0, paddingBottom: Platform.OS === 'ios' ? 8 : 0 }}
+            tw="flex-1 mr-2"
+            onSubmitEditing={handleSendMessage}
+          />
+          <StyledButton
+            variant={inputText.trim() === '' ? 'filledSecondary' : 'filledPrimary'}
+            onPress={handleSendMessage}
+            disabled={inputText.trim() === '' && !isTyping}
+            tw="w-10 h-10 p-0 items-center justify-center rounded-full"
+            iconNameLeft={inputText.trim() === '' ? "mic-outline" : "arrow-up-outline"}
+            iconSize={22}
+          >
+            {null}
+          </StyledButton>
         </StyledView>
       </KeyboardAvoidingView>
     </ScreenContainer>

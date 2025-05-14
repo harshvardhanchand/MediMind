@@ -1,0 +1,106 @@
+import React, { ReactNode } from 'react';
+import { View, TouchableOpacity, StyleProp, ViewStyle, TextStyle } from 'react-native';
+import { styled } from 'nativewind';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import StyledText from './StyledText';
+import { useTheme } from '../../theme';
+
+const StyledView = styled(View);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+
+interface ListItemProps {
+  label: string;
+  labelStyle?: StyleProp<TextStyle>;
+  subtitle?: string;
+  subtitleStyle?: StyleProp<TextStyle>;
+  value?: string | ReactNode; // Can be simple text or a custom component
+  valueStyle?: StyleProp<TextStyle>;
+  onPress?: () => void;
+  iconLeft?: string; // Ionicon name
+  iconLeftColor?: string;
+  iconLeftSize?: number;
+  iconRight?: string; // Ionicon name for chevron or other indicators
+  iconRightColor?: string;
+  iconRightSize?: number;
+  tw?: string; // Tailwind classes for the main container
+  style?: StyleProp<ViewStyle>;
+  showBottomBorder?: boolean;
+  children?: ReactNode; // Alternative to `value` for more complex right-side content
+}
+
+const ListItem: React.FC<ListItemProps> = ({
+  label,
+  labelStyle,
+  subtitle,
+  subtitleStyle,
+  value,
+  valueStyle,
+  onPress,
+  iconLeft,
+  iconLeftColor,
+  iconLeftSize = 22,
+  iconRight = 'chevron-forward-outline', // Default to chevron if onPress is present
+  iconRightColor,
+  iconRightSize = 20,
+  tw = '',
+  style,
+  showBottomBorder = false,
+  children,
+}) => {
+  const { colors } = useTheme();
+
+  const ContainerComponent = onPress ? StyledTouchableOpacity : StyledView;
+
+  let containerBaseTw = 'flex-row items-center py-3.5'; // py-3.5 for ~14dp vertical padding
+  if (showBottomBorder) {
+    containerBaseTw += ' border-b border-borderSubtle';
+  }
+
+  const finalIconLeftColor = iconLeftColor || colors.textSecondary;
+  const finalIconRightColor = iconRightColor || colors.textMuted; // Chevron is usually muted
+
+  return (
+    <ContainerComponent
+      onPress={onPress}
+      className={`${containerBaseTw} ${tw}`.trim()}
+      style={style}
+      activeOpacity={onPress ? 0.6 : 1}
+    >
+      {iconLeft && (
+        <Ionicons 
+          name={iconLeft} 
+          size={iconLeftSize} 
+          color={finalIconLeftColor} 
+          className="mr-4" 
+        />
+      )}
+      <StyledView className="flex-1">
+        <StyledText variant="body1" color="textPrimary" style={labelStyle} tw="font-medium">
+          {label}
+        </StyledText>
+        {subtitle && (
+          <StyledText variant="caption" color="textSecondary" style={subtitleStyle} tw="mt-0.5">
+            {subtitle}
+          </StyledText>
+        )}
+      </StyledView>
+      {children ? (
+        children // Render custom children for the right side if provided
+      ) : value !== undefined ? (
+        <StyledText variant="body1" color="textSecondary" style={valueStyle} tw="ml-2">
+          {value}
+        </StyledText>
+      ) : null}
+      {onPress && iconRight && (
+        <Ionicons 
+          name={iconRight} 
+          size={iconRightSize} 
+          color={finalIconRightColor} 
+          className="ml-2" 
+        />
+      )}
+    </ContainerComponent>
+  );
+};
+
+export default ListItem; 

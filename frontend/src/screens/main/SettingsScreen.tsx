@@ -1,61 +1,128 @@
 import React from 'react';
-import { View, Text, Button, ScrollView } from 'react-native';
+import { ScrollView, Switch, View } from 'react-native'; // Added View for StyledView
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainAppStackParamList } from '../../navigation/types';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
+import ScreenContainer from '../../components/layout/ScreenContainer';
+import StyledText from '../../components/common/StyledText';
+import Card from '../../components/common/Card';
+import ListItem from '../../components/common/ListItem';
+import { useTheme } from '../../theme';
+
 const StyledScrollView = styled(ScrollView);
+const StyledView = styled(View);
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Settings'>;
 
+// Define a type for our settings items
+interface SettingItem {
+  id: string;
+  label: string;
+  iconName: string;
+  navigateTo?: keyof MainAppStackParamList | null; // Or a specific settings sub-screen type
+  action?: () => void;
+  isDestructive?: boolean;
+  isToggle?: boolean; // For future switch integration
+  value?: boolean;    // For future switch integration
+}
+
 const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
+  const { colors } = useTheme();
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true); // Example state for a toggle
 
   const handleLogout = () => {
-    // Perform actual logout logic here (e.g., clear token, reset Zustand store)
     console.log("Logging out...");
-    navigation.getParent()?.navigate('Auth' as never); // Navigate to Auth stack, assuming RootNavigator is parent
+    navigation.getParent()?.navigate('Auth' as never);
   };
 
   const handleExportData = () => {
     console.log("Initiating data export...");
-    // Implement data export functionality
     alert("Data Export Initiated! (Placeholder)");
   };
 
+  const accountSettings: SettingItem[] = [
+    { id: 'profile', label: 'Edit Profile', iconName: 'person-circle-outline', navigateTo: null /* TODO: Add ProfileEditScreen */, action: () => alert('Navigate to Edit Profile') },
+    { id: 'security', label: 'Security & Privacy', iconName: 'shield-checkmark-outline', navigateTo: null, action: () => alert('Navigate to Security') },
+    { id: 'notifications', label: 'Notifications', iconName: 'notifications-outline', isToggle: true, value: notificationsEnabled, action: () => setNotificationsEnabled(v => !v) },
+  ];
+
+  const dataSettings: SettingItem[] = [
+    { id: 'export', label: 'Export My Data', iconName: 'download-outline', action: handleExportData },
+    // { id: 'storage', label: 'Manage Storage', iconName: 'folder-open-outline', navigateTo: null, action: () => alert('Navigate to Storage Mgmt') },
+  ];
+  
+  const aboutSettings: SettingItem[] = [
+    { id: 'help', label: 'Help Center', iconName: 'help-circle-outline', action: () => alert('Navigate to Help Center') },
+    { id: 'contact', label: 'Contact Support', iconName: 'mail-outline', action: () => alert('Open email to support') },
+    { id: 'terms', label: 'Terms of Service', iconName: 'document-text-outline', action: () => alert('Navigate to Terms') },
+    { id: 'privacy', label: 'Privacy Policy', iconName: 'lock-closed-outline', action: () => alert('Navigate to Privacy Policy') },
+  ];
+
+  const renderSettingItem = (item: SettingItem, isLastInSection: boolean) => (
+    <ListItem
+      key={item.id}
+      label={item.label}
+      iconLeft={item.iconName}
+      iconLeftColor={item.isDestructive ? colors.accentDestructive : colors.textSecondary}
+      labelStyle={item.isDestructive ? { color: colors.accentDestructive } : {}}
+      onPress={item.navigateTo ? () => navigation.navigate(item.navigateTo as any) : item.action}
+      showBottomBorder={!isLastInSection}
+      // For toggles, we'd render a Switch component as children or in place of iconRight
+      iconRight={item.isToggle ? undefined : (item.navigateTo || item.action) ? 'chevron-forward-outline' : undefined}
+    >
+      {item.isToggle && (
+        <Switch 
+          value={item.value} 
+          onValueChange={item.action} 
+          trackColor={{ false: colors.borderSubtle, true: colors.accentPrimary }} // Changed legacyGray300 to borderSubtle
+          thumbColor={item.value ? colors.backgroundSecondary : colors.backgroundSecondary } // Ensure thumb is visible
+        />
+      )}
+    </ListItem>
+  );
+
   return (
-    <StyledScrollView className="flex-1 p-4 bg-gray-50">
-      <StyledText className="text-2xl font-bold mb-6">Settings</StyledText>
+    // Using backgroundTertiary for the main screen for an iOS settings feel
+    <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundTertiary}>
+      <StyledScrollView className="flex-1">
+        <StyledText variant="h1" tw="px-4 pt-6 pb-4 font-bold">Settings</StyledText>
 
-      <StyledView className="mb-6 p-4 bg-white rounded-lg shadow">
-        <StyledText className="text-lg font-semibold mb-2">Account</StyledText>
-        {/* <Button title="Edit Profile" onPress={() => {}} /> */} 
-        <Button title="Logout" onPress={handleLogout} color="red"/>
-      </StyledView>
+        <Card title="Account" tw="mx-4 mb-6" noPadding> {/* noPadding on Card, ListItem will handle internal padding/borders */}
+          {accountSettings.map((item, index) => renderSettingItem(item, index === accountSettings.length - 1))}
+        </Card>
 
-      <StyledView className="mb-6 p-4 bg-white rounded-lg shadow">
-        <StyledText className="text-lg font-semibold mb-2">Data Management</StyledText>
-        <Button title="Export My Data" onPress={handleExportData} />
-      </StyledView>
-      
-      <StyledView className="mb-6 p-4 bg-white rounded-lg shadow">
-        <StyledText className="text-lg font-semibold mb-2">Support</StyledText>
-        <Button title="Help Center" onPress={() => {alert('Navigate to Help Center')}} />
-        <Button title="Contact Support" onPress={() => {alert('Open email to support')}} />
-      </StyledView>
-      
-      <StyledView className="mb-6 p-4 bg-white rounded-lg shadow">
-        <StyledText className="text-lg font-semibold mb-2">About</StyledText>
-        <StyledText className="text-gray-600">App Version: 1.0.0</StyledText>
-        {/* <Button title="Terms of Service" onPress={() => {}} /> */} 
-        {/* <Button title="Privacy Policy" onPress={() => {}} /> */} 
-      </StyledView>
+        <Card title="Data Management" tw="mx-4 mb-6" noPadding>
+          {dataSettings.map((item, index) => renderSettingItem(item, index === dataSettings.length - 1))}
+        </Card>
 
-      <Button title="Back to Home" onPress={() => navigation.navigate('Home')} />
-    </StyledScrollView>
+        <Card title="About" tw="mx-4 mb-6" noPadding>
+          {aboutSettings.map((item, index) => renderSettingItem(item, index === aboutSettings.length - 1))}
+          <ListItem 
+            label={`App Version: 1.0.0`} 
+            iconLeft="information-circle-outline"
+            iconLeftColor={colors.textSecondary}
+            showBottomBorder={false} 
+          />
+        </Card>
+        
+        <StyledView tw="mx-4 mb-6">
+            <ListItem
+                label="Log Out"
+                iconLeft="log-out-outline"
+                iconLeftColor={colors.accentDestructive}
+                labelStyle={{ color: colors.accentDestructive }}
+                onPress={handleLogout}
+                showBottomBorder={false}
+                tw="bg-backgroundSecondary rounded-lg px-4" // Make it look like a card item
+             />
+        </StyledView>
+
+      </StyledScrollView>
+    </ScreenContainer>
   );
 };
 

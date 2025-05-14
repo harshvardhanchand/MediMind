@@ -1,140 +1,114 @@
-import React from 'react';
-import { Button as PaperButton, ButtonProps as PaperButtonProps } from 'react-native-paper';
+import React, { ReactNode } from 'react';
+import { TouchableOpacity, View, ViewStyle, TextStyle, ActivityIndicator, StyleProp } from 'react-native';
 import { styled } from 'nativewind';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import StyledText from './StyledText'; // Assuming StyledText is in the same directory
 import { useTheme } from '../../theme';
-import { TextStyle, ViewStyle } from 'react-native';
 
-// Styled PaperButton that can accept className for margin, etc.
-const NativeWindPaperButton = styled(PaperButton);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledView = styled(View); // For icon container
 
-interface StyledButtonProps extends Omit<PaperButtonProps, 'theme'> {
-  variant?: 'primary' | 'secondary' | 'accent' | 'error' | 'ghost' | 'outline' | 'link' | 'subtle';
-  tw?: string; // For additional Tailwind classes passed directly
-  // Explicitly allow the icon prop to accept a function that returns a React element
-  icon?: PaperButtonProps['icon'];
+interface StyledButtonProps {
+  children: ReactNode; // Button label
+  onPress?: () => void;
+  variant?: 'filledPrimary' | 'filledSecondary' | 'textPrimary' | 'textDestructive';
+  disabled?: boolean;
+  loading?: boolean;
+  tw?: string; // For additional Tailwind container classes
+  style?: StyleProp<ViewStyle>; // Custom container style override
+  textStyle?: StyleProp<TextStyle>; // Custom text style override
+  // New props for simple icon name handling
+  iconNameLeft?: string;
+  iconNameRight?: string;
+  iconSize?: number;
+  // Keep existing ReactNode icon props for full customization if needed, but prioritize iconName*
+  iconLeft?: ReactNode; 
+  iconRight?: ReactNode;
 }
 
 const StyledButton: React.FC<StyledButtonProps> = ({
-  variant = 'primary',
-  mode = 'contained', // Default Paper button mode
+  children,
+  onPress,
+  variant = 'filledPrimary',
+  disabled = false,
+  loading = false,
   tw = '',
   style,
-  labelStyle,
-  children,
-  icon,
-  ...props
+  textStyle,
+  iconNameLeft,
+  iconNameRight,
+  iconSize = 18, // Default icon size
+  iconLeft,      // Custom ReactNode icon
+  iconRight,     // Custom ReactNode icon
 }) => {
-  const theme = useTheme();
+  const { colors } = useTheme();
 
-  let buttonColor: string | undefined;
-  let textColor: string | undefined;
-  let finalMode = mode;
-  let additionalStyle: ViewStyle = {};
-  let additionalLabelStyle: TextStyle = {
-    fontWeight: '600', // Medium-bold font weight for all buttons
-    letterSpacing: 0.3, // Slight letter spacing for better readability
-  };
+  let containerBaseTw = 'flex-row items-center justify-center py-3 px-4 rounded-lg'; // Adjusted padding slightly
+  let textBaseTw = 'font-semibold text-base text-center';
+  let specificContainerTw = '';
+  let determinedIconColor = colors.textOnPrimaryColor; // Default for filledPrimary
+  let determinedTextColor = colors.textOnPrimaryColor;
+
+  if (disabled || loading) {
+    containerBaseTw += ' opacity-60'; // Slightly more opacity for disabled state
+  }
 
   switch (variant) {
-    case 'secondary':
-      buttonColor = theme.colors.secondary;
-      textColor = theme.colors.gray800;
-      if (mode === 'contained') finalMode = 'elevated';
-      additionalStyle = { 
-        borderRadius: 8,
-        elevation: 0,
-      };
+    case 'filledSecondary':
+      specificContainerTw = 'bg-backgroundTertiary';
+      determinedTextColor = colors.accentPrimary;
+      determinedIconColor = colors.accentPrimary;
       break;
-    case 'accent':
-      buttonColor = theme.colors.accent;
-      textColor = theme.colors.white;
-      additionalStyle = { 
-        borderRadius: 8,
-        elevation: 1,
-      };
+    case 'textPrimary':
+      containerBaseTw = 'py-2 px-3';
+      specificContainerTw = 'bg-transparent';
+      determinedTextColor = colors.accentPrimary;
+      determinedIconColor = colors.accentPrimary;
       break;
-    case 'error':
-      buttonColor = theme.colors.error;
-      textColor = theme.colors.white;
-      additionalStyle = { 
-        borderRadius: 8,
-        elevation: 1,
-      };
+    case 'textDestructive':
+      containerBaseTw = 'py-2 px-3';
+      specificContainerTw = 'bg-transparent';
+      determinedTextColor = colors.accentDestructive;
+      determinedIconColor = colors.accentDestructive;
       break;
-    case 'outline':
-      finalMode = 'outlined';
-      buttonColor = 'transparent';
-      textColor = theme.colors.primary;
-      additionalStyle = { 
-        borderRadius: 8,
-        borderColor: theme.colors.primary,
-        borderWidth: 1,
-      };
-      break;
-    case 'ghost':
-      finalMode = 'text';
-      textColor = theme.colors.primary;
-      additionalStyle = { 
-        borderRadius: 8,
-      };
-      break;
-    case 'subtle':
-      finalMode = 'text';
-      textColor = theme.colors.gray600;
-      additionalStyle = { 
-        borderRadius: 8,
-      };
-      break;
-    case 'link':
-      finalMode = 'text';
-      textColor = theme.colors.primary;
-      additionalLabelStyle = { 
-        ...additionalLabelStyle,
-        textDecorationLine: 'underline',
-      };
-      break;
-    case 'primary': // Default
+    case 'filledPrimary': // Default
     default:
-      buttonColor = theme.colors.primary;
-      textColor = theme.colors.white;
-      additionalStyle = { 
-        borderRadius: 8,
-        elevation: 1,
-      };
-      if (finalMode === 'text' || finalMode === 'outlined') {
-        textColor = theme.colors.primary;
-      }
+      specificContainerTw = `bg-accentPrimary`;
+      determinedTextColor = colors.textOnPrimaryColor;
+      determinedIconColor = colors.textOnPrimaryColor;
       break;
   }
 
+  const renderIcon = (name?: string, node?: ReactNode, side: 'left' | 'right' = 'left') => {
+    if (node) return node; // Prioritize custom ReactNode icon
+    if (!name) return null;
+    const marginClass = side === 'left' && children ? 'mr-2' : (side === 'right' && children ? 'ml-2' : '');
+    return <Ionicons name={name} size={iconSize} color={determinedIconColor} className={marginClass} />;
+  };
+
   return (
-    <NativeWindPaperButton
-      {...props}
-      mode={finalMode}
-      theme={theme}
-      textColor={textColor}
-      buttonColor={(finalMode === 'contained' || finalMode === 'elevated') ? buttonColor : undefined}
-      className={tw}
-      style={[
-        { 
-          borderRadius: 8,  // Consistent border radius for all buttons
-        }, 
-        additionalStyle, 
-        style
-      ]}
-      labelStyle={[
-        { 
-          fontSize: 15,  // Consistent font size
-          lineHeight: 20,  // Better vertical alignment
-        }, 
-        additionalLabelStyle, 
-        labelStyle
-      ]}
-      icon={icon}
-      uppercase={false} // Modern buttons typically don't use all uppercase
+    <StyledTouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      className={`${containerBaseTw} ${specificContainerTw} ${tw}`.trim()}
+      style={style}
+      activeOpacity={0.7}
     >
-      {children}
-    </NativeWindPaperButton>
+      {loading ? (
+        <ActivityIndicator color={determinedIconColor} size="small" />
+      ) : (
+        <>
+          {renderIcon(iconNameLeft, iconLeft, 'left')}
+          <StyledText 
+            tw={`${textBaseTw}`.trim()} 
+            style={[{ color: determinedTextColor }, textStyle]} // Apply color directly via style to ensure override
+          >
+            {children}
+          </StyledText>
+          {renderIcon(iconNameRight, iconRight, 'right')}
+        </>
+      )}
+    </StyledTouchableOpacity>
   );
 };
 
