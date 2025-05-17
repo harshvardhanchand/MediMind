@@ -63,5 +63,10 @@
   },
   "jest": {
     "preset": "jest-expo"
+  },
+  "overrides": {
+    "metro": "^0.82.3",
+    "metro-resolver": "^0.82.3",
+    "metro-config": "^0.82.3"
   }
 }
