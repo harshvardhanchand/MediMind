@@ -1,29 +1,33 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image, Alert, ScrollView } from 'react-native';
-import { Appbar, Button, Text, RadioButton, TextInput, Snackbar, ProgressBar, Title, Surface, Card } from 'react-native-paper';
+import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import {
+  Appbar, Button, Text, RadioButton, Snackbar, 
+  ProgressBar, Title, Card 
+} from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
-import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
-import { API_URL, MAX_FILE_SIZE, SUPPORTED_FILE_TYPES, DOCUMENT_TYPES } from '../config';
+import { MAX_FILE_SIZE, SUPPORTED_FILE_TYPES, DOCUMENT_TYPES } from '../config';
+import { documentServices } from '../api/services';
+import { DocumentType as DocumentTypeEnum } from '../types/api';
 
-type DocumentUploadNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DocumentUpload'>;
+type DocumentUploadNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Upload'>;
 
 const DocumentUploadScreen = () => {
   const navigation = useNavigation<DocumentUploadNavigationProp>();
   
-  const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
-  const [documentType, setDocumentType] = useState(DOCUMENT_TYPES.OTHER);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFileAsset, setSelectedFileAsset] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [documentType, setDocumentType] = useState<string>(DOCUMENT_TYPES.OTHER);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const pickDocument = async () => {
+    setError('');
+    setSuccessMessage('');
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: SUPPORTED_FILE_TYPES,
@@ -32,131 +36,77 @@ const DocumentUploadScreen = () => {
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const fileInfo = result.assets[0];
-        // Check file size
         if (fileInfo.size && fileInfo.size > MAX_FILE_SIZE) {
-          setError(`File is too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)} MB.`);
+          setError(`File is too large. Max size is ${MAX_FILE_SIZE / (1024 * 1024)} MB.`);
           setShowSnackbar(true);
+          setSelectedFileAsset(null);
           return;
         }
-        
-        setSelectedFile(result);
-        setError('');
+        setSelectedFileAsset(fileInfo);
+      } else {
+        setSelectedFileAsset(null);
       }
     } catch (err) {
       console.error('Error picking document:', err);
       setError('Failed to select document. Please try again.');
       setShowSnackbar(true);
+      setSelectedFileAsset(null);
     }
   };
 
   const uploadDocument = async () => {
-    if (!selectedFile || selectedFile.canceled || !selectedFile.assets || selectedFile.assets.length === 0) {
+    if (!selectedFileAsset) {
       setError('Please select a document first');
       setShowSnackbar(true);
       return;
     }
 
-    const fileInfo = selectedFile.assets[0];
-    
     setIsUploading(true);
     setUploadProgress(0);
+    setError('');
+    setSuccessMessage('');
     
+    const formData = new FormData();
+    formData.append('file', {
+      uri: selectedFileAsset.uri,
+      name: selectedFileAsset.name,
+      type: selectedFileAsset.mimeType,
+    } as any);
+    formData.append('document_type', documentType);
+
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const response = await documentServices.uploadDocument(formData);
       
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-      
-      // First, request a signed upload URL from the backend
-      const { data: urlData } = await axios.post(
-        `${API_URL}/api/v1/documents/upload_url`,
-        {
-          filename: fileInfo.name,
-          content_type: fileInfo.mimeType,
-          document_type: documentType,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      // Now upload the file directly to storage using the signed URL
-      const fileUri = fileInfo.uri;
-      const fileContent = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      
-      // Convert base64 to blob
-      const formData = new FormData();
-      formData.append('file', {
-        uri: fileUri,
-        name: fileInfo.name,
-        type: fileInfo.mimeType,
-      } as any);
-      
-      // Upload using the signed URL
-      await axios.put(urlData.upload_url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(progress / 100);
-          }
-        },
-      });
-      
-      // Notify backend that upload is complete
-      await axios.post(
-        `${API_URL}/api/v1/documents/${urlData.document_id}/notify_upload`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      setSuccessMessage('Document uploaded successfully! Processing will begin shortly.');
+      setSuccessMessage(`Document '${response.data.original_filename}' uploaded successfully! Processing...`);
       setShowSnackbar(true);
-      
-      // Reset form
-      setSelectedFile(null);
+      setSelectedFileAsset(null);
       setDocumentType(DOCUMENT_TYPES.OTHER);
       
-      // Navigate back to the home screen after a delay
       setTimeout(() => {
         navigation.goBack();
-      }, 2000);
+      }, 2500);
+
     } catch (err: any) {
       console.error('Error uploading document:', err);
-      setError(err.message || 'Failed to upload document. Please try again.');
+      let errorMessage = 'Failed to upload document. Please try again.';
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMessage = err.response.data.detail;
+        } else if (err.response.data.detail.message) {
+          errorMessage = `${err.response.data.detail.message}. Existing ID: ${err.response.data.detail.existing_document_id}`;
+        }
+      }
+      setError(errorMessage);
       setShowSnackbar(true);
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
   const handleCancel = () => {
     if (isUploading) {
-      Alert.alert(
-        'Cancel Upload',
-        'Are you sure you want to cancel the upload?',
-        [
-          { text: 'No', style: 'cancel' },
-          { 
-            text: 'Yes', 
-            onPress: () => {
-              setIsUploading(false);
-              setUploadProgress(0);
-            } 
-          }
-        ]
-      );
+        Alert.alert('Upload in Progress', 'Cannot cancel while upload is active with this method.');
     } else {
       navigation.goBack();
     }
@@ -184,22 +134,22 @@ const DocumentUploadScreen = () => {
               Select Document
             </Button>
             
-            {selectedFile && !selectedFile.canceled && selectedFile.assets && selectedFile.assets.length > 0 && (
-              <Surface style={styles.fileInfoContainer}>
+            {selectedFileAsset && (
+              <View style={styles.fileInfoContainer}>
                 <Text style={styles.fileName}>
-                  {selectedFile.assets[0].name}
+                  {selectedFileAsset.name}
                 </Text>
-                {selectedFile.assets[0].mimeType && (
+                {selectedFileAsset.mimeType && (
                   <Text style={styles.fileType}>
-                    Type: {selectedFile.assets[0].mimeType}
+                    Type: {selectedFileAsset.mimeType}
                   </Text>
                 )}
-                {selectedFile.assets[0].size && (
+                {selectedFileAsset.size && (
                   <Text style={styles.fileSize}>
-                    Size: {(selectedFile.assets[0].size / 1024).toFixed(1)} KB
+                    Size: {(selectedFileAsset.size / 1024).toFixed(1)} KB
                   </Text>
                 )}
-              </Surface>
+              </View>
             )}
           </Card.Content>
         </Card>
@@ -207,26 +157,13 @@ const DocumentUploadScreen = () => {
         <Card style={styles.optionsCard}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Document Type</Text>
-            
             <RadioButton.Group 
               onValueChange={value => setDocumentType(value)} 
               value={documentType}
             >
-              <RadioButton.Item 
-                label="Prescription" 
-                value={DOCUMENT_TYPES.PRESCRIPTION} 
-                disabled={isUploading}
-              />
-              <RadioButton.Item 
-                label="Lab Result" 
-                value={DOCUMENT_TYPES.LAB_RESULT} 
-                disabled={isUploading}
-              />
-              <RadioButton.Item 
-                label="Other Medical Document" 
-                value={DOCUMENT_TYPES.OTHER} 
-                disabled={isUploading}
-              />
+              <RadioButton.Item label="Prescription" value={DOCUMENT_TYPES.PRESCRIPTION} disabled={isUploading}/>
+              <RadioButton.Item label="Lab Result" value={DOCUMENT_TYPES.LAB_RESULT} disabled={isUploading}/>
+              <RadioButton.Item label="Other Medical Document" value={DOCUMENT_TYPES.OTHER} disabled={isUploading}/>
             </RadioButton.Group>
           </Card.Content>
         </Card>
@@ -235,9 +172,9 @@ const DocumentUploadScreen = () => {
           <Card style={styles.progressCard}>
             <Card.Content>
               <Text style={styles.progressText}>
-                Uploading... {Math.round(uploadProgress * 100)}%
+                Uploading document...
               </Text>
-              <ProgressBar progress={uploadProgress} color="#2A6BAC" style={styles.progressBar} />
+              <ProgressBar indeterminate={true} color="#2A6BAC" style={styles.progressBar} />
             </Card.Content>
           </Card>
         )}
@@ -247,15 +184,15 @@ const DocumentUploadScreen = () => {
             mode="outlined" 
             onPress={handleCancel} 
             style={styles.cancelButton}
-            disabled={isUploading}
+            disabled={isUploading && false}
           >
-            Cancel
+            Cancel / Back
           </Button>
           <Button 
             mode="contained" 
             onPress={uploadDocument}
             loading={isUploading}
-            disabled={isUploading || !selectedFile || selectedFile.canceled}
+            disabled={isUploading || !selectedFileAsset}
             style={styles.submitButton}
           >
             Upload Document
@@ -266,7 +203,7 @@ const DocumentUploadScreen = () => {
       <Snackbar
         visible={showSnackbar}
         onDismiss={() => setShowSnackbar(false)}
-        duration={3000}
+        duration={error ? 5000 : 3000}
         action={{
           label: 'Dismiss',
           onPress: () => setShowSnackbar(false),
@@ -305,7 +242,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     backgroundColor: '#E8F5E9',
-    marginBottom: 8,
+    marginTop: 8,
   },
   fileName: {
     fontWeight: 'bold',

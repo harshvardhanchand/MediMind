@@ -124,4 +124,10 @@ export const medicationServices = {
 export const queryServices = {
   askQuestion: (request: QueryRequest): Promise<AxiosResponse<QueryResponse>> => 
     apiClient.post('/api/query', request),
+};
+
+// User services
+export const userServices = {
+  getMe: (): Promise<AxiosResponse<UserResponse>> => 
+    apiClient.get('/api/users/me'),
 }; 

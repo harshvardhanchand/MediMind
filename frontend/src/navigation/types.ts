@@ -7,7 +7,7 @@ import {MedicationDetailData} from '../screens/main/MedicationDetailScreen';
 export type AuthStackParamList = {
   Login: undefined;
   SignUp: undefined;
-  Register: undefined;
+  // Register: undefined; // Removed as SignUpScreen is the primary
   // Add other auth screens here if needed
 };
 
@@ -32,14 +32,9 @@ export type MainAppStackParamList = {
   Vitals: undefined;
   SymptomTracker: undefined;
   AddSymptom: undefined;
-  DocumentUpload: undefined; // Is this different from 'Upload'?
   HealthReadings: undefined;
   Query: undefined;
   AddHealthReading: undefined;
-
-  // New Screens for Lab Results workflow
-  LabResultsList: undefined; 
-  LabResultDetail: { testTypeId: string; testTypeName: string };
 
   // Tab navigator screen names (usually not navigated to directly like this unless part of a stack)
   DashboardTab: undefined;
@@ -61,8 +56,9 @@ export type RootStackParamList = {
   AddMedication?: { medicationIdToEdit?: string; initialData?: MedicationDetailData; }; // Optional if modal/global
   DataReview?: { documentId: string }; // Optional if modal/global
   AddHealthReading?: undefined;
-  LabResultsList?: undefined;
-  LabResultDetail?: { testTypeId: string; testTypeName: string };
+  // Lab Results List and Detail removed for MVP
+  // LabResultsList?: undefined;
+  // LabResultDetail?: { testTypeId: string; testTypeName: string };
   
   // Other global screens like a standalone Upload if not part of a tab/stack
   Upload?: undefined; 

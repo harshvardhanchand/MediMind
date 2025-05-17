@@ -23,7 +23,6 @@ interface HealthCategory {
 
 const healthCategories: HealthCategory[] = [
   { id: 'meds', label: 'Medications', iconName: 'medkit-outline', navigateTo: 'MedicationsScreen', description: 'View prescribed and over-the-counter drugs' },
-  { id: 'labs', label: 'Lab Results', iconName: 'flask-outline', navigateTo: 'LabResultsList', description: 'Track and view your test outcomes' },
   { id: 'vitals', label: 'Vitals', iconName: 'pulse-outline', navigateTo: 'Vitals', description: 'Monitor blood pressure, heart rate, etc.' },
   { id: 'symptoms', label: 'Symptoms', iconName: 'thermometer-outline', navigateTo: 'SymptomTracker', description: 'Log and review your symptoms' },
 ];

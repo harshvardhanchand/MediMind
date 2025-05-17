@@ -28,6 +28,7 @@ export interface MedicationDetailData {
   startDate?: string; // From form, or extracted
   endDate?: string;   // From form, or extracted
   notes?: string;
+  reason?: string; // Added reason field
   // Add other fields like source_document_name, date_extracted etc. if available
 }
 

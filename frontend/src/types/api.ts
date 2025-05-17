@@ -1,4 +1,4 @@
-import { UUID } from 'crypto'; // Or use string if UUIDs are handled as strings
+// Or use string if UUIDs are handled as strings
 
 // --- Enums based on backend ---
 export enum DocumentType {
@@ -64,7 +64,7 @@ export enum HealthReadingType {
 
 // --- User ---
 export interface UserResponse {
-  user_id: UUID;
+  user_id: string;
   supabase_id?: string | null;
   email: string;
   created_at: string; // ISO DateTime string
@@ -96,8 +96,8 @@ export interface DocumentBase {
 export interface DocumentCreate extends DocumentBase {}
 
 export interface DocumentRead extends DocumentBase {
-  document_id: UUID;
-  user_id: UUID;
+  document_id: string;
+  user_id: string;
   storage_path: string;
   upload_timestamp: string; // ISO DateTime string
   processing_status: ProcessingStatus;
@@ -118,13 +118,13 @@ export interface DocumentMetadataUpdate {
 
 // --- ExtractedData ---
 export interface ExtractedDataResponse {
-  extracted_data_id: UUID;
-  document_id: UUID;
+  extracted_data_id: string;
+  document_id: string;
   content?: any | null; // This is JSONB, can be more specific if structure is known
   raw_text?: string | null;
   extraction_timestamp: string; // ISO DateTime string
   review_status: ReviewStatus;
-  reviewed_by_user_id?: UUID | null;
+  reviewed_by_user_id?: string | null;
   review_timestamp?: string | null; // ISO DateTime string
 }
 
@@ -139,14 +139,14 @@ export interface ExtractedDataStatusUpdate {
 // New interface for combined document and extracted data details
 export interface ExtractionDetailsResponse {
   document: {
-    document_id: UUID;
+    document_id: string;
     filename: string; // Corresponds to original_filename
     document_type: DocumentType;
     upload_date: string; // Corresponds to upload_timestamp
     processing_status: ProcessingStatus;
   };
   extracted_data: {
-    extracted_data_id: UUID;
+    extracted_data_id: string;
     raw_text?: string | null;
     content?: any | null;
     review_status: ReviewStatus;
@@ -170,7 +170,7 @@ export interface MedicationBase {
   prescribing_doctor?: string | null;
   pharmacy?: string | null;
   notes?: string | null;
-  related_document_id?: UUID | null;
+  related_document_id?: string | null;
   tags?: string[] | null;
 }
 
@@ -192,13 +192,13 @@ export interface MedicationUpdate {
   pharmacy?: string | null;
   notes?: string | null;
   status?: MedicationStatus | null;
-  related_document_id?: UUID | null;
+  related_document_id?: string | null;
   tags?: string[] | null;
 }
 
 export interface MedicationResponse extends MedicationBase {
-  medication_id: UUID;
-  user_id: UUID;
+  medication_id: string;
+  user_id: string;
   status: MedicationStatus;
   created_at: string; // ISO DateTime string
   updated_at: string; // ISO DateTime string
@@ -216,7 +216,7 @@ export interface HealthReadingBase {
   reading_date: string; // ISO DateTime string
   notes?: string | null;
   source?: string | null;           // Added
-  related_document_id?: UUID | null; // Added
+  related_document_id?: string | null; // Added
   // value: any; // Removed generic value field
 }
 
@@ -237,12 +237,12 @@ export interface HealthReadingUpdate extends Partial<Omit<HealthReadingBase, 're
   reading_date?: string | null;
   notes?: string | null;
   source?: string | null;
-  related_document_id?: UUID | null;
+  related_document_id?: string | null;
 }
 
 export interface HealthReadingResponse extends HealthReadingBase {
-  health_reading_id: UUID;
-  user_id: UUID;
+  health_reading_id: string;
+  user_id: string;
   created_at: string; // ISO DateTime string
   updated_at: string; // ISO DateTime string
 }
@@ -265,7 +265,7 @@ export interface QueryRequest {
 export interface QueryResponse {
   query_text: string;
   answer: string;
-  relevant_document_ids?: UUID[];
+  relevant_document_ids?: string[];
   // Add other fields as per actual backend response
 }
 

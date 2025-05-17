@@ -1,156 +1,235 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainAppStackParamList } from '../../navigation/types';
-import { Activity, Heart, Calendar, Footprints, Plus, LineChart } from 'lucide-react-native';
+import { Activity, Heart, Calendar, Footprints, Plus, LineChart, Droplets, ActivitySquare, Thermometer } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
+import { HealthReadingResponse, HealthReadingType } from '../../types/api';
+import { healthReadingsServices } from '../../api/services';
+import { ActivityIndicator as PaperActivityIndicator } from 'react-native-paper';
+import { useTheme } from '../../theme';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
-// Define vital type
-interface Vital {
-  id: string;
-  type: string;
-  value: string;
-  date: string;
-  iconBg: string;
-  iconColor: string;
-  icon: 'activity' | 'heart' | 'footprints';
-  trend?: 'up' | 'down' | 'stable';
-}
-
-// Dummy data with enhanced properties
-const dummyVitals: Vital[] = [
-  { 
-    id: '1', 
-    type: 'Blood Pressure', 
-    value: '120/80 mmHg', 
-    date: 'Today, 8:00 AM',
-    iconBg: 'bg-medical-lightblue',
-    iconColor: '#0EA5E9',
-    icon: 'activity',
-    trend: 'stable'
+const initialMockHealthReadings: HealthReadingResponse[] = [
+  {
+    health_reading_id: '1',
+    user_id: 'mock-user-1',
+    reading_type: HealthReadingType.BLOOD_PRESSURE,
+    systolic_value: 120,
+    diastolic_value: 80,
+    unit: 'mmHg',
+    reading_date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
-  { 
-    id: '2', 
-    type: 'Blood Sugar', 
-    value: '95 mg/dL', 
-    date: 'Today, 7:30 AM',
-    iconBg: 'bg-medical-lightgreen',
-    iconColor: '#4ADE80',
-    icon: 'activity',
-    trend: 'down'
+  {
+    health_reading_id: '2',
+    user_id: 'mock-user-1',
+    reading_type: HealthReadingType.GLUCOSE,
+    numeric_value: 95,
+    unit: 'mg/dL',
+    reading_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    notes: 'Fasting',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
-  { 
-    id: '3', 
-    type: 'Heart Rate', 
-    value: '72 bpm', 
-    date: 'Yesterday, 9:15 PM',
-    iconBg: 'bg-medical-lightred',
-    iconColor: '#ea384c',
-    icon: 'heart',
-    trend: 'up'
+  {
+    health_reading_id: '3',
+    user_id: 'mock-user-1',
+    reading_type: HealthReadingType.HEART_RATE,
+    numeric_value: 72,
+    unit: 'bpm',
+    reading_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
-  { 
-    id: '4', 
-    type: 'Steps', 
-    value: '3,450 steps', 
-    date: 'Yesterday',
-    iconBg: 'bg-medical-lightgray',
-    iconColor: '#6B7280',
-    icon: 'footprints',
-    trend: 'up'
-  }
+  {
+    health_reading_id: '4',
+    user_id: 'mock-user-1',
+    reading_type: HealthReadingType.STEPS,
+    numeric_value: 3450,
+    unit: 'steps',
+    reading_date: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
 ];
 
 type VitalsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Vitals'>;
 
 const VitalsScreen = () => {
   const navigation = useNavigation<VitalsScreenNavigationProp>();
+  const { colors } = useTheme();
 
-  const getVitalIcon = (icon: string, color: string) => {
-    switch (icon) {
-      case 'activity':
-        return <Activity size={20} color={color} />;
-      case 'heart':
-        return <Heart size={20} color={color} />;
-      case 'footprints':
-        return <Footprints size={20} color={color} />;
-      default:
-        return <Activity size={20} color={color} />;
+  const [displayedReadings, setDisplayedReadings] = useState<HealthReadingResponse[]>(initialMockHealthReadings);
+  const [apiReadings, setApiReadings] = useState<HealthReadingResponse[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(false);
+  const [errorApi, setErrorApi] = useState<string | null>(null);
+  const [useApiData, setUseApiData] = useState(false);
+
+  const loadHealthReadingsFromApi = async () => {
+    setIsLoadingApi(true);
+    setErrorApi(null);
+    try {
+      const response = await healthReadingsServices.getHealthReadings();
+      setApiReadings(response.data || []);
+      if (useApiData) {
+        setDisplayedReadings(response.data || []);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch health readings:", err);
+      setErrorApi(err.message || 'Failed to load health readings.');
+    } finally {
+      setIsLoadingApi(false);
     }
   };
 
-  const renderVitalItem: ListRenderItem<Vital> = ({ item }) => (
-    <StyledTouchableOpacity 
-      tw="p-3 mb-3 bg-white rounded-lg shadow-sm flex-row items-center"
-      onPress={() => {/* Navigate to detail or show chart */}}
-      style={{ borderRadius: 12 }}
-    >
-      <StyledView tw={`${item.iconBg} p-2 rounded-md mr-3`}>
-        {getVitalIcon(item.icon, item.iconColor)}
-      </StyledView>
-      <StyledView tw="flex-1">
-        <StyledView tw="flex-row justify-between items-center">
-          <StyledText variant="label" tw="font-semibold text-gray-800">{item.type}</StyledText>
-          <StyledView tw="flex-row items-center">
-            {item.trend === 'up' && <StyledView tw="w-0 h-0 border-l-4 border-r-4 border-b-8 border-l-transparent border-r-transparent border-b-green-500 mr-1" />}
-            {item.trend === 'down' && <StyledView tw="w-0 h-0 border-l-4 border-r-4 border-t-8 border-l-transparent border-r-transparent border-t-red-500 mr-1" />}
-            {item.trend === 'stable' && <StyledView tw="w-4 h-1 bg-gray-400 mr-1" />}
-            <LineChart size={16} color="#6B7280" />
+  useEffect(() => {
+    console.log('VitalsScreen mounted. API call can be triggered via a button/toggle for now.');
+  }, []);
+
+  const getVitalIcon = (type: HealthReadingType, color: string) => {
+    switch (type) {
+      case HealthReadingType.BLOOD_PRESSURE: return <ActivitySquare size={20} color={color} />;
+      case HealthReadingType.HEART_RATE: return <Heart size={20} color={color} />;
+      case HealthReadingType.GLUCOSE: return <Droplets size={20} color={color} />;
+      case HealthReadingType.STEPS: return <Footprints size={20} color={color} />;
+      case HealthReadingType.TEMPERATURE: return <Thermometer size={20} color={color} />;
+      default: return <Activity size={20} color={color} />;
+    }
+  };
+
+  const formatReadingValue = (reading: HealthReadingResponse): string => {
+    switch (reading.reading_type) {
+      case HealthReadingType.BLOOD_PRESSURE:
+        return `${reading.systolic_value || 'N/A'}/${reading.diastolic_value || 'N/A'} ${reading.unit || ''}`;
+      case HealthReadingType.GLUCOSE:
+      case HealthReadingType.HEART_RATE:
+      case HealthReadingType.STEPS:
+      case HealthReadingType.WEIGHT:
+      case HealthReadingType.HEIGHT:
+      case HealthReadingType.BMI:
+      case HealthReadingType.SPO2:
+      case HealthReadingType.TEMPERATURE:
+      case HealthReadingType.RESPIRATORY_RATE:
+      case HealthReadingType.PAIN_LEVEL:
+        return `${reading.numeric_value || 'N/A'} ${reading.unit || ''}`;
+      case HealthReadingType.SLEEP:
+        return reading.text_value || (reading.numeric_value ? `${reading.numeric_value} hours` : 'N/A');
+      case HealthReadingType.OTHER:
+        return reading.text_value || JSON.stringify(reading.json_value) || 'N/A';
+      default:
+        return 'N/A';
+    }
+  };
+
+  const renderVitalItem: ListRenderItem<HealthReadingResponse> = ({ item }) => {
+    const iconColor = colors.primary;
+    const iconBg = 'bg-primary/10';
+
+    return (
+      <StyledTouchableOpacity 
+        tw="p-3 mb-3 bg-white rounded-lg shadow-sm flex-row items-center"
+        style={{ borderRadius: 12 }}
+      >
+        <StyledView tw={`${iconBg} p-2 rounded-md mr-3`}>
+          {getVitalIcon(item.reading_type, iconColor)}
+        </StyledView>
+        <StyledView tw="flex-1">
+          <StyledView tw="flex-row justify-between items-center">
+            <StyledText variant="label" tw="font-semibold text-gray-800">{item.reading_type.replace('_', ' ').toUpperCase()}</StyledText>
           </StyledView>
+          <StyledText variant="h4" tw="text-gray-700">{formatReadingValue(item)}</StyledText>
+          <StyledView tw="flex-row items-center mt-1">
+            <Calendar size={12} color="#6B7280" />
+            <StyledText variant="caption" color="textSecondary" tw="ml-1">
+              {new Date(item.reading_date).toLocaleString()}
+            </StyledText>
+          </StyledView>
+          {item.notes && <StyledText variant="caption" color="textMuted" tw="mt-1">Notes: {item.notes}</StyledText>}
         </StyledView>
-        <StyledText variant="h4" tw="text-gray-700">{item.value}</StyledText>
-        <StyledView tw="flex-row items-center mt-1">
-          <Calendar size={12} color="#6B7280" />
-          <StyledText variant="caption" color="textSecondary" tw="ml-1">{item.date}</StyledText>
+      </StyledTouchableOpacity>
+    );
+  };
+
+  let mainContent;
+  if (isLoadingApi && useApiData) {
+    mainContent = (
+        <StyledView className="flex-1 items-center justify-center">
+            <PaperActivityIndicator animating={true} size="large" />
+            <StyledText variant="body1" color="textSecondary" tw="mt-2">Loading vitals...</StyledText>
         </StyledView>
-      </StyledView>
-    </StyledTouchableOpacity>
-  );
+    );
+  } else if (errorApi && useApiData) {
+    mainContent = (
+        <StyledView className="flex-1 items-center justify-center p-4">
+            <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
+            <StyledText variant="h4" color="error" tw="mt-4 mb-2 text-center">Error Loading Vitals</StyledText>
+            <StyledText color="textSecondary" tw="text-center mb-4">{errorApi}</StyledText>
+            <StyledButton variant="filledPrimary" onPress={loadHealthReadingsFromApi}>Retry</StyledButton>
+        </StyledView>
+    );
+  } else if (displayedReadings.length === 0) {
+    mainContent = (
+        <StyledView className="flex-1 items-center justify-center">
+            <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
+            <StyledText variant="h4" color="textMuted" tw="mt-4">No Vitals Recorded</StyledText>
+            <StyledText color="textMuted" tw="text-center mt-1 mx-8">
+                Tap 'Add New Vital Reading' to get started.
+            </StyledText>
+        </StyledView>
+    );
+  } else {
+    mainContent = (
+        <FlatList<HealthReadingResponse>
+            data={displayedReadings}
+            keyExtractor={(item) => item.health_reading_id}
+            renderItem={renderVitalItem}
+            showsVerticalScrollIndicator={false}
+        />
+    );
+  }
 
   return (
     <ScreenContainer scrollable={false} withPadding>
-      {/* Header */}
-      <StyledView tw="pt-2 pb-4">
-        <StyledText variant="h1" color="primary">Vitals</StyledText>
-        <StyledText variant="body2" color="textSecondary" tw="mt-1">
-          Track your health measurements and see trends
-        </StyledText>
+      <StyledView tw="pt-2 pb-4 flex-row justify-between items-center">
+        <View>
+          <StyledText variant="h1" color="primary">Vitals</StyledText>
+          <StyledText variant="body2" color="textSecondary" tw="mt-1">
+            Track your health measurements
+          </StyledText>
+        </View>
+        <StyledButton variant="textPrimary" onPress={() => setUseApiData(prev => !prev)} tw="px-2 py-1">
+            {useApiData ? "Show Mock" : "Show API"}
+        </StyledButton>
       </StyledView>
       
-      {/* Summary Section */}
-      <StyledView tw="mb-4 bg-medical-lightgray p-4 rounded-lg">
-        <StyledText variant="label" tw="font-semibold text-gray-700 mb-1">
-          Last 7 Days Summary
+      <StyledView tw="mb-4 bg-blue-50 p-4 rounded-lg">
+        <StyledText variant="label" tw="font-semibold text-blue-700 mb-1">
+          Vitals Overview
         </StyledText>
         <StyledText variant="body2" color="textSecondary">
-          Your blood pressure readings are improving. Keep monitoring your heart rate.
+          Keep track of your important health numbers here. Add new readings regularly.
         </StyledText>
       </StyledView>
       
-      {/* Vitals List */}
       <StyledView tw="flex-1">
-        <FlatList<Vital>
-          data={dummyVitals}
-          keyExtractor={(item) => item.id}
-          renderItem={renderVitalItem}
-          showsVerticalScrollIndicator={false}
-        />
+        {mainContent}
       </StyledView>
       
-      {/* Add Button */}
       <StyledView tw="pt-3">
         <StyledButton 
-          variant="primary"
-          icon={() => <Plus size={18} color="#FFFFFF" />}
-          onPress={() => {/* Navigate to add vital screen */}} 
+          variant="filledPrimary"
+          iconLeft={<Plus size={18} color={colors.onPrimary} />}
+          onPress={() => navigation.navigate('AddHealthReading')} 
           tw="w-full"
           style={{ borderRadius: 10 }}
         >

@@ -23,7 +23,7 @@ interface CardProps {
 }
 
 const Card: React.FC<CardProps> = ({
-  children,
+  children = null,
   title,
   tw = '',
   style,

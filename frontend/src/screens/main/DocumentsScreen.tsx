@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, FlatList, ListRenderItem, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
@@ -13,37 +13,20 @@ import StyledInput from '../../components/common/StyledInput';
 import ListItem from '../../components/common/ListItem';
 import Card from '../../components/common/Card';
 import { useTheme } from '../../theme';
+import { DocumentRead, DocumentType } from '../../types/api';
+import { documentServices } from '../../api/services';
+import { ActivityIndicator } from 'react-native-paper';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledPressable = styled(Pressable);
 
-// Define document type
-interface Document {
-  id: string;
-  name: string;
-  type: string;
-  date: string;
-}
-
-// Dummy data with more detailed properties
-const dummyDocuments: Document[] = [
-  { id: '1', name: 'Lab Results - Blood Test', type: 'lab_result', date: 'Oct 15, 2023' },
-  { id: '2', name: 'Prescription - Amoxicillin', type: 'prescription', date: 'Oct 12, 2023' },
-  { id: '3', name: 'X-Ray - Chest', type: 'imaging', date: 'Sep 20, 2023' },
-  { id: '4', name: 'Doctor Notes - Annual Checkup', type: 'notes', date: 'Sep 5, 2023' },
-  { id: '5', name: 'Vaccination Record - COVID-19', type: 'vaccination', date: 'Aug 10, 2023' },
-  { id: '6', name: 'MRI Scan - Brain', type: 'imaging', date: 'Jul 11, 2023' },
-  { id: '7', name: 'Allergy Test Results', type: 'lab_result', date: 'Jun 22, 2023' },
-  { id: '8', name: 'Prescription - Ibuprofen', type: 'prescription', date: 'May 30, 2023' },
-];
-
-// Re-use or import from HomeScreen if centralized
-const getDocIconName = (docType: string) => {
-  switch (docType) {
-    case 'lab_result': return 'flask-outline';
-    case 'prescription': return 'medkit-outline';
-    case 'imaging': return 'images-outline';
+const getDocIconName = (docType: string | DocumentType) => {
+  const typeString = docType.toString().toLowerCase();
+  switch (typeString) {
+    case DocumentType.LAB_RESULT.toLowerCase(): return 'flask-outline';
+    case DocumentType.PRESCRIPTION.toLowerCase(): return 'medkit-outline';
+    case DocumentType.IMAGING_REPORT.toLowerCase(): return 'images-outline';
     case 'notes': return 'document-text-outline';
     case 'vaccination': return 'shield-checkmark-outline';
     default: return 'document-outline';
@@ -52,57 +35,122 @@ const getDocIconName = (docType: string) => {
 
 type DocumentsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Documents'>;
 
-const DocumentTypes = ['All', 'Lab Result', 'Prescription', 'Imaging', 'Notes', 'Vaccination'];
+const documentFilterOptions = [
+  { label: 'All', value: 'All' as const },
+  { label: 'Lab Result', value: DocumentType.LAB_RESULT },
+  { label: 'Prescription', value: DocumentType.PRESCRIPTION },
+  { label: 'Imaging Report', value: DocumentType.IMAGING_REPORT },
+  { label: 'Other', value: DocumentType.OTHER },
+];
 
 const DocumentsScreen = () => {
   const navigation = useNavigation<DocumentsScreenNavigationProp>();
   const { colors } = useTheme();
+  
+  const [apiDocuments, setApiDocuments] = useState<DocumentRead[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(false);
+  const [errorApi, setErrorApi] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [selectedDocType, setSelectedDocType] = useState('All');
+  const [selectedDocType, setSelectedDocType] = useState<DocumentType | 'All'>('All');
+
+  const loadDocumentsFromApi = async () => {
+    setIsLoadingApi(true);
+    setErrorApi(null);
+    try {
+      const response = await documentServices.getDocuments(); 
+      setApiDocuments(response.data || []);
+    } catch (err: any) {
+      console.error("Failed to fetch documents:", err);
+      setErrorApi(err.message || 'Failed to load documents.');
+    } finally {
+      setIsLoadingApi(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocumentsFromApi();
+  }, []);
 
   const filteredDocuments = useMemo(() => {
-    let docs = dummyDocuments;
+    let docsToFilter = [...apiDocuments];
 
-    // Apply document type filter first
     if (selectedDocType !== 'All') {
-      docs = docs.filter(doc => doc.type === selectedDocType);
+      docsToFilter = docsToFilter.filter(doc => doc.document_type === selectedDocType);
     }
 
-    // Then apply search query on the already type-filtered list (or all if type is 'All')
     if (searchQuery.trim() !== '') {
       const lowercasedQuery = searchQuery.toLowerCase();
-      docs = docs.filter(doc => 
-        doc.name.toLowerCase().includes(lowercasedQuery) ||
-        doc.type.toLowerCase().includes(lowercasedQuery) || // Searching type again might be redundant if already filtered by type
-        doc.date.toLowerCase().includes(lowercasedQuery) // Example: search by date string
+      docsToFilter = docsToFilter.filter(doc => 
+        doc.original_filename?.toLowerCase().includes(lowercasedQuery) ||
+        doc.document_type?.toString().toLowerCase().includes(lowercasedQuery) ||
+        (doc.document_date && new Date(doc.document_date).toLocaleDateString().toLowerCase().includes(lowercasedQuery)) ||
+        doc.source_name?.toLowerCase().includes(lowercasedQuery)
       );
     }
-    
-    // TODO: Apply date range and sorting filters here if added later
-    return docs;
-  }, [searchQuery, selectedDocType, dummyDocuments]); // dummyDocuments in deps if it can change
+    return docsToFilter;
+  }, [searchQuery, selectedDocType, apiDocuments]);
 
-  const renderDocumentItem: ListRenderItem<Document> = ({ item, index }) => (
+  const renderDocumentItem: ListRenderItem<DocumentRead> = ({ item }) => (
     <ListItem
-      key={item.id}
-      label={item.name}
-      subtitle={`${item.type.replace('_', ' ').toUpperCase()} - ${item.date}`}
-      iconLeft={getDocIconName(item.type)}
+      key={item.document_id}
+      label={item.original_filename || 'Untitled Document'}
+      subtitle={`${item.document_type ? item.document_type.replace('_', ' ').toUpperCase() : 'N/A'} - ${item.document_date ? new Date(item.document_date).toLocaleDateString() : 'No Date'}`}
+      iconLeft={getDocIconName(item.document_type || 'other')}
       iconLeftColor={colors.accentPrimary}
-      onPress={() => navigation.navigate('DocumentDetail', { documentId: item.id })}
+      onPress={() => navigation.navigate('DocumentDetail', { documentId: item.document_id })}
     />
   );
 
-  const applyDocTypeFilter = (type: string) => {
+  const applyDocTypeFilter = (type: DocumentType | 'All') => {
     setSelectedDocType(type);
     setFilterModalVisible(false);
   };
 
+  let mainContent;
+  if (isLoadingApi) {
+    mainContent = (
+      <StyledView className="flex-1 items-center justify-center">
+        <ActivityIndicator animating={true} size="large" />
+        <StyledText variant="body1" color="textSecondary" tw="mt-2">Loading documents...</StyledText>
+      </StyledView>
+    );
+  } else if (errorApi) {
+    mainContent = (
+      <StyledView className="flex-1 items-center justify-center p-4">
+        <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
+        <StyledText variant="h4" color="error" tw="mt-4 mb-2 text-center">Error Loading Documents</StyledText>
+        <StyledText color="textSecondary" tw="text-center mb-4">{errorApi}</StyledText>
+        <StyledButton variant="filledPrimary" onPress={loadDocumentsFromApi}>Retry</StyledButton>
+      </StyledView>
+    );
+  } else if (filteredDocuments.length === 0) {
+    mainContent = (
+        <StyledView className="flex-1 items-center justify-center">
+            <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
+            <StyledText variant="h4" color="textMuted" tw="mt-4">No Documents Found</StyledText>
+            <StyledText color="textMuted" tw="text-center mt-1 mx-8">
+                Try adjusting your search or filter criteria, or upload a new document.
+            </StyledText>
+        </StyledView>
+    );
+  } else {
+    mainContent = (
+        <FlatList<DocumentRead>
+            data={filteredDocuments}
+            keyExtractor={(item) => item.document_id}
+            renderItem={renderDocumentItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+            ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-14" />}
+        />
+    );
+  }
+
   return (
     <ScreenContainer scrollable={false} withPadding={false}>
       <StyledView className="flex-1 pt-6">
-        {/* Header */}
         <StyledView className="px-4 pb-4">
           <StyledText variant="h1" tw="font-bold text-3xl">Documents</StyledText>
           <StyledText variant="body1" color="textSecondary" tw="mt-1">
@@ -110,11 +158,10 @@ const DocumentsScreen = () => {
           </StyledText>
         </StyledView>
         
-        {/* Search & Filter */}
         <StyledView className="px-4 mb-4 flex-row items-center">
           <StyledView className="flex-1 mr-3">
             <StyledInput
-              placeholder="Search by name, type, or date..."
+              placeholder="Search documents..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               leftIconName="search-outline"
@@ -129,27 +176,9 @@ const DocumentsScreen = () => {
           </StyledButton>
         </StyledView>
         
-        {filteredDocuments.length === 0 ? (
-            <StyledView className="flex-1 items-center justify-center">
-                <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
-                <StyledText variant="h4" color="textMuted" tw="mt-4">No Documents Found</StyledText>
-                <StyledText color="textMuted" tw="text-center mt-1 mx-8">
-                    Try adjusting your search or filter criteria, or upload a new document.
-                </StyledText>
-            </StyledView>
-        ) : (
-            <FlatList<Document>
-                data={filteredDocuments}
-                keyExtractor={(item) => item.id}
-                renderItem={renderDocumentItem}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
-                ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-14" />}
-            />
-        )}
+        {mainContent}
       </StyledView>
       
-      {/* FAB for Upload New Document */}
       <StyledTouchableOpacity
         className="absolute bottom-6 right-6 bg-accentPrimary rounded-full p-4 shadow-lg"
         onPress={() => navigation.navigate('Upload' as any)}
@@ -158,7 +187,6 @@ const DocumentsScreen = () => {
         <Ionicons name="add-outline" size={28} color={colors.textOnPrimaryColor} />
       </StyledTouchableOpacity>
 
-      {/* Filter Modal */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -172,15 +200,15 @@ const DocumentsScreen = () => {
             <Card tw="w-4/5 max-w-sm bg-backgroundSecondary rounded-xl p-0">
                 <StyledText variant="h3" tw="p-4 font-semibold border-b border-borderSubtle">Filter by Type</StyledText>
                 <FlatList 
-                    data={DocumentTypes}
-                    keyExtractor={(item) => item}
+                    data={documentFilterOptions}
+                    keyExtractor={(item) => item.label}
                     renderItem={({item}) => (
                         <ListItem
-                            label={item}
-                            onPress={() => applyDocTypeFilter(item)}
-                            tw={`px-4 ${selectedDocType === item ? 'bg-accentPrimary/10' : ''}`}
-                            labelStyle={selectedDocType === item ? {color: colors.accentPrimary, fontWeight: '600'} : {}}
-                            iconRight={selectedDocType === item ? 'checkmark-circle-outline' : undefined}
+                            label={item.label}
+                            onPress={() => applyDocTypeFilter(item.value)}
+                            tw={`px-4 ${selectedDocType === item.value ? 'bg-accentPrimary/10' : ''}`}
+                            labelStyle={selectedDocType === item.value ? {color: colors.accentPrimary, fontWeight: '600'} : {}}
+                            iconRight={selectedDocType === item.value ? 'checkmark-circle-outline' : undefined}
                             iconRightColor={colors.accentPrimary}
                             showBottomBorder
                         />

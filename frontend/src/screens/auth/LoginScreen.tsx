@@ -4,6 +4,10 @@ import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types'; // Corrected path
+import { supabaseClient } from '../../services/supabase'; // Import Supabase client
+import { ActivityIndicator, View } from 'react-native'; // Added View for centering ActivityIndicator if needed
+import { useTheme } from '../../theme'; // Import useTheme
+// import { theme } from '../../theme'; // Assuming theme exports colors - Color will be hardcoded for now
 
 import ScreenContainer from '../../components/layout/ScreenContainer'; // Corrected path
 import StyledText from '../../components/common/StyledText'; // Corrected path
@@ -17,14 +21,64 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const theme = useTheme(); // Get theme object
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loadingLogin, setLoadingLogin] = useState(false);
+  const [loadingDevLogin, setLoadingDevLogin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = () => {
-    // TODO: Implement actual login logic
-    console.log('Login attempt with:', email, password);
-    navigation.navigate('Main' as never); // Navigate to Main app stack post-login
+  const handleLogin = async () => {
+    setLoadingLogin(true);
+    setError(null);
+    try {
+      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (authError) {
+        setError(authError.message);
+      } else if (data.session) {
+        navigation.reset({ index: 0, routes: [{ name: 'Main' as never }] });
+      } else {
+        setError("An unexpected error occurred during login.");
+      }
+    } catch (catchError: any) {
+      setError(catchError.message || "An unexpected error occurred.");
+    } finally {
+      setLoadingLogin(false);
+    }
   };
+
+  const DEV_EMAIL = 'test@example.com'; // Replace with your test user
+  const DEV_PASSWORD = 'password123'; // Replace with your test user's password
+
+  const handleDevLogin = async () => {
+    console.warn(`Attempting DEV login with ${DEV_EMAIL}. Ensure this user exists in your Supabase auth table.`);
+    setLoadingDevLogin(true);
+    setError(null);
+    try {
+      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
+        email: DEV_EMAIL,
+        password: DEV_PASSWORD,
+      });
+
+      if (authError) {
+        setError(authError.message);
+      } else if (data.session) {
+        navigation.reset({ index: 0, routes: [{ name: 'Main' as never }] });
+      } else {
+        setError("An unexpected error occurred during dev login.");
+      }
+    } catch (catchError: any) {
+      setError(catchError.message || "An unexpected error occurred.");
+    } finally {
+      setLoadingDevLogin(false);
+    }
+  };
+
+  const isLoading = loadingLogin || loadingDevLogin;
 
   return (
     <ScreenContainer withPadding>
@@ -40,6 +94,7 @@ const LoginScreen = () => {
         keyboardType="email-address"
         autoCapitalize="none"
         tw="mb-4"
+        editable={!isLoading}
       />
       <StyledInput
         label="Password"
@@ -47,22 +102,44 @@ const LoginScreen = () => {
         onChangeText={setPassword}
         secureTextEntry
         tw="mb-6"
+        editable={!isLoading}
       />
+
+      {error && (
+        <StyledText variant="caption" color="error" tw="text-center mb-4">
+          {error}
+        </StyledText>
+      )}
+
       <StyledButton 
-        variant="primary" 
+        variant="filledPrimary"
         onPress={handleLogin} 
         tw="w-full mb-4"
-        labelStyle={{fontSize: 16}}
+        disabled={isLoading}
+        loading={loadingLogin}
       >
         Log In
       </StyledButton>
       <StyledButton 
-        variant="ghost" 
+        variant="textPrimary"
         onPress={() => navigation.navigate('SignUp')} 
-        tw="w-full"
+        tw="w-full mb-4"
+        disabled={isLoading}
       >
         Don't have an account? Sign Up
       </StyledButton>
+
+      {__DEV__ && (
+        <StyledButton 
+          variant="filledSecondary"
+          onPress={handleDevLogin} 
+          tw="w-full mt-4"
+          disabled={isLoading}
+          loading={loadingDevLogin}
+        >
+          Dev: Quick Login (User: {DEV_EMAIL})
+        </StyledButton>
+      )}
     </ScreenContainer>
   );
 };

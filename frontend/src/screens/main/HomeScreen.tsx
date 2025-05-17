@@ -10,6 +10,8 @@ import Card from '../../components/common/Card';
 import { styled } from 'nativewind';
 import { useTheme } from '../../theme';
 import ListItem from '../../components/common/ListItem';
+import { useAuth } from '../../context/AuthContext';
+import { ActivityIndicator } from 'react-native';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
@@ -17,6 +19,8 @@ const StyledScrollView = styled(ScrollView);
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
+  const { signOut, isLoading: authLoading } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   const keyMetrics = [
     {
@@ -133,6 +137,19 @@ const HomeScreen = () => {
     },
     // Add more insights as needed
   ];
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+      // Navigation to Auth/Onboarding will be handled by AppNavigator due to auth state change
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      // Optionally, show an alert to the user
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <ScreenContainer scrollable={false} withPadding={false}>
@@ -269,10 +286,11 @@ const HomeScreen = () => {
 
         <StyledButton 
           variant="textDestructive" 
-          onPress={() => navigation.navigate('Onboarding' as never)} 
+          onPress={handleLogout}
           tw="mt-4 mb-6 self-center"
+          disabled={isLoggingOut || authLoading}
         >
-          Log Out (Dev)
+          {isLoggingOut ? <ActivityIndicator size="small" color={colors.error} /> : 'Log Out'}
         </StyledButton>
 
       </StyledScrollView>

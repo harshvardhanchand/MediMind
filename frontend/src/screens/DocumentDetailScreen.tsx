@@ -2,43 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import { Appbar, Card, Title, Paragraph, Divider, Chip, Button, ActivityIndicator, Text, List } from 'react-native-paper';
-import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
-import { API_URL } from '../config';
+import { documentServices, extractedDataServices } from '../api/services';
+import { DocumentRead, ExtractedDataResponse, ExtractionDetailsResponse, ProcessingStatus, ReviewStatus, DocumentType } from '../types/api';
 
 type DocumentDetailRouteProp = RouteProp<RootStackParamList, 'DocumentDetail'>;
 type DocumentDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DocumentDetail'>;
 
-interface Document {
-  document_id: string;
-  original_filename: string;
-  document_type: string;
-  upload_timestamp: string;
-  processing_status: string;
-  document_date?: string;
-  source_name?: string;
-  source_location_city?: string;
-  tags?: string[];
-  file_metadata?: {
-    content_type: string;
-    size: number;
-  };
-}
-
-interface ExtractedData {
-  extracted_data_id: string;
-  document_id: string;
-  content: any; // JSON content
-  raw_text?: string;
-  extraction_timestamp: string;
-  review_status: string;
-}
-
-interface DocumentWithExtractedData {
-  document: Document;
-  extracted_data?: ExtractedData;
+interface MedicalEvent {
+  event_type?: string;
+  description?: string;
+  [key: string]: any;
 }
 
 const DocumentDetailScreen = () => {
@@ -46,31 +21,20 @@ const DocumentDetailScreen = () => {
   const navigation = useNavigation<DocumentDetailNavigationProp>();
   const { documentId } = route.params;
   
-  const [data, setData] = useState<DocumentWithExtractedData | null>(null);
+  const [details, setDetails] = useState<ExtractionDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>('');
   const [expandedMedicalEvents, setExpandedMedicalEvents] = useState<string[]>([]);
 
   const fetchDocumentDetails = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-      
-      // Fetch combined document and extracted data
-      const response = await axios.get(`${API_URL}/api/v1/extracted_data/all/${documentId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      setData(response.data);
-      setError('');
+      const response = await extractedDataServices.getAllExtractedData(documentId);
+      setDetails(response.data);
     } catch (err: any) {
       console.error('Error fetching document details:', err);
-      setError('Failed to load document details. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Failed to load document details.');
     } finally {
       setLoading(false);
     }
@@ -83,27 +47,19 @@ const DocumentDetailScreen = () => {
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Delete', 
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            setLoading(true);
             try {
-              const token = await SecureStore.getItemAsync('authToken');
-              
-              if (!token) {
-                throw new Error('Not authenticated');
-              }
-              
-              await axios.delete(`${API_URL}/api/v1/documents/${documentId}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
-              
-              // Go back to the home screen
+              await documentServices.deleteDocument(documentId);
+              Alert.alert('Success', 'Document deleted successfully.');
               navigation.goBack();
             } catch (err: any) {
               console.error('Error deleting document:', err);
-              Alert.alert('Error', 'Failed to delete document. Please try again.');
+              Alert.alert('Error', err.response?.data?.detail || err.message || 'Failed to delete document.');
+            } finally {
+              setLoading(false);
             }
           }
         },
@@ -127,18 +83,25 @@ const DocumentDetailScreen = () => {
     else return (bytes / 1048576).toFixed(1) + ' MB';
   };
 
-  const getFormattedDate = (dateString?: string) => {
+  const getFormattedDate = (dateString?: string | null) => {
     if (!dateString) return 'Unknown date';
-    return new Date(dateString).toLocaleDateString();
+    try {
+        return new Date(dateString).toLocaleDateString();
+    } catch (e) {
+        return dateString;
+    }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (statusValue?: string | ProcessingStatus) => {
+    const status = statusValue?.toString().toLowerCase();
     switch (status) {
-      case 'completed': return '#4CAF50';
-      case 'review_required': return '#FFC107';
-      case 'processing': return '#2196F3';
-      case 'pending': return '#9E9E9E';
-      case 'failed': return '#F44336';
+      case ProcessingStatus.COMPLETED.toLowerCase(): return '#4CAF50';
+      case ProcessingStatus.REVIEW_REQUIRED.toLowerCase(): return '#FFC107';
+      case ProcessingStatus.OCR_COMPLETED?.toLowerCase():
+      case ProcessingStatus.EXTRACTION_COMPLETED?.toLowerCase(): 
+        return '#2196F3';
+      case ProcessingStatus.PENDING.toLowerCase(): return '#9E9E9E';
+      case ProcessingStatus.FAILED.toLowerCase(): return '#F44336';
       default: return '#9E9E9E';
     }
   };
@@ -148,11 +111,12 @@ const DocumentDetailScreen = () => {
   }, [documentId]);
 
   const renderMedicalEvents = () => {
-    if (!data?.extracted_data?.content?.medical_events) {
+    const medicalEvents = details?.extracted_data?.content?.medical_events as MedicalEvent[] | undefined;
+    if (!medicalEvents || medicalEvents.length === 0) {
       return (
         <Card style={styles.card}>
           <Card.Content>
-            <Paragraph>No medical data has been extracted from this document yet.</Paragraph>
+            <Paragraph>No structured medical data extracted or available for review.</Paragraph>
           </Card.Content>
         </Card>
       );
@@ -161,7 +125,14 @@ const DocumentDetailScreen = () => {
     return (
       <View style={styles.eventsContainer}>
         <Title style={styles.sectionTitle}>Extracted Medical Data</Title>
-        {data.extracted_data.content.medical_events.map((event: any, index: number) => {
+        {details?.extracted_data?.review_status && (
+            <Chip 
+                icon="information-outline" 
+                style={{alignSelf: 'flex-start', marginBottom: 10, backgroundColor: '#E0E0E0'}} >
+                Review Status: {details.extracted_data.review_status.replace('_',' ').toUpperCase()}
+            </Chip>
+        )}
+        {medicalEvents.map((event, index) => {
           const eventId = `event-${index}`;
           const isExpanded = expandedMedicalEvents.includes(eventId);
           
@@ -173,16 +144,18 @@ const DocumentDetailScreen = () => {
               expanded={isExpanded}
               onPress={() => toggleMedicalEvent(eventId)}
               style={styles.accordionItem}
+              left={props => <List.Icon {...props} icon={isExpanded ? "chevron-up" : "chevron-down"} />}
             >
               {Object.entries(event).map(([key, value]) => {
-                if (key === 'event_type' || key === 'description' || !value) return null;
+                if (key === 'event_type' || key === 'description' || value === null || value === undefined || value === '') return null;
                 return (
                   <List.Item
                     key={`${eventId}-${key}`}
-                    title={key.replace(/_/g, ' ')}
-                    description={String(value)}
-                    descriptionNumberOfLines={3}
+                    title={key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    description={typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                    descriptionNumberOfLines={10}
                     titleStyle={styles.listItemTitle}
+                    descriptionStyle={styles.listItemDescription}
                   />
                 );
               })}
@@ -196,16 +169,16 @@ const DocumentDetailScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" animating={true} />
         <Text style={styles.loadingText}>Loading document details...</Text>
       </View>
     );
   }
 
-  if (error || !data) {
+  if (error || !details) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error || 'Document not found'}</Text>
+        <Text style={styles.errorText}>{error || 'Document data not found.'}</Text>
         <Button mode="contained" onPress={fetchDocumentDetails} style={styles.retryButton}>
           Retry
         </Button>
@@ -216,92 +189,70 @@ const DocumentDetailScreen = () => {
     );
   }
 
+  const { document: docSummary, extracted_data } = details;
+
   return (
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Document Details" />
+        <Appbar.Content title="Document Details" subtitle={docSummary.filename} subtitleStyle={{fontSize: 12}}/>
         <Appbar.Action icon="delete" onPress={handleDeleteDocument} />
       </Appbar.Header>
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card}>
           <Card.Content>
-            <Title style={styles.cardTitle}>{data.document.original_filename}</Title>
-            
             <Chip 
-              style={[styles.statusChip, { backgroundColor: getStatusColor(data.document.processing_status) + '20' }]}
-              textStyle={{ color: getStatusColor(data.document.processing_status) }}
+              style={[styles.statusChip, { backgroundColor: getStatusColor(docSummary.processing_status) + '20' }]}
+              textStyle={{ color: getStatusColor(docSummary.processing_status) }}
+              icon="information-outline"
             >
-              {data.document.processing_status.replace('_', ' ')}
+              Processing: {docSummary.processing_status.replace('_', ' ').toUpperCase()}
             </Chip>
             
             <Divider style={styles.divider} />
             
             <View style={styles.metadataRow}>
-              <Text style={styles.metadataLabel}>Document Type:</Text>
+              <Text style={styles.metadataLabel}>Type:</Text>
               <Text style={styles.metadataValue}>
-                {data.document.document_type.replace('_', ' ')}
+                {docSummary.document_type.replace('_', ' ').toUpperCase()}
               </Text>
             </View>
             
             <View style={styles.metadataRow}>
-              <Text style={styles.metadataLabel}>Upload Date:</Text>
+              <Text style={styles.metadataLabel}>Uploaded:</Text>
               <Text style={styles.metadataValue}>
-                {getFormattedDate(data.document.upload_timestamp)}
+                {getFormattedDate(docSummary.upload_date)}
               </Text>
             </View>
             
-            {data.document.document_date && (
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Document Date:</Text>
-                <Text style={styles.metadataValue}>
-                  {getFormattedDate(data.document.document_date)}
-                </Text>
-              </View>
-            )}
-            
-            {data.document.source_name && (
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Source:</Text>
-                <Text style={styles.metadataValue}>{data.document.source_name}</Text>
-              </View>
-            )}
-            
-            {data.document.source_location_city && (
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Location:</Text>
-                <Text style={styles.metadataValue}>{data.document.source_location_city}</Text>
-              </View>
-            )}
-            
-            {data.document.file_metadata && (
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>File Size:</Text>
-                <Text style={styles.metadataValue}>
-                  {formatFileSize(data.document.file_metadata.size)}
-                </Text>
-              </View>
-            )}
+            <Paragraph style={{ fontStyle: 'italic', fontSize: 12, marginTop: 10}}>
+              Detailed metadata like specific document date, source, full tags, and file size may require fetching full document details if not included in this summary view.
+            </Paragraph>
           </Card.Content>
         </Card>
         
-        {data.document.tags && data.document.tags.length > 0 && (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Title style={styles.sectionTitle}>Tags</Title>
-              <View style={styles.tagsContainer}>
-                {data.document.tags.map((tag, index) => (
-                  <Chip key={index} style={styles.tag}>
-                    {tag}
-                  </Chip>
-                ))}
-              </View>
-            </Card.Content>
-          </Card>
+        {extracted_data?.raw_text && (!extracted_data?.content?.medical_events || (extracted_data.content.medical_events as MedicalEvent[]).length === 0) && (
+            <Card style={styles.card}>
+                <Card.Content>
+                    <Title style={styles.sectionTitle}>Raw Extracted Text</Title>
+                    <Paragraph selectable>{extracted_data.raw_text}</Paragraph>
+                </Card.Content>
+            </Card>
         )}
         
         {renderMedicalEvents()}
+
+        {extracted_data && (
+             <Button 
+                mode="contained-tonal" 
+                icon="file-document-edit-outline"
+                onPress={() => navigation.navigate('DataReview', { documentId: docSummary.document_id })}
+                style={{marginTop: 16}}
+            >
+                Review & Correct Extracted Data
+            </Button>
+        )}
       </ScrollView>
     </View>
   );
@@ -319,6 +270,7 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
     elevation: 3,
+    borderRadius: 8,
   },
   cardTitle: {
     fontSize: 18,
@@ -352,10 +304,10 @@ const styles = StyleSheet.create({
   tag: {
     marginRight: 8,
     marginBottom: 8,
-    backgroundColor: '#E1F5FE',
   },
   sectionTitle: {
     fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 12,
   },
   loadingContainer: {
@@ -391,10 +343,17 @@ const styles = StyleSheet.create({
   accordionItem: {
     marginBottom: 2,
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+    borderRadius: 4,
   },
   listItemTitle: {
     textTransform: 'capitalize',
+    fontWeight: '500',
   },
+  listItemDescription: {
+    fontSize: 13,
+  }
 });
 
 export default DocumentDetailScreen; 

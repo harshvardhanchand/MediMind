@@ -1,5 +1,7 @@
+import { API_URL as ENV_API_URL } from '@env';
+
 // Base API URL (replace with your actual backend API URL)
-export const API_URL = 'http://localhost:8000';
+export const API_URL = ENV_API_URL;
 
 // Maximum file upload size in bytes (10 MB)
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;

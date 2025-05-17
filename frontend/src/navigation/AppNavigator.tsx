@@ -10,28 +10,61 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 
+import { useAuth } from '../context/AuthContext';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { theme } from '../theme'; // Assuming theme is correctly exported from ../theme
+
 // Auth Stack
-const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
 const AuthNavigator = () => (
-  <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-    <AuthStack.Screen name="Login" component={LoginScreen} />
-    <AuthStack.Screen name="SignUp" component={SignUpScreen} />
-  </AuthStack.Navigator>
+  <AuthStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <AuthStackNav.Screen name="Login" component={LoginScreen} />
+    <AuthStackNav.Screen name="SignUp" component={SignUpScreen} />
+  </AuthStackNav.Navigator>
 );
 
 // Root Stack
-const RootStack = createNativeStackNavigator<RootStackParamList>();
+const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-  const initialRouteName: keyof RootStackParamList = 'Onboarding';
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
-      <RootStack.Screen name="Auth" component={AuthNavigator} />
-      <RootStack.Screen name="Main" component={MainTabNavigator} />
-    </RootStack.Navigator>
+    <RootStackNav.Navigator screenOptions={{ headerShown: false }}>
+      {session ? (
+        // User is logged in
+        <RootStackNav.Screen name="Main" component={MainTabNavigator} />
+      ) : (
+        // User is not logged in
+        <>
+          <RootStackNav.Screen name="Onboarding" component={OnboardingScreen} />
+          <RootStackNav.Screen name="Auth" component={AuthNavigator} />
+        </>
+      )}
+      {/* 
+        You can add other globally accessible screens here, for example, modals 
+        that can be opened from anywhere in the app, regardless of auth state.
+        e.g. <RootStackNav.Screen name="GlobalModal" component={GlobalModalScreen} />
+      */}
+    </RootStackNav.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background, // Or another suitable background color from theme
+  },
+});
 
 export default AppNavigator; 
