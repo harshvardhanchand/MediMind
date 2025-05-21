@@ -173,14 +173,7 @@ const DocumentDetailScreen = () => {
                       {isLoadingPdf && <ActivityIndicator size="large" color={colors.accentPrimary} style={{ position: 'absolute', top: '50%', left: '50%', transform: [{translateX: -15}, {translateY: -15}] }}/>}
                       {pdfError && <StyledText color="accentDestructive" tw="p-4 text-center">Error loading PDF: {pdfError}</StyledText>}
                       {!isLoadingPdf && !pdfError && document.documentUri && (
-                          <Pdf
-                              trustAllCerts={Platform.OS === 'ios'}
-                              source={{ uri: document.documentUri, cache: true }}
-                              onLoadProgress={(percent) => { if (!isLoadingPdf && percent > 0) setIsLoadingPdf(true); if (percent === 1) setIsLoadingPdf(false); }}
-                              onLoadComplete={(numberOfPages) => { setIsLoadingPdf(false); setPdfError(null); console.log(`Number of pages: ${numberOfPages}`); }}
-                              onError={(error: any) => { setIsLoadingPdf(false); setPdfError(String(error)); console.error("Error loading PDF:", error); }}
-                              style={{ flex: 1, width: '100%', height: '100%' }}
-                          />
+                        <StyledText tw="p-4 text-center">PDF Viewer Temporarily Disabled for Testing</StyledText>
                       )}
                     </StyledView>
                   )}

@@ -11,6 +11,7 @@ import StyledText from '../../components/common/StyledText';
 import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
 import { useTheme } from '../../theme';
+import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
 const StyledScrollView = styled(ScrollView);
 const StyledView = styled(View);
@@ -32,11 +33,19 @@ interface SettingItem {
 const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { colors } = useTheme();
+  const { signOut } = useAuth(); // Get signOut from context
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true); // Example state for a toggle
 
-  const handleLogout = () => {
+  const handleLogout = async () => { // Make it async
     console.log("Logging out...");
-    navigation.getParent()?.navigate('Auth' as never);
+    try {
+      await signOut(); // Call the actual signOut function
+      // The onAuthStateChange listener in AuthContext should handle navigation implicitly
+      // by updating the session state, which AppNavigator listens to.
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      // Optionally, show an alert to the user
+    }
   };
 
   const handleExportData = () => {
@@ -115,9 +124,9 @@ const SettingsScreen = () => {
                 iconLeft="log-out-outline"
                 iconLeftColor={colors.accentDestructive}
                 labelStyle={{ color: colors.accentDestructive }}
-                onPress={handleLogout}
+                onPress={handleLogout} // This now calls the corrected handleLogout
                 showBottomBorder={false}
-                tw="bg-backgroundSecondary rounded-lg px-4" // Make it look like a card item
+                tw="bg-backgroundSecondary rounded-lg px-4"
              />
         </StyledView>
 
@@ -126,4 +135,4 @@ const SettingsScreen = () => {
   );
 };
 
-export default SettingsScreen; 
+export default SettingsScreen;

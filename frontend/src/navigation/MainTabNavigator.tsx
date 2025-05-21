@@ -8,6 +8,7 @@ import DocumentsScreen from '../screens/main/DocumentsScreen';
 import HealthDataScreen from '../screens/main/HealthDataScreen'; // The placeholder we created
 import AssistantScreen from '../screens/main/AssistantScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
+import DashboardStackNavigator from './DashboardStackNavigator'; // Import the new stack navigator
 
 import { colors } from '../theme/colors'; // Your new color palette
 
@@ -42,22 +43,21 @@ const MainTabNavigator = () => {
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: colors.accentPrimary, // Use from your new palette
-        tabBarInactiveTintColor: colors.textSecondary, // Use from your new palette
+        tabBarActiveTintColor: colors.accentPrimary, 
+        tabBarInactiveTintColor: colors.textSecondary, 
         tabBarStyle: {
-          backgroundColor: colors.backgroundSecondary, // Or backgroundPrimary if you prefer tabs not on pure white
-          borderTopColor: colors.borderSubtle,      // Subtle border for the tab bar
+          backgroundColor: colors.backgroundSecondary, 
+          borderTopColor: colors.borderSubtle,      
         },
-        headerShown: false, // We'll handle headers in individual stack navigators if needed
+        headerShown: false, 
         tabBarLabelStyle: {
           fontSize: 10,
-          // fontFamily: 'YourAppFont-Medium', // Specify font if needed
         },
       })}
     >
       <Tab.Screen 
         name="DashboardTab" 
-        component={HomeScreen} 
+        component={DashboardStackNavigator}
         options={{ tabBarLabel: 'Dashboard' }}
       />
       <Tab.Screen 

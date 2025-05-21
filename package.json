@@ -13,10 +13,17 @@
     "start:backend": "cd backend && uvicorn app.main:app --reload",
     "test:backend": "cd backend && pytest -xvs tests/",
     "test:frontend": "cd frontend && npm test",
-    "test": "npm run test:backend && npm run test:frontend"
+    "test": "npm run test:backend && npm run test:frontend",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "expo": "~53.0.9",
+    "react": "19.0.0",
+    "react-native": "0.79.2"
   }
-} 
+}

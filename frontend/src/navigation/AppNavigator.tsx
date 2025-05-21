@@ -40,20 +40,13 @@ const AppNavigator = () => {
   return (
     <RootStackNav.Navigator screenOptions={{ headerShown: false }}>
       {session ? (
-        // User is logged in
         <RootStackNav.Screen name="Main" component={MainTabNavigator} />
       ) : (
-        // User is not logged in
         <>
           <RootStackNav.Screen name="Onboarding" component={OnboardingScreen} />
           <RootStackNav.Screen name="Auth" component={AuthNavigator} />
         </>
       )}
-      {/* 
-        You can add other globally accessible screens here, for example, modals 
-        that can be opened from anywhere in the app, regardless of auth state.
-        e.g. <RootStackNav.Screen name="GlobalModal" component={GlobalModalScreen} />
-      */}
     </RootStackNav.Navigator>
   );
 };
