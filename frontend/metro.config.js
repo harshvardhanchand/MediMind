@@ -32,6 +32,7 @@ config.resolver.extraNodeModules = {
   os: require.resolve('os-browserify/browser'),
   path: require.resolve('path-browserify'),
   ws: path.resolve(__dirname, 'shims/ws.js'),
+  events: require.resolve('events'),
   '@supabase/realtime-js': path.resolve(__dirname, 'shims/realtime-js.js')
 };
 
