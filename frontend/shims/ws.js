@@ -1,0 +1,1 @@
+throw new Error("Module 'ws' is not available in React Native.");

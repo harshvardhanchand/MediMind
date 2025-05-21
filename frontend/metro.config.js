@@ -25,12 +25,14 @@ config.resolver.extraNodeModules = {
   stream: require.resolve('stream-browserify'),
   crypto: require.resolve('crypto-browserify'),
   vm: require.resolve('vm-browserify'),
-  url: require.resolve('url/'), // Typically available via react-native-url-polyfill
+  url: require.resolve('url'), // Typically available via react-native-url-polyfill
   http: require.resolve('stream-http'),
   https: require.resolve('https-browserify'),
   zlib: require.resolve('browserify-zlib'),
   os: require.resolve('os-browserify/browser'),
   path: require.resolve('path-browserify'),
+  ws: path.resolve(__dirname, 'shims/ws.js'),
+  '@supabase/realtime-js': path.resolve(__dirname, 'shims/realtime-js.js')
 };
 
 module.exports = config; 
