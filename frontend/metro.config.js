@@ -20,10 +20,11 @@ config.resolver.disableHierarchicalLookup = true;
 
 // Add resolver for Node.js core modules
 config.resolver.extraNodeModules = {
-  ...(config.resolver.extraNodeModules || {}),
-  stream: path.resolve(__dirname, 'node_modules/stream-browserify'),
-  crypto: path.resolve(__dirname, 'node_modules/crypto-browserify'),
-  vm: path.resolve(__dirname, 'node_modules/vm-browserify'),
+  
+  ...(config.resolver.extraNodeModules || {}), // Preserve other aliases if they exist
+  stream: require.resolve('stream-browserify'),
+  crypto: require.resolve('crypto-browserify'),
+  vm: require.resolve('vm-browserify'),
   // url: require.resolve('url/'), // Typically available via react-native-url-polyfill
   // http: require.resolve('stream-http'),
   // https: require.resolve('https-browserify'),

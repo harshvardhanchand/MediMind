@@ -25,5 +25,8 @@
     "expo": "~53.0.9",
     "react": "19.0.0",
     "react-native": "0.79.2"
+  },
+  "devDependencies": {
+    "stream-browserify": "^3.0.0"
   }
 }
