@@ -11,6 +11,18 @@ module.exports = function(api) {
         "whitelist": null,
         "safe": false,
         "allowUndefined": true 
+      }],
+      ["module-resolver", {
+        "alias": {
+          "stream": "stream-browserify",
+          "crypto": "crypto-browserify",
+          "http": "stream-http",
+          "https": "https-browserify",
+          "os": "os-browserify",
+          "path": "path-browserify",
+          "vm": "vm-browserify",
+          "zlib": "browserify-zlib"
+        }
       }]
     ],
   };

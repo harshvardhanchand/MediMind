@@ -22,6 +22,7 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@supabase/realtime-js": "^2.11.9",
     "browserify-zlib": "^0.2.0",
     "crypto-browserify": "^3.12.1",
     "events": "^3.3.0",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.0.10",
+    "babel-plugin-module-resolver": "^5.0.2",
     "stream-browserify": "^3.0.0"
   }
 }
