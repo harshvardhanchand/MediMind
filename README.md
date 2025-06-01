@@ -1,4 +1,4 @@
-# 🏥 AI-Powered Medical Data Hub
+# 🏥 MediMind
 
 > **A  mobile health platform that helps users track symptoms, medications, lab results, and prescriptions—surfacing early insights and potential side effects using AI.**
 
