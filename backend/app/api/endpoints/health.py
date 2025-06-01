@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 router = APIRouter(tags=["health"])
 
-@router.get("/health", summary="Health Check", response_model=dict)
+@router.get("/", summary="Health Check", response_model=dict)
 async def health_check():
     """
     Health check endpoint to verify the API is running.
@@ -10,4 +10,4 @@ async def health_check():
     Returns:
         dict: A simple response containing a status message.
     """
-    return {"status": "ok"} 
+    return {"status": "ok", "message": "Medical Data Hub API is running"} 

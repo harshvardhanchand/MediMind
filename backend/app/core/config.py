@@ -2,10 +2,16 @@ import os
 from typing import List, Optional, Union
 import logging
 
-from pydantic import PostgresDsn, validator, AnyHttpUrl
+from pydantic import PostgresDsn, field_validator, AnyHttpUrl, ConfigDict
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra='ignore'
+    )
+    
     # Core application settings
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     PROJECT_NAME: str = "Medical Data Hub API"
@@ -49,9 +55,10 @@ class Settings(BaseSettings):
     # Google Cloud Storage (GCS) - Kept for potential compatibility
     GCS_BUCKET_NAME: Optional[str] = None
 
-    @validator("DATABASE_URL", pre=True, always=True)
-    def assemble_db_connection(cls, v: Optional[str], values: dict) -> Union[PostgresDsn, str]:
-        environment = values.get("ENVIRONMENT")
+    @field_validator("DATABASE_URL", mode='before')
+    @classmethod
+    def assemble_db_connection(cls, v: Optional[str]) -> Union[PostgresDsn, str]:
+        environment = os.getenv("ENVIRONMENT", "development")
         
         if isinstance(v, str):
             if environment == "test":
@@ -63,62 +70,35 @@ class Settings(BaseSettings):
                 except ValueError as e: # Catch Pydantic's validation error if v is not a valid PostgresDsn
                     raise ValueError(f"Invalid DATABASE_URL for {environment} environment: {v}. Must be a valid PostgreSQL DSN. Error: {e}")
         
-        # This part of building from components is likely fine as it returns PostgresDsn directly
-        if environment != "test":
-            user = values.get("POSTGRES_USER")
-            password = values.get("POSTGRES_PASSWORD")
-            server = values.get("POSTGRES_SERVER")
-            db_name = values.get("POSTGRES_DB")
-            if all([user, password, server, db_name]):
-                return PostgresDsn.build(
-                    scheme="postgresql",
-                    username=user,
-                    password=password,
-                    host=server,
-                    path=f"/{db_name}",
-                )
-        elif environment == "test" and not v: # If test env and no DATABASE_URL provided, this is an issue
+        if environment == "test" and not v:
              raise ValueError("DATABASE_URL must be provided for the test environment (e.g., sqlite:///./test.db)")
         
         # If not test env and connection cannot be assembled, raise error.
-        if environment != "test":
+        if environment != "test" and not v:
             raise ValueError("Missing PostgreSQL connection parameters or direct DATABASE_URL for non-test environment")
         
-        # Fallback for test environment if v was None initially (should be caught by the elif above)
-        # This part of the logic might be redundant given the check above.
-        # However, ensuring a string path if all else fails for test env.
+        # Fallback for test environment if v was None initially
         if environment == "test":
-            # This case should ideally not be reached if .env.test provides a DATABASE_URL
-            logger = logging.getLogger(__name__) # Local import to avoid circular dependency if logger uses settings
+            logger = logging.getLogger(__name__)
             logger.warning("DATABASE_URL not explicitly set for test environment, defaulting to in-memory SQLite. This might not be intended for all tests.")
-            return "sqlite:///./test_default.db" # Or a specific default like "sqlite:///:memory:"
+            return "sqlite:///./test_default.db"
 
-        # This line should ideally not be reached if logic is correct.
-        raise ValueError("Could not determine DATABASE_URL")
+        return v
 
-    @validator("ASYNC_DATABASE_URL", pre=True, always=True)
-    def assemble_async_db_connection(cls, v: Optional[str], values: dict) -> Optional[str]:
+    @field_validator("ASYNC_DATABASE_URL", mode='before')
+    @classmethod
+    def assemble_async_db_connection(cls, v: Optional[str]) -> Optional[str]:
         if isinstance(v, str):
             if not v.startswith("postgresql+asyncpg://"):
                 raise ValueError("ASYNC_DATABASE_URL must use the 'postgresql+asyncpg://' scheme.")
             return v
         
-        sync_db_url_value = values.get("DATABASE_URL")
+        # Get DATABASE_URL from environment since we can't access validated values in V2
+        sync_db_url_str = os.getenv("DATABASE_URL")
         
-        # sync_db_url_value at this point (after assemble_db_connection validator has run)
-        # will be either a Pydantic PostgresDsn object or a string (for test env).
-        # We need its string representation to modify the scheme.
-        
-        sync_db_url_str: Optional[str] = None
-        if hasattr(sync_db_url_value, '__str__'): # Check if it's a Pydantic DSN object or similar
-            sync_db_url_str = str(sync_db_url_value)
-        elif isinstance(sync_db_url_value, str):
-            sync_db_url_str = sync_db_url_value
-
         if sync_db_url_str and sync_db_url_str.startswith("postgresql://"):
             return sync_db_url_str.replace("postgresql://", "postgresql+asyncpg://", 1)
-        elif sync_db_url_str and sync_db_url_str.startswith("sqlite:///") and values.get("ENVIRONMENT") == "test":
-            # If deriving from a synchronous SQLite URL for tests
+        elif sync_db_url_str and sync_db_url_str.startswith("sqlite:///") and os.getenv("ENVIRONMENT") == "test":
             return sync_db_url_str.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
         
         logger = logging.getLogger(__name__)
@@ -127,11 +107,5 @@ class Settings(BaseSettings):
             "Async database operations will not be available unless it's configured."
         )
         return None
-
-    # Reverted Pydantic V1 style Config class
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = 'ignore'
 
 settings = Settings() 

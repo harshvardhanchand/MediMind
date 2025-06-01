@@ -28,7 +28,7 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize Supabase client: {str(e)}")
 
-# Security scheme for Swagger UI
+# Security scheme for Swagger UI - using standard FastAPI behavior
 security = HTTPBearer()
 
 async def verify_token(
