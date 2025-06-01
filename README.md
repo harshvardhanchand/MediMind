@@ -1,7 +1,3 @@
-Here is the updated and streamlined **README** for your proactive medical data hub app, incorporating your new direction (symptom tracking, proactive alerts), better tech stack clarity, and UX polish.
-
----
-
 # 🏥 AI-Powered Medical Data Hub
 
 > **A  mobile health platform that helps users track symptoms, medications, lab results, and prescriptions—surfacing early insights and potential side effects using AI.**
@@ -170,6 +166,4 @@ python3 -m pytest tests/ -v
 
 **⭐ Star this repo if you believe AI can empower patients!**
 
----
 
-Let me know if you'd like a `README-light.md` version for investor decks or a one-page landing site summary.
