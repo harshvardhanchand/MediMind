@@ -4,7 +4,7 @@ Here is the updated and streamlined **README** for your proactive medical data h
 
 # 🏥 AI-Powered Medical Data Hub
 
-> **A proactive mobile health platform that helps users track symptoms, medications, lab results, and prescriptions—surfacing early insights and potential side effects using AI.**
+> **A  mobile health platform that helps users track symptoms, medications, lab results, and prescriptions—surfacing early insights and potential side effects using AI.**
 
 [![React Native](https://img.shields.io/badge/React%20Native-0.79.2-61DAFB?style=flat\&logo=react)](https://reactnative.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.0-009688?style=flat\&logo=fastapi)](https://fastapi.tiangolo.com/)
