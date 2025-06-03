@@ -46,4 +46,16 @@ google-cloud-documentai==3.5.0
 
 # Placeholder for later AI/ML services if they are different from the above
 # google-cloud-healthcare==1.8.0
-# google-cloud-aiplatform==1.36.3 
+# google-cloud-aiplatform==1.36.3
+
+# Medical AI & Embeddings
+google-generativeai==0.3.2
+transformers==4.36.0
+torch==2.1.0
+sentence-transformers==2.2.2
+scikit-learn==1.3.2
+numpy==1.24.3
+spacy==3.7.2
+
+# Optional medical NER (comment out if not using)
+# https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_ner_bc5cdr_md-0.5.3.tar.gz 

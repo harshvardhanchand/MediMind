@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.medication import MedicationStatus
 from app.schemas.medication import MedicationCreate, MedicationResponse, MedicationUpdate
 from app.repositories.medication_repo import medication_repo
+from app.services.notification_service import get_notification_service, get_medical_triggers
 
 import logging
 
@@ -70,6 +71,30 @@ async def create_medication(
         db_medication = medication_repo.create_with_owner(
             db=db, obj_in=medication, user_id=current_user.user_id
         )
+        
+        # After successful creation, trigger medical analysis
+        try:
+            notification_service = get_notification_service(db)
+            medical_triggers = get_medical_triggers(notification_service)
+            
+            # Trigger analysis in background (don't wait for completion)
+            medication_data = {
+                "name": medication.name,
+                "dosage": medication.dosage,
+                "frequency": medication.frequency,
+                "start_date": medication.start_date.isoformat() if medication.start_date else None
+            }
+            
+            await medical_triggers.on_medication_added(
+                str(current_user.id), 
+                medication_data,
+                medication_id=str(db_medication.id)  # Pass the medication ID
+            )
+            
+        except Exception as e:
+            # Log error but don't fail the medication creation
+            logger.warning(f"Failed to trigger medication analysis: {str(e)}")
+        
         return db_medication
     except Exception as e:
         logger.error(f"Error creating medication: {str(e)}", exc_info=True)

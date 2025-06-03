@@ -22,6 +22,9 @@
 * **OCR Service:** **Google Cloud Vision API** (`DOCUMENT_TEXT_DETECTION`).
 * **Medical NLP Service:** **Google Cloud Healthcare Natural Language API** (`analyzeEntities` endpoint). Requires BAA for HIPAA adherence if targeting US users; check terms.
 * **Query LLM Service:** **Google Cloud Vertex AI Gemini 2.5 Flash API** - Use appropriate regional endpoint and review terms regarding data processing/compliance.
+* **Medical AI Services:** **Google Gemini Pro API** for medical reasoning, **BioBERT** (`dmis-lab/biobert-v1.1`) for medical embeddings, **pgvector** for vector similarity search.
+* **Vector Database:** **pgvector** extension for PostgreSQL - Fast vector similarity search with HNSW indexing.
+* **ML Libraries:** **transformers**, **torch**, **sentence-transformers**, **scikit-learn**, **numpy** for AI/ML processing.
 * **Deployment (Backend):** **Google Cloud Run** - Serverless container platform, scales to zero, simple deployment.
 * **Task Queue:** **Google Cloud Tasks** - For reliable asynchronous task execution.
 * **Cloud Platform:** **Google Cloud Platform (GCP)**
@@ -76,6 +79,51 @@
     * `is_verified_by_user` (Boolean, default: false)
     * `created_at` (Timestamp)
     * `updated_at` (Timestamp)
+
+* **`notifications`** *(Medical AI Alerts)*
+    * `notification_id` (Primary Key, UUID)
+    * `user_id` (Foreign Key to `users`, Indexed)
+    * `type` (Text - e.g., 'drug_interaction', 'side_effect_warning', 'health_trend')
+    * `severity` (Text - 'low', 'medium', 'high')
+    * `title` (Text)
+    * `message` (Text)
+    * `metadata` (JSONB)
+    * `is_read` (Boolean, default: false)
+    * `is_dismissed` (Boolean, default: false)
+    * `expires_at` (Timestamp, nullable)
+    * `related_medication_id` (Foreign Key to `medications`, nullable)
+    * `related_document_id` (Foreign Key to `documents`, nullable)
+    * `related_health_reading_id` (Foreign Key to `health_readings`, nullable)
+    * `related_extracted_data_id` (Foreign Key to `extracted_data`, nullable)
+    * `created_at` (Timestamp)
+
+* **`medical_situations`** *(Vector Storage for AI)*
+    * `situation_id` (Primary Key, UUID)
+    * `embedding` (vector(768) - pgvector type for BioBERT embeddings)
+    * `medical_context` (JSONB - anonymized medical data)
+    * `analysis_result` (JSONB - LLM analysis output)
+    * `confidence_score` (Float)
+    * `similarity_threshold` (Float, default: 0.85)
+    * `usage_count` (Integer, default: 1)
+    * `created_at` (Timestamp)
+    * `last_used_at` (Timestamp)
+
+* **`ai_analysis_logs`** *(AI Performance Tracking)*
+    * `log_id` (Primary Key, UUID)
+    * `user_id` (Foreign Key to `users`)
+    * `trigger_type` (Text - e.g., 'new_medication', 'symptom_reported')
+    * `medical_profile_hash` (Text - for deduplication)
+    * `embedding` (vector(768) - query embedding)
+    * `similarity_matches` (JSONB - matched situations)
+    * `llm_called` (Boolean)
+    * `llm_cost` (Float)
+    * `processing_time_ms` (Integer)
+    * `analysis_result` (JSONB)
+    * `related_medication_id` (Foreign Key, nullable)
+    * `related_document_id` (Foreign Key, nullable)
+    * `related_health_reading_id` (Foreign Key, nullable)
+    * `related_extracted_data_id` (Foreign Key, nullable)
+    * `created_at` (Timestamp)
 
 * **`audit_log`**
     * `log_id` (Primary Key, Serial/BigSerial)

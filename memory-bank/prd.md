@@ -19,7 +19,8 @@ The initial phase focuses on core functionalities enabling users to consolidate 
 * **AI-Powered Natural Language Querying:** Enable users to query their *structured* data using natural language (e.g., "Show my glucose tests from 2024," "What medications did Dr. Anya Sharma prescribe?"). This functionality will leverage an LLM like **Gemini 2.5 Flash** (accessed via compliant API endpoints) to interpret the natural language query and translate it into database query parameters.
 * **Secure User Authentication & Authorization:** Implement robust user registration, login, and session management to ensure only the authenticated user can access their data.
 * **User-Controlled Data Export:** Provide a mechanism for users to export their data, including both the original uploaded documents and the extracted structured data, in common, usable formats.
-* **Mobile User Interface:** A mobile-first, intuitive interface for all functionalities: document upload, data review/correction, viewing visualizations/lists, performing queries, and managing account settings.
+* **Proactive Medical AI Notifications:** Implement an intelligent notification system that proactively analyzes medical data for potential drug interactions, side effects, health trends, and provides personalized recommendations before they become serious problems. Uses BioBERT embeddings and Gemini LLM with vector similarity caching for cost-effective analysis.
+* **Mobile User Interface:** A mobile-first, intuitive interface for all functionalities: document upload, data review/correction, viewing visualizations/lists, performing queries, managing notifications, and managing account settings.
 * **Clear Disclaimers:** Prominently display clear, understandable disclaimers throughout the application reinforcing that it does **not** provide medical advice, diagnosis, or treatment recommendations, and that users should always consult qualified healthcare professionals for medical concerns.
 
 ### Out of Scope (Initial Phase):
@@ -143,7 +144,15 @@ The initial phase focuses on core functionalities enabling users to consolidate 
 * Refine UI for analysis and querying.
 * **Focus:** Add value through basic analysis and natural language interaction.
 
-### Phase 4+ (Refinements & Future Scope):
+### Phase 4 (Medical AI Notifications):
+
+* Implement proactive medical AI notification system with BioBERT embeddings and Gemini Pro analysis.
+* Add vector similarity search using pgvector for cost-effective medical pattern recognition.
+* Create comprehensive notification management with severity levels and entity relationships.
+* Integrate automatic triggers for medication, symptom, lab result, and document events.
+* **Focus:** Proactive health monitoring and intelligent medical alerts.
+
+### Phase 5+ (Refinements & Future Scope):
 
 * Improve parsing accuracy based on feedback.
 * Enhance analysis/visualization features.
