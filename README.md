@@ -1,4 +1,4 @@
-# 🏥 AI-Powered Medical Data Hub
+# 🏥 MediMind
 
 > **A  mobile health platform that helps users track symptoms, medications, lab results, and prescriptions—surfacing early insights and potential side effects using AI.**
 
@@ -153,17 +153,5 @@ python3 -m pytest tests/ -v
 [LinkedIn](https://www.linkedin.com/in/harshvardhan-chand/)
 📧 [harshvardhan335@gmail.com](mailto:harshvardhan335@gmail.com)
 
----
-
-## 🙏 Acknowledgments
-
-* Google Cloud AI for LLM and OCR APIs
-* Supabase for auth & RLS infra
-* React Native + FastAPI community
-* Healthcare workers who inspired this tool
-
----
-
-**⭐ Star this repo if you believe AI can empower patients!**
 
 
