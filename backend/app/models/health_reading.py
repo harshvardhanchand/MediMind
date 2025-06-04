@@ -53,6 +53,8 @@ class HealthReading(Base):
 
     user = relationship("User")
     related_document = relationship("Document")
+    notifications = relationship("Notification", back_populates="related_health_reading")
+    ai_analysis_logs = relationship("AIAnalysisLog", back_populates="related_health_reading")
 
     def __repr__(self):
         return f"<HealthReading(id={self.health_reading_id}, type='{self.reading_type}', user_id='{self.user_id}')>"

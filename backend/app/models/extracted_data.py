@@ -36,6 +36,8 @@ class ExtractedData(Base):
     # Relationships
     document = relationship("Document", back_populates="extracted_data")
     reviewed_by_user = relationship("User")
+    notifications = relationship("Notification", back_populates="related_extracted_data")
+    ai_analysis_logs = relationship("AIAnalysisLog", back_populates="related_extracted_data")
 
     def __repr__(self):
         return f"<ExtractedData(id={self.extracted_data_id}, document_id='{self.document_id}', status='{self.review_status}')>" 

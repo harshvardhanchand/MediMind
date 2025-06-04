@@ -53,6 +53,8 @@ class Document(Base):
     # Relationships
     user = relationship("User")
     extracted_data = relationship("ExtractedData", back_populates="document", uselist=False) # One-to-one
+    notifications = relationship("Notification", back_populates="related_document")
+    ai_analysis_logs = relationship("AIAnalysisLog", back_populates="related_document")
 
     def __repr__(self):
         return f"<Document(id={self.document_id}, filename='{self.original_filename}', user_id='{self.user_id}')>" 

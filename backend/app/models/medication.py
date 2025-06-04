@@ -61,6 +61,8 @@ class Medication(Base):
     # Relationships
     user = relationship("User")
     related_document = relationship("Document")
+    notifications = relationship("Notification", back_populates="related_medication")
+    ai_analysis_logs = relationship("AIAnalysisLog", back_populates="related_medication")
     
     def __repr__(self):
         return f"<Medication(id={self.medication_id}, name='{self.name}', user_id='{self.user_id}')>" 

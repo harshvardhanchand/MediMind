@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, JSON
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.db.session import Base
 
@@ -21,4 +22,8 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, nullable=True)
     user_metadata = Column(JSON, nullable=True)
-    app_metadata = Column(JSON, nullable=True) 
+    app_metadata = Column(JSON, nullable=True)
+    
+    # Relationships
+    notifications = relationship("Notification", back_populates="user")
+    ai_analysis_logs = relationship("AIAnalysisLog", back_populates="user") 

@@ -1,7 +1,7 @@
 """Add notification system tables
 
-Revision ID: add_notification_system
-Revises: previous_revision
+Revision ID: f1d2e3a4b5c6
+Revises: 0a9520c3cbd9
 Create Date: 2024-01-20 10:00:00.000000
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'add_notification_system'
-down_revision = 'previous_revision'  # Update this to your latest revision
+revision = 'f1d2e3a4b5c6'
+down_revision = '0a9520c3cbd9'  # Update this to your latest revision
 branch_labels = None
 depends_on = None
 
@@ -22,13 +22,13 @@ def upgrade():
     
     # Notifications table
     op.create_table('notifications',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text('gen_random_uuid()')),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('type', sa.String(50), nullable=False),
         sa.Column('severity', sa.String(20), nullable=False),
         sa.Column('title', sa.String(200), nullable=False),
         sa.Column('message', sa.Text(), nullable=False),
-        sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column('notification_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('is_read', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('is_dismissed', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_at', sa.TIMESTAMP(), nullable=False, server_default=sa.text('NOW()')),
@@ -41,16 +41,16 @@ def upgrade():
         sa.Column('related_extracted_data_id', postgresql.UUID(as_uuid=True), nullable=True),
         
         sa.PrimaryKeyConstraint('id'),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['related_medication_id'], ['medications.id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['related_document_id'], ['documents.id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['related_health_reading_id'], ['health_readings.id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['related_extracted_data_id'], ['extracted_data.id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['related_medication_id'], ['medications.medication_id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['related_document_id'], ['documents.document_id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['related_health_reading_id'], ['health_readings.health_reading_id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['related_extracted_data_id'], ['extracted_data.extracted_data_id'], ondelete='SET NULL'),
     )
     
     # Medical situations vector storage using pgvector
     op.create_table('medical_situations',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text('gen_random_uuid()')),
         sa.Column('medical_context', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column('analysis_result', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column('confidence_score', sa.Float(), nullable=False),
@@ -66,7 +66,7 @@ def upgrade():
     
     # AI analysis logs for debugging
     op.create_table('ai_analysis_logs',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text('gen_random_uuid()')),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('trigger_type', sa.String(50), nullable=False),
         sa.Column('medical_profile_hash', sa.String(64), nullable=False),
@@ -84,11 +84,11 @@ def upgrade():
         sa.Column('related_extracted_data_id', postgresql.UUID(as_uuid=True), nullable=True),
         
         sa.PrimaryKeyConstraint('id'),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['related_medication_id'], ['medications.id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['related_document_id'], ['documents.id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['related_health_reading_id'], ['health_readings.id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['related_extracted_data_id'], ['extracted_data.id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['related_medication_id'], ['medications.medication_id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['related_document_id'], ['documents.document_id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['related_health_reading_id'], ['health_readings.health_reading_id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['related_extracted_data_id'], ['extracted_data.extracted_data_id'], ondelete='SET NULL'),
     )
     
     # Add vector column for analysis logs too (for debugging)

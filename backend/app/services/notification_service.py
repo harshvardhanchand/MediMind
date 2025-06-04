@@ -58,10 +58,10 @@ class NotificationService:
             self.db.execute(
                 text("""
                     INSERT INTO notifications 
-                    (id, user_id, type, severity, title, message, metadata, expires_at, 
+                    (id, user_id, type, severity, title, message, notification_metadata, expires_at, 
                      related_medication_id, related_document_id, related_health_reading_id, related_extracted_data_id,
                      created_at)
-                    VALUES (:id, :user_id, :type, :severity, :title, :message, :metadata, :expires_at,
+                    VALUES (:id, :user_id, :type, :severity, :title, :message, :notification_metadata, :expires_at,
                             :related_medication_id, :related_document_id, :related_health_reading_id, :related_extracted_data_id,
                             NOW())
                 """),
@@ -72,7 +72,7 @@ class NotificationService:
                     "severity": severity,
                     "title": title,
                     "message": message,
-                    "metadata": json.dumps(metadata) if metadata else None,
+                    "notification_metadata": json.dumps(metadata) if metadata else None,
                     "expires_at": expires_at,
                     "related_medication_id": related_medication_id,
                     "related_document_id": related_document_id,
@@ -185,7 +185,7 @@ class NotificationService:
             result = self.db.execute(
                 text(f"""
                     SELECT 
-                        n.id, n.type, n.severity, n.title, n.message, n.metadata, 
+                        n.id, n.type, n.severity, n.title, n.message, n.notification_metadata, 
                         n.is_read, n.is_dismissed, n.created_at, n.expires_at,
                         n.related_medication_id, n.related_document_id, 
                         n.related_health_reading_id, n.related_extracted_data_id,

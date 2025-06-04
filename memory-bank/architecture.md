@@ -49,7 +49,8 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   ├── document.py     # Document data model
 │   │   │   ├── extracted_data.py # ExtractedData model
 │   │   │   ├── medication.py   # Medication data model
-│   │   │   └── health_reading.py # HealthReading data model
+│   │   │   ├── health_reading.py # HealthReading data model
+│   │   │   └── notification.py # Notification, MedicalSituation, and AIAnalysisLog models
 │   │   ├── repositories/       # Repository pattern implementation
 │   │   │   ├── base.py         # Base CRUD repository 
 │   │   │   ├── document_repo.py # Document repository implementation
@@ -64,7 +65,14 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   ├── medication.py   # Medication schemas
 │   │   │   └── health_reading.py # HealthReading schemas
 │   │   ├── services/           # Business logic services
-│   │   │   └── document_processing_service.py # Document processing pipeline
+│   │   │   ├── document_processing_service.py # Document processing pipeline
+│   │   │   ├── notification_service.py        # Medical notification management
+│   │   │   ├── medical_ai_service.py          # AI medical analysis orchestration
+│   │   │   ├── medical_embedding_service.py   # BioBERT medical embeddings
+│   │   │   ├── medical_vector_db.py           # Vector database operations
+│   │   │   └── gemini_service.py              # Gemini LLM integration
+│   │   ├── routers/            # FastAPI routers
+│   │   │   └── notifications.py # Notification API endpoints
 │   │   └── utils/              # Utility functions
 │   │       ├── ai_processors.py # OCR and LLM utilities
 │   │       └── storage.py      # Cloud storage utilities
@@ -207,11 +215,11 @@ Contains SQLAlchemy ORM models that represent database tables.
     *   `user_added_tags` (JSON, Optional): List of tags added manually by the user.
     *   `related_to_health_goal_or_episode` (String, Optional): User-defined link to a health goal or event.
 *   **`ExtractedData`**: Maps to `extracted_data` table. Stores structured data parsed from a `Document` using a flexible `JSONB` column (`content`). Links one-to-one with `Document` and includes review status details.
-*   **`Medication`**: Maps to `medications` table. Stores user-entered medication details.
-*   **`HealthReading`**: Maps to `health_readings` table. Stores user-entered health metrics.
-*   **`Notification`**: Maps to `notifications` table. Stores AI-generated medical notifications with severity levels, expiration, and relationships to triggering entities.
-*   **`MedicalSituation`**: Maps to `medical_situations` table. Stores vector embeddings and analysis results for medical pattern recognition using pgvector.
-*   **`AIAnalysisLog`**: Maps to `ai_analysis_logs` table. Tracks AI analysis execution, costs, and performance for debugging and optimization.
+*   **`Medication`**: Maps to `medications` table. Stores user-entered medication details with dosage, frequency, start/end dates, and related document links.
+*   **`HealthReading`**: Maps to `health_readings` table. Stores user-entered health metrics like blood pressure, glucose, weight, etc.
+*   **`Notification`**: Maps to `notifications` table. Stores AI-generated medical notifications including drug interactions, side effects, health trends, and recommendations. Links to triggering entities (medications, documents, health readings).
+*   **`MedicalSituation`**: Maps to `medical_situations` table. Stores vector embeddings and analysis results for medical pattern recognition using pgvector extension for fast similarity search.
+*   **`AIAnalysisLog`**: Maps to `ai_analysis_logs` table. Tracks AI analysis execution, costs, processing time, and performance for debugging and optimization. Includes entity relationships to track analysis triggers.
 
 ### 6. API Endpoints (`backend/app/api/endpoints/`)
 
@@ -400,29 +408,29 @@ The notification system implements a sophisticated AI pipeline that combines:
 #### Notifications Table
 ```sql
 CREATE TABLE notifications (
-    id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
     type VARCHAR(50) NOT NULL,  -- 'drug_interaction', 'side_effect_warning', etc.
     severity VARCHAR(20) NOT NULL,  -- 'low', 'medium', 'high'
     title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
-    metadata JSONB,
+    notification_metadata JSONB,
     is_read BOOLEAN DEFAULT FALSE,
     is_dismissed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     expires_at TIMESTAMP,
     -- Entity relationships
-    related_medication_id UUID REFERENCES medications(id) ON DELETE SET NULL,
-    related_document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
-    related_health_reading_id UUID REFERENCES health_readings(id) ON DELETE SET NULL,
-    related_extracted_data_id UUID REFERENCES extracted_data(id) ON DELETE SET NULL
+    related_medication_id UUID REFERENCES medications(medication_id) ON DELETE SET NULL,
+    related_document_id UUID REFERENCES documents(document_id) ON DELETE SET NULL,
+    related_health_reading_id UUID REFERENCES health_readings(health_reading_id) ON DELETE SET NULL,
+    related_extracted_data_id UUID REFERENCES extracted_data(extracted_data_id) ON DELETE SET NULL
 );
 ```
 
 #### Medical Situations Table (Vector Storage)
 ```sql
 CREATE TABLE medical_situations (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     embedding vector(768),  -- pgvector for BioBERT embeddings
     medical_context JSONB NOT NULL,
     analysis_result JSONB NOT NULL,
@@ -440,8 +448,8 @@ CREATE INDEX ON medical_situations USING hnsw (embedding vector_cosine_ops);
 #### AI Analysis Logs Table
 ```sql
 CREATE TABLE ai_analysis_logs (
-    id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
     trigger_type VARCHAR(50) NOT NULL,
     medical_profile_hash VARCHAR(64) NOT NULL,
     embedding vector(768),
@@ -452,10 +460,10 @@ CREATE TABLE ai_analysis_logs (
     analysis_result JSONB NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     -- Entity relationships for tracking
-    related_medication_id UUID REFERENCES medications(id) ON DELETE SET NULL,
-    related_document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
-    related_health_reading_id UUID REFERENCES health_readings(id) ON DELETE SET NULL,
-    related_extracted_data_id UUID REFERENCES extracted_data(id) ON DELETE SET NULL
+    related_medication_id UUID REFERENCES medications(medication_id) ON DELETE SET NULL,
+    related_document_id UUID REFERENCES documents(document_id) ON DELETE SET NULL,
+    related_health_reading_id UUID REFERENCES health_readings(health_reading_id) ON DELETE SET NULL,
+    related_extracted_data_id UUID REFERENCES extracted_data(extracted_data_id) ON DELETE SET NULL
 );
 ```
 
@@ -655,8 +663,16 @@ flowchart TD
 ```mermaid
 erDiagram
     USER ||--o{ DOCUMENT : owns
+    USER ||--o{ MEDICATION : has
+    USER ||--o{ HEALTH_READING : has
+    USER ||--o{ NOTIFICATION : receives
+    USER ||--o{ AI_ANALYSIS_LOG : triggers
     DOCUMENT ||--|| EXTRACTED_DATA : has
     EXTRACTED_DATA ||--o| USER : reviewed_by
+    MEDICATION ||--o{ NOTIFICATION : triggers
+    DOCUMENT ||--o{ NOTIFICATION : triggers
+    HEALTH_READING ||--o{ NOTIFICATION : triggers
+    EXTRACTED_DATA ||--o{ NOTIFICATION : triggers
 
     USER {
         UUID user_id PK
@@ -698,8 +714,130 @@ erDiagram
         DateTime review_timestamp "Nullable"
     }
 
+    MEDICATION {
+        UUID medication_id PK
+        UUID user_id FK
+        String name
+        String dosage "Optional"
+        MedicationFrequency frequency "Enum"
+        String frequency_details "Optional"
+        Date start_date "Optional"
+        Date end_date "Optional"
+        JSON time_of_day "Optional"
+        Boolean with_food "Optional"
+        String reason "Optional"
+        String prescribing_doctor "Optional"
+        String pharmacy "Optional"
+        Text notes "Optional"
+        MedicationStatus status "Enum (active, discontinued, completed, on_hold)"
+        UUID related_document_id FK "Optional"
+        JSON tags "Optional"
+        DateTime created_at
+        DateTime updated_at
+    }
+
+    HEALTH_READING {
+        UUID health_reading_id PK
+        UUID user_id FK
+        HealthReadingType reading_type "Enum"
+        Numeric numeric_value "Optional"
+        String unit "Optional"
+        Integer systolic_value "Optional"
+        Integer diastolic_value "Optional"
+        Text text_value "Optional"
+        JSONB json_value "Optional"
+        DateTime reading_date
+        Text notes "Optional"
+        String source "Optional"
+        UUID related_document_id FK "Optional"
+        DateTime created_at
+        DateTime updated_at
+    }
+
+    NOTIFICATION {
+        UUID id PK
+        UUID user_id FK
+        String type "drug_interaction, side_effect_warning, etc."
+        String severity "low, medium, high"
+        String title
+        Text message
+        JSONB notification_metadata "Optional"
+        Boolean is_read "Default false"
+        Boolean is_dismissed "Default false"
+        DateTime created_at
+        DateTime expires_at "Optional"
+        UUID related_medication_id FK "Optional"
+        UUID related_document_id FK "Optional"
+        UUID related_health_reading_id FK "Optional"
+        UUID related_extracted_data_id FK "Optional"
+    }
+
+    MEDICAL_SITUATION {
+        UUID id PK
+        Vector embedding "vector(768) for BioBERT"
+        JSONB medical_context
+        JSONB analysis_result
+        Float confidence_score
+        Float similarity_threshold "Default 0.85"
+        Integer usage_count "Default 1"
+        DateTime created_at
+        DateTime last_used_at
+    }
+
+    AI_ANALYSIS_LOG {
+        UUID id PK
+        UUID user_id FK
+        String trigger_type
+        String medical_profile_hash
+        Vector embedding "vector(768)"
+        JSONB similarity_matches "Optional"
+        Boolean llm_called
+        Float llm_cost "Optional"
+        Integer processing_time_ms
+        JSONB analysis_result
+        DateTime created_at
+        UUID related_medication_id FK "Optional"
+        UUID related_document_id FK "Optional"
+        UUID related_health_reading_id FK "Optional"
+        UUID related_extracted_data_id FK "Optional"
+    }
 ```
 *Note: `JSONB` is used for flexible storage in `ExtractedData`. `JSON` is used in `User` for Supabase compatibility and for list storage in `Document`.*
+
+## Database Migration Status
+
+The database is fully migrated and ready for production use.
+
+### Current Migration State
+- **Current Revision**: `f1d2e3a4b5c6` (head)
+- **Migration Status**: ✅ All migrations applied successfully
+- **Total Tables**: 9 tables created
+- **PostgreSQL Extensions**: pgvector installed for vector similarity search
+
+### Migration History
+1. **`48de9abcfbd6`** - Initial tables (users, documents, extracted_data, medications)
+2. **`0a9520c3cbd9`** - Health readings table
+3. **`f1d2e3a4b5c6`** - Notification system (notifications, medical_situations, ai_analysis_logs)
+
+### pgvector Integration
+The notification system uses PostgreSQL's pgvector extension for efficient medical similarity search:
+- **Extension**: pgvector for 768-dimensional BioBERT embeddings
+- **Indexing**: HNSW (Hierarchical Navigable Small World) for sub-millisecond vector search
+- **Similarity**: Cosine similarity using `<=>` operator
+- **Performance**: Optimized for medical pattern matching and AI cost reduction
+
+### Database Tables Summary
+| Table | Purpose | Key Features |
+|-------|---------|-------------|
+| `users` | User accounts | Supabase integration, authentication |
+| `documents` | Medical documents | File storage, metadata, processing status |
+| `extracted_data` | OCR/AI extracted data | JSONB content, review workflow |
+| `medications` | User medications | Dosage tracking, document links |
+| `health_readings` | Health metrics | Multiple data types, units |
+| `notifications` | AI medical alerts | Severity levels, entity relationships |
+| `medical_situations` | Vector storage | BioBERT embeddings, usage tracking |
+| `ai_analysis_logs` | AI debugging | Cost tracking, performance monitoring |
+| `alembic_version` | Migration tracking | Alembic version control |
 
 ## Repository Structure
 
