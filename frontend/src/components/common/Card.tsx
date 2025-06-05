@@ -34,7 +34,7 @@ const Card: React.FC<CardProps> = ({
 }) => {
   const { colors } = useTheme();
 
-  let cardBaseTw = 'bg-backgroundSecondary rounded-xl'; // Softer, more modern rounding
+  let cardBaseTw = 'bg-white rounded-xl'; // Use standard color instead of custom
   if (!noPadding) {
     cardBaseTw += ' p-4'; // Default internal padding
   }
@@ -48,12 +48,12 @@ const Card: React.FC<CardProps> = ({
   }
 
   const content = (
-    <StyledView className={`flex-1 ${contentTw}`.trim()}>
-      {title && (
-        <StyledText variant="h3" tw="mb-3 font-semibold text-textPrimary">
+    <StyledView className={`flex-1 ${contentTw || ''}`.trim()}>
+      {title ? (
+        <StyledText variant="h3" tw="mb-3 font-semibold text-gray-900">
           {title}
         </StyledText>
-      )}
+      ) : null}
       {children}
     </StyledView>
   );
@@ -62,7 +62,7 @@ const Card: React.FC<CardProps> = ({
     return (
       <StyledTouchableOpacity
         onPress={onPress}
-        className={`${cardBaseTw} ${tw}`.trim()}
+        className={`${cardBaseTw} ${tw || ''}`.trim()}
         style={style}
         activeOpacity={0.8}
       >
@@ -73,7 +73,7 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <StyledView 
-      className={`${cardBaseTw} ${tw}`.trim()}
+      className={`${cardBaseTw} ${tw || ''}`.trim()}
       style={style}
     >
       {content}

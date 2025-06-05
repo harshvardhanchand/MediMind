@@ -6,15 +6,15 @@ export default {
     "slug": "medical-data-hub",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./frontend/assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./frontend/assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "frontend/**/*"
     ],
     "ios": {
       "supportsTablet": true,
@@ -25,12 +25,12 @@ export default {
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./frontend/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./frontend/assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",
@@ -46,4 +46,4 @@ export default {
       }
     }
   }
-}
+} 

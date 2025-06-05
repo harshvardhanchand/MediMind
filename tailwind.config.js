@@ -1,10 +1,10 @@
-const appColors = require('./src/theme/colors.ts').colors; // Import our colors
+const appColors = require('./frontend/src/theme/colors.ts').colors; // Import our colors
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./App.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}"
+    "./frontend/App.{js,jsx,ts,tsx}",
+    "./frontend/src/**/*.{js,jsx,ts,tsx}"
   ],
   theme: {
     extend: {

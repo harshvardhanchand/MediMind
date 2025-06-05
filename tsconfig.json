@@ -1,4 +1,16 @@
 {
-  "compilerOptions": {},
-  "extends": "expo/tsconfig.base"
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["frontend/src/*"]
+    }
+  },
+  "include": [
+    "frontend/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "frontend/node_modules"
+  ]
 }

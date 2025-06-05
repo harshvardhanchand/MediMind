@@ -4,9 +4,10 @@ module.exports = function(api) {
     presets: ['babel-preset-expo'],
     plugins: [
       'react-native-paper/babel',
+      'nativewind/babel',
       ["module:react-native-dotenv", {
         "moduleName": "@env",
-        "path": ".env", // ensure .env is at the root of 'frontend'
+        "path": ".env",
         "blacklist": null,
         "whitelist": null,
         "safe": false,
