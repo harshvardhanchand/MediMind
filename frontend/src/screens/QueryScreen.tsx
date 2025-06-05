@@ -35,7 +35,7 @@ const QueryScreen = () => {
     setShowSuggestions(false);
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await SecureStore.getItemAsync('auth_token');
       
       if (!token) {
         throw new Error('Not authenticated');

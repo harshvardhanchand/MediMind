@@ -18,4 +18,11 @@ class UserRead(BaseModel):
     # app_metadata: Optional[Dict[str, Any]] = Field(None, description="Application-specific metadata from Supabase")
 
     class Config:
-        orm_mode = True # Allow mapping from ORM model 
+        orm_mode = True # Allow mapping from ORM model
+
+# Pydantic schema for creating new users
+class UserCreate(BaseModel):
+    email: str = Field(..., description="User's email address")
+    supabase_id: str = Field(..., description="Supabase user ID (auth.users.id)")
+    user_metadata: Optional[Dict[str, Any]] = Field(None, description="User-specific metadata from Supabase")
+    app_metadata: Optional[Dict[str, Any]] = Field(None, description="Application-specific metadata from Supabase") 

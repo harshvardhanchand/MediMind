@@ -80,7 +80,7 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   ├── unit/               # Unit tests
 │   │   ├── integration/        # Integration tests
 │   │   └── security/           # Security tests
-│   ├── .env.example            # Example environment variables
+│   ├── .env            # Example environment variables
 │   ├── Dockerfile              # Docker configuration for backend
 │   ├── alembic.ini             # Alembic configuration
 │   ├── requirements.txt        # Python dependencies

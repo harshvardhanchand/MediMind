@@ -24,6 +24,32 @@ from app.repositories.extracted_data_repo import ExtractedDataRepository
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["documents"])
 
+def get_or_create_user(db: Session, token_data: dict):
+    """Get user from database or auto-create if doesn't exist."""
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
+    
+    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
+    
+    if not user:
+        # Auto-create user if they don't exist
+        logger.info(f"Auto-creating new user for supabase_id: {supabase_id}")
+        from app.schemas.user import UserCreate
+        
+        # Extract email from token for user creation
+        email = token_data.get("email", f"user-{supabase_id}@example.com")
+        
+        user_create = UserCreate(
+            email=email,
+            supabase_id=supabase_id
+        )
+        
+        user = user_repo.create(db=db, obj_in=user_create)
+        logger.info(f"✅ Auto-created user with id: {user.user_id}")
+    
+    return user
+
 def calculate_hash(content: bytes) -> str:
     """Calculates SHA-256 hash of the file content."""
     sha256_hash = hashlib.sha256()
@@ -44,21 +70,8 @@ def upload_document(
 
     Requires form data with 'document_type' (prescription or lab_result) and the 'file' itself.
     """
-    supabase_id = token_data.get("sub")
-    if not supabase_id:
-        logger.error("Supabase ID not found in token during upload.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
-
-    # Get internal user ID from supabase ID
-    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
-    if not user:
-        # This case should ideally not happen if user sync is working, 
-        # but handle it defensively.
-        logger.error(f"User with supabase_id {supabase_id} not found in internal database.")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user = get_or_create_user(db, token_data)
     
-    internal_user_id = user.user_id
-
     # Read file content to calculate hash and pass to storage
     # Important: Reading the whole file into memory might be an issue for very large files.
     # Consider streaming approaches for production if large files are expected.
@@ -71,10 +84,10 @@ def upload_document(
 
     file_hash = calculate_hash(file_content)
     # Check if a document with this hash already exists for this user to prevent duplicates
-    existing_doc = document_repo.get_by_hash_for_user(db, user_id=internal_user_id, file_hash=file_hash)
+    existing_doc = document_repo.get_by_hash_for_user(db, user_id=user.user_id, file_hash=file_hash)
     if existing_doc:
         # Return a 409 Conflict with information about the existing document
-        logger.info(f"Duplicate file detected for user {internal_user_id}, existing document: {existing_doc.document_id}")
+        logger.info(f"Duplicate file detected for user {user.user_id}, existing document: {existing_doc.document_id}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, 
             detail={
@@ -85,7 +98,7 @@ def upload_document(
         )
 
     # Upload to GCS
-    gcs_path = upload_file_to_gcs(file=file, user_id=internal_user_id)
+    gcs_path = upload_file_to_gcs(file=file, user_id=user.user_id)
     if not gcs_path:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload file to storage")
 
@@ -105,7 +118,7 @@ def upload_document(
         created_document = document_repo.create_with_owner(
             db=db,
             obj_in=doc_meta,
-            user_id=internal_user_id,
+            user_id=user.user_id,
             storage_path=gcs_path,
             file_hash=file_hash
         )
@@ -139,6 +152,7 @@ def upload_document(
         # Consider adding GCS cleanup logic here
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save document metadata")
 
+@router.get("", response_model=List[DocumentRead])
 @router.get("/", response_model=List[DocumentRead])
 def list_documents(
     *,
@@ -152,16 +166,7 @@ def list_documents(
     
     Results are paginated and ordered by upload timestamp (newest first).
     """
-    supabase_id = token_data.get("sub")
-    if not supabase_id:
-        logger.error("Supabase ID not found in token during document listing.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
-    
-    # Get internal user ID from supabase ID
-    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
-    if not user:
-        logger.error(f"User with supabase_id {supabase_id} not found in internal database.")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user = get_or_create_user(db, token_data)
     
     documents = document_repo.get_multi_by_owner(
         db=db,
@@ -184,16 +189,7 @@ def get_document(
     
     Only returns documents belonging to the authenticated user.
     """
-    supabase_id = token_data.get("sub")
-    if not supabase_id:
-        logger.error("Supabase ID not found in token during document retrieval.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
-    
-    # Get internal user ID from supabase ID
-    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
-    if not user:
-        logger.error(f"User with supabase_id {supabase_id} not found in internal database.")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user = get_or_create_user(db, token_data)
     
     document = document_repo.get_by_id(db=db, document_id=document_id)
     
@@ -224,17 +220,8 @@ def update_document_metadata(
     To clear an override, provide the field with a null value (though Pydantic
     optional fields might need specific handling or explicit `None` checking).
     """
-    supabase_id = token_data.get("sub")
-    if not supabase_id:
-        logger.error("Supabase ID not found in token during metadata update.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
+    user = get_or_create_user(db, token_data)
     
-    # Get internal user ID
-    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
-    if not user:
-        logger.error(f"User with supabase_id {supabase_id} not found.")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
     # Verify document exists and belongs to user (get_by_id fetches the object)
     document = document_repo.get_by_id(db=db, document_id=document_id)
     if not document:
@@ -281,16 +268,7 @@ def delete_document(
     Also removes the document file from storage.
     Only allows deleting documents belonging to the authenticated user.
     """
-    supabase_id = token_data.get("sub")
-    if not supabase_id:
-        logger.error("Supabase ID not found in token during document deletion.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
-    
-    # Get internal user ID from supabase ID
-    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
-    if not user:
-        logger.error(f"User with supabase_id {supabase_id} not found in internal database.")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user = get_or_create_user(db, token_data)
     
     document = document_repo.get_by_id(db=db, document_id=document_id)
     

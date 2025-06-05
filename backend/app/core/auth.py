@@ -48,6 +48,9 @@ async def verify_token(
     Raises:
         HTTPException: If token is missing, invalid, or expired
     """
+    # Debug: Log that the function is being called
+    logger.info("🚀 verify_token function called")
+    
     if not supabase:
         logger.error("Supabase client not initialized, authentication not available")
         raise HTTPException(
@@ -56,6 +59,12 @@ async def verify_token(
         )
     
     token = credentials.credentials
+    
+    # Debug: Log the JWT secret status and token info
+    logger.info(f"🔑 JWT Secret configured: {bool(settings.SUPABASE_JWT_SECRET)}")
+    if settings.SUPABASE_JWT_SECRET:
+        logger.info(f"🔑 JWT Secret length: {len(settings.SUPABASE_JWT_SECRET)}")
+    logger.info(f"🎫 Token received - Length: {len(token)}, Parts: {len(token.split('.'))}")
     
     try:
         # Verify the token
@@ -66,12 +75,15 @@ async def verify_token(
                 detail="Authentication configuration error"
             )
         
+        # Debug: Log token info before verification
+        logger.info(f"🔍 Token verification attempt - Token prefix: {token[:20]}...")
+        
         # Decode the token manually with the JWT secret
         decoded_token = jwt.decode(
             token,
             settings.SUPABASE_JWT_SECRET,
             algorithms=["HS256"],
-            options={"verify_signature": True}
+            options={"verify_signature": True, "verify_aud": False}
         )
         
         # Get user ID from the token claims
@@ -86,7 +98,7 @@ async def verify_token(
         # Log successful authentication
         client_ip = get_client_ip(request) if request else "unknown"
         logger.info(
-            f"User authenticated successfully",
+            f"✅ User authenticated successfully - user_id: {user_id}",
             extra={
                 "structured_data": {
                     "user_id": user_id,
@@ -99,7 +111,7 @@ async def verify_token(
     except jwt.ExpiredSignatureError:
         # Log token expiration
         logger.warning(
-            f"Expired token used",
+            f"❌ Expired token used - Token prefix: {token[:20]}...",
             extra={
                 "structured_data": {
                     "client_ip": get_client_ip(request) if request else "unknown",
@@ -110,10 +122,10 @@ async def verify_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired. Please login again."
         )
-    except jwt.InvalidTokenError:
-        # Log invalid token
+    except jwt.InvalidTokenError as e:
+        # Log invalid token with more details
         logger.warning(
-            f"Invalid token used",
+            f"❌ Invalid token used - Token prefix: {token[:20]}... Error: {str(e)}",
             extra={
                 "structured_data": {
                     "client_ip": get_client_ip(request) if request else "unknown",

@@ -1,9 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabaseClient } from '../services/supabase';
-import * as SecureStore from 'expo-secure-store';
-
-const AUTH_TOKEN_KEY = 'auth_token';
 
 interface AuthContextType {
   session: Session | null;
@@ -22,18 +19,21 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   useEffect(() => {
     const fetchSession = async () => {
       try {
+        console.log('🔍 Starting session fetch...');
+        
         const { data, error } = await supabaseClient.auth.getSession();
+        console.log('🔍 Supabase getSession result:', {
+          hasSession: !!data.session,
+          hasUser: !!data.session?.user,
+          hasToken: !!data.session?.access_token,
+          error: error?.message
+        });
+        
         if (error) {
           console.error('Error fetching session:', error);
-          // Potentially handle error (e.g. set an error state)
         } else {
           setSession(data.session);
           setUser(data.session?.user ?? null);
-          if (data.session?.access_token) {
-            await SecureStore.setItemAsync(AUTH_TOKEN_KEY, data.session.access_token);
-          } else {
-            await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
-          }
         }
       } catch (e) {
         console.error('Unexpected error fetching session:', e);
@@ -46,13 +46,14 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const { data: authListenerData } = supabaseClient.auth.onAuthStateChange(
       async (_event, newSession) => {
+        console.log('🔍 Auth State Change:', {
+          event: _event,
+          hasSession: !!newSession,
+          hasToken: !!newSession?.access_token,
+          tokenPrefix: newSession?.access_token ? newSession.access_token.substring(0, 20) + '...' : 'none'
+        });
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        if (newSession?.access_token) {
-          await SecureStore.setItemAsync(AUTH_TOKEN_KEY, newSession.access_token);
-        } else {
-          await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
-        }
       }
     );
 
@@ -62,15 +63,12 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, []);
 
   const signOut = async () => {
-    setIsLoading(true); // Optional: indicate loading during sign out
+    setIsLoading(true);
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
         console.error('Error signing out:', error.message);
-        // You might want to set an error state here for the UI to pick up
     }
-    // Session and user will be set to null by onAuthStateChange listener
-    // SecureStore token removal also handled by listener
-    setIsLoading(false); // Optional: stop loading after sign out attempt
+    setIsLoading(false);
   };
 
   return (

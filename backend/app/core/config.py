@@ -15,13 +15,19 @@ class Settings(BaseSettings):
     # Core application settings
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     PROJECT_NAME: str = "Medical Data Hub API"
-    API_V1_STR: str = "/api/v1"
+    
     
     # CORS settings
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",  # React Native development server
         "http://localhost:19006",  # Expo web
         "exp://localhost:19000",   # Expo Go app
+        "http://192.168.1.2:8082", # Expo development build
+        "http://192.168.1.2:8081", # Alternative Expo port
+        "http://192.168.1.2:8083", # Another Expo port
+        "http://localhost:8082",   # Localhost version
+        "http://localhost:8081",   # Alternative localhost port
+        "http://localhost:8083",   # Another localhost port
     ]
     
     # Authentication settings
@@ -109,3 +115,13 @@ class Settings(BaseSettings):
         return None
 
 settings = Settings() 
+
+# Debug: Log settings at startup
+logger = logging.getLogger(__name__)
+logger.info(f"🔧 Settings loaded - Environment: {settings.ENVIRONMENT}")
+logger.info(f"🔧 Supabase URL configured: {bool(settings.SUPABASE_URL)}")
+logger.info(f"🔧 Supabase Key configured: {bool(settings.SUPABASE_KEY)}")
+logger.info(f"🔧 JWT Secret configured: {bool(settings.SUPABASE_JWT_SECRET)}")
+if settings.SUPABASE_JWT_SECRET:
+    logger.info(f"🔧 JWT Secret length: {len(settings.SUPABASE_JWT_SECRET)}")
+logger.info(f"🔧 Database URL configured: {bool(settings.DATABASE_URL)}") 

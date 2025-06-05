@@ -108,9 +108,12 @@ def setup_logging(level: Optional[str] = None) -> None:
             logger.error(f"Failed to set up Google Cloud Logging: {str(e)}", 
                        extra={"structured_data": {"environment": settings.ENVIRONMENT}})
     else:
-        # For local development, use stdout with structured formatting
+        # For local development, use stdout with simple console formatting for debugging
         handler = logging.StreamHandler(sys.stdout)
-        formatter = StructuredFormatter()
+        # Use simple formatter instead of structured for debugging
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.info("Local logging configured", 
