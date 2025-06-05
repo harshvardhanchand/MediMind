@@ -24,6 +24,7 @@ export default {
     }
     },
     "android": {
+      "package": "com.medicaldatahub",
       "adaptiveIcon": {
         "foregroundImage": "./frontend/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
