@@ -1,7 +1,7 @@
-import { API_URL as ENV_API_URL } from '@env';
+import Constants from 'expo-constants';
 
 // Base API URL (replace with your actual backend API URL)
-export const API_URL = ENV_API_URL;
+export const API_URL = Constants.expoConfig?.extra?.apiUrl;
 
 // Maximum file upload size in bytes (10 MB)
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;

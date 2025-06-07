@@ -4,8 +4,8 @@ import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainAppStackParamList } from '../../navigation/types';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import Pdf from 'react-native-pdf';
+import { MaterialIcons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
@@ -28,6 +28,7 @@ interface ExtractedField {
   value: string | number | null;
   unit?: string;
 }
+
 interface MockDocument {
   id: string;
   name: string;
@@ -72,7 +73,15 @@ const DocumentDetailScreen = () => {
     date: '2023-10-18',
     originalFilename: isImageDoc ? 'xray_chest.jpg' : 'lab_report_oct18.pdf',
     processingStatus: 'Reviewed',
-    extractedContent: { /* ... as before, or tailor to image/pdf ... */ },
+    extractedContent: {
+      lab_results: [
+        { label: 'White Blood Cells', value: 7.2, unit: 'K/μL' },
+        { label: 'Red Blood Cells', value: 4.5, unit: 'M/μL' },
+        { label: 'Hemoglobin', value: 14.1, unit: 'g/dL' },
+        { label: 'Hematocrit', value: 42.3, unit: '%' },
+      ],
+      notes: 'All values within normal range. Continue current treatment.'
+    },
     documentUri: isImageDoc 
       ? 'https://images.unsplash.com/photo-1581091226809-50038c009EMW?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60' // Placeholder image
       : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', 
@@ -103,7 +112,9 @@ const DocumentDetailScreen = () => {
   if (!document) {
     return (
       <ScreenContainer>
-        <StyledView className="flex-1 justify-center items-center"><StyledText>Document not found.</StyledText></StyledView>
+        <StyledView className="flex-1 justify-center items-center">
+          <StyledText>Document not found.</StyledText>
+        </StyledView>
       </ScreenContainer>
     );
   }
@@ -118,13 +129,29 @@ const DocumentDetailScreen = () => {
   const togglePdfViewer = () => setShowPdfViewer(!showPdfViewer);
 
   const openImageViewer = (uri: string) => {
-      setImageUriForModal(uri);
-      setShowImageViewer(true);
+    setImageUriForModal(uri);
+    setShowImageViewer(true);
   };
 
   const closeImageViewer = () => {
-      setShowImageViewer(false);
-      setImageUriForModal(undefined);
+    setShowImageViewer(false);
+    setImageUriForModal(undefined);
+  };
+
+  // Helper function to get PDF.js viewer URL
+  const getPDFViewerUrl = (url: string) => {
+    const encodedUrl = encodeURIComponent(url);
+    return `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodedUrl}`;
+  };
+
+  const handlePdfLoadEnd = () => {
+    setIsLoadingPdf(false);
+    setPdfError(null);
+  };
+
+  const handlePdfError = () => {
+    setIsLoadingPdf(false);
+    setPdfError('Failed to load PDF document');
   };
 
   return (
@@ -132,7 +159,7 @@ const DocumentDetailScreen = () => {
       {/* Custom Header */}
       <StyledView className="flex-row items-center px-3 py-3 border-b border-borderSubtle bg-backgroundSecondary">
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1 mr-2">
-          <Ionicons name="chevron-back-outline" size={28} color={colors.accentPrimary} />
+          <MaterialIcons name="chevron-left" size={28} color={colors.accentPrimary} />
         </StyledTouchableOpacity>
         <StyledText variant="h3" tw="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
           {document.name}
@@ -164,16 +191,35 @@ const DocumentDetailScreen = () => {
                 <>
                   <ListItem 
                     label={showPdfViewer ? 'Hide Document' : (document.originalFilename || 'View PDF')}
-                    iconLeft={showPdfViewer ? 'eye-off-outline' : 'eye-outline'}
+                    iconLeft={showPdfViewer ? 'visibility-off' : 'visibility'}
                     iconLeftColor={colors.accentPrimary}
                     onPress={togglePdfViewer}
                   />
                   {showPdfViewer && (
                     <StyledView className="mt-3 h-96 border border-borderSubtle rounded-md overflow-hidden">
-                      {isLoadingPdf && <ActivityIndicator size="large" color={colors.accentPrimary} style={{ position: 'absolute', top: '50%', left: '50%', transform: [{translateX: -15}, {translateY: -15}] }}/>}
-                      {pdfError && <StyledText color="accentDestructive" tw="p-4 text-center">Error loading PDF: {pdfError}</StyledText>}
-                      {!isLoadingPdf && !pdfError && document.documentUri && (
-                        <StyledText tw="p-4 text-center">PDF Viewer Temporarily Disabled for Testing</StyledText>
+                      {isLoadingPdf && (
+                        <View style={{ position: 'absolute', top: '50%', left: '50%', transform: [{translateX: -15}, {translateY: -15}], zIndex: 1 }}>
+                          <ActivityIndicator size="large" color={colors.accentPrimary} />
+                        </View>
+                      )}
+                      {pdfError && (
+                        <StyledText color="accentDestructive" tw="p-4 text-center">
+                          Error loading PDF: {pdfError}
+                        </StyledText>
+                      )}
+                      {document.documentUri && (
+                        <WebView
+                          source={{ uri: getPDFViewerUrl(document.documentUri) }}
+                          style={{ flex: 1 }}
+                          onLoadStart={() => setIsLoadingPdf(true)}
+                          onLoadEnd={handlePdfLoadEnd}
+                          onError={handlePdfError}
+                          scalesPageToFit={true}
+                          showsVerticalScrollIndicator={true}
+                          javaScriptEnabled={true}
+                          domStorageEnabled={true}
+                          mixedContentMode="compatibility"
+                        />
                       )}
                     </StyledView>
                   )}
@@ -182,12 +228,10 @@ const DocumentDetailScreen = () => {
               {document.documentType === 'image' && (
                 <ListItem 
                   label={document.originalFilename || 'View Image'}
-                  iconLeft="image-outline"
+                  iconLeft="image"
                   iconLeftColor={colors.accentPrimary}
                   onPress={() => document.documentUri && openImageViewer(document.documentUri)}
                 />
-                // Inline image preview - small thumbnail, could be shown by default
-                // <Image source={{ uri: document.documentUri }} className="w-full h-48 mt-2 rounded-md" resizeMode="contain" />
               )}
             </Card>
           )}
@@ -199,13 +243,12 @@ const DocumentDetailScreen = () => {
                 <StyledText variant="h4" tw="font-semibold mb-2 text-textPrimary">Medications</StyledText>
                 {document.extractedContent.medications.map((med, index) => (
                   <ListItem
-                    key={index} // Use index or a generated med ID if available
+                    key={index}
                     label={`${med.name.value}`}
                     subtitle={`${med.dosage.value}${med.dosage.unit || ''} - ${med.frequency.value}`}
-                    iconLeft="medkit-outline" // Or a more specific pill icon if available
-                    iconLeftColor={colors.dataColor5} // Purple for medications
+                    iconLeft="medication"
+                    iconLeftColor={colors.dataColor5}
                     showBottomBorder={index < document.extractedContent!.medications!.length - 1}
-                    // onPress={() => { /* Navigate to medication detail or edit? */ }}
                   />
                 ))}
               </StyledView>
@@ -234,7 +277,7 @@ const DocumentDetailScreen = () => {
               </StyledView>
             )}
 
-            {/* Fallback if no content sections rendered (e.g. completely empty extraction) */}
+            {/* Fallback if no content sections rendered */}
             {!(document.extractedContent?.medications && document.extractedContent.medications.length > 0) &&
              !(document.extractedContent?.lab_results && document.extractedContent.lab_results.length > 0) &&
              !document.extractedContent?.notes && (
@@ -245,33 +288,32 @@ const DocumentDetailScreen = () => {
               variant="filledPrimary" 
               tw="mt-4"
               onPress={() => navigation.navigate('DataReview', { documentId })}
-              iconNameLeft="checkmark-circle-outline"
+              iconNameLeft="check-circle"
             >
               Review & Correct Data
             </StyledButton>
           </Card>
-
         </StyledView>
       </StyledScrollView>
 
       {/* Image Viewer Modal */}
       {document.documentType === 'image' && imageUriForModal && (
         <Modal
-            animationType="fade"
-            transparent={true}
-            visible={showImageViewer}
-            onRequestClose={closeImageViewer}
+          animationType="fade"
+          transparent={true}
+          visible={showImageViewer}
+          onRequestClose={closeImageViewer}
         >
-            <StyledView className="flex-1 justify-center items-center bg-black/80">
-                <StyledPressable className="absolute top-10 right-5 z-10 p-2" onPress={closeImageViewer}>
-                    <Ionicons name="close-circle-outline" size={32} color="white" />
-                </StyledPressable>
-                <Image 
-                    source={{ uri: imageUriForModal }}
-                    style={{ width: '90%', height: '80%'}}
-                    resizeMode="contain"
-                />
-            </StyledView>
+          <StyledView className="flex-1 justify-center items-center bg-black/80">
+            <StyledPressable className="absolute top-10 right-5 z-10 p-2" onPress={closeImageViewer}>
+              <MaterialIcons name="close" size={32} color="white" />
+            </StyledPressable>
+            <Image 
+              source={{ uri: imageUriForModal }}
+              style={{ width: '90%', height: '80%'}}
+              resizeMode="contain"
+            />
+          </StyledView>
         </Modal>
       )}
     </ScreenContainer>

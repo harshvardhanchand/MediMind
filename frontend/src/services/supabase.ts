@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
+import Constants from 'expo-constants';
 
-// TODO: Replace with your actual Supabase URL and anon key from environment variables
-const supabaseUrl = SUPABASE_URL;
-const supabaseAnonKey = SUPABASE_ANON_KEY;
+// Get environment variables from Expo Constants
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
 
 // Custom storage implementation for Supabase with Expo SecureStore
 const ExpoSecureStoreAdapter = {
