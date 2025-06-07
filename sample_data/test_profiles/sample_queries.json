@@ -1,0 +1,19 @@
+{
+  "queries": [
+    "Show me all my medications",
+    "What lab tests did I have last month?",
+    "List my prescriptions from Dr. Johnson",
+    "How has my blood pressure changed over time?",
+    "Show my glucose readings from the past 3 months",
+    "What's my latest cholesterol level?",
+    "Which medications am I taking for blood pressure?",
+    "When was my last HbA1c test and what was the result?",
+    "Show me all lab results that were outside normal range",
+    "Are any of my medications interacting?",
+    "What should I know about taking these medications together?",
+    "Any side effects I should watch for?",
+    "Find prescription from January 2024",
+    "Show lab results from HealthLab Analytics",
+    "What did my cardiologist prescribe?"
+  ]
+}

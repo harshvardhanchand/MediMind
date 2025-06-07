@@ -87,9 +87,15 @@ const ListItem: React.FC<ListItemProps> = ({
       {children ? (
         children // Render custom children for the right side if provided
       ) : value !== undefined ? (
-        <StyledText variant="body1" color="textSecondary" style={valueStyle} tw="ml-2">
-          {value}
-        </StyledText>
+        typeof value === 'string' ? (
+          <StyledText variant="body1" color="textSecondary" style={valueStyle} tw="ml-2">
+            {value}
+          </StyledText>
+        ) : (
+          <StyledView tw="ml-2">
+            {value}
+          </StyledView>
+        )
       ) : null}
       {onPress && iconRight && (
         <Ionicons 

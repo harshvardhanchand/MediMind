@@ -83,14 +83,16 @@ const SettingsScreen = () => {
       // For toggles, we'd render a Switch component as children or in place of iconRight
       iconRight={item.isToggle ? undefined : (item.navigateTo || item.action) ? 'chevron-forward-outline' : undefined}
     >
-      {item.isToggle && (
-        <Switch 
-          value={item.value} 
-          onValueChange={item.action} 
-          trackColor={{ false: colors.borderSubtle, true: colors.accentPrimary }} // Changed legacyGray300 to borderSubtle
-          thumbColor={item.value ? colors.backgroundSecondary : colors.backgroundSecondary } // Ensure thumb is visible
-        />
-      )}
+      {item.isToggle ? (
+        <StyledView>
+          <Switch 
+            value={item.value} 
+            onValueChange={item.action} 
+            trackColor={{ false: colors.borderSubtle, true: colors.accentPrimary }} // Changed legacyGray300 to borderSubtle
+            thumbColor={item.value ? colors.backgroundSecondary : colors.backgroundSecondary } // Ensure thumb is visible
+          />
+        </StyledView>
+      ) : null}
     </ListItem>
   );
 
@@ -111,7 +113,7 @@ const SettingsScreen = () => {
         <Card title="About" tw="mx-4 mb-6" noPadding>
           {aboutSettings.map((item, index) => renderSettingItem(item, index === aboutSettings.length - 1))}
           <ListItem 
-            label={`App Version: 1.0.0`} 
+            label="App Version: 1.0.0"
             iconLeft="information-circle-outline"
             iconLeftColor={colors.textSecondary}
             showBottomBorder={false} 

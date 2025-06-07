@@ -1,0 +1,417 @@
+{
+  "diabetes_management": {
+    "personal_info": {
+      "name": "Sarah Martinez",
+      "age": 45,
+      "conditions": [
+        "Type 2 Diabetes",
+        "Hypertension"
+      ]
+    },
+    "documents": [
+      {
+        "type": "prescription",
+        "filename": "diabetes_management_prescription_1.pdf",
+        "date": "2025-03-08T23:22:26.746747",
+        "doctor": "Dr. Patricia Adams",
+        "medications": [
+          "Lisinopril"
+        ]
+      },
+      {
+        "type": "prescription",
+        "filename": "diabetes_management_prescription_2.pdf",
+        "date": "2025-03-23T23:22:26.746747",
+        "doctor": "Dr. Sarah Johnson",
+        "medications": [
+          "Metformin"
+        ]
+      },
+      {
+        "type": "lab_result",
+        "filename": "diabetes_management_lab_comprehensive_metabolic.pdf",
+        "date": "2025-04-07T23:22:26.746747",
+        "lab": "HealthLab Analytics",
+        "tests": [
+          "glucose",
+          "creatinine",
+          "bun",
+          "sodium"
+        ]
+      },
+      {
+        "type": "lab_result",
+        "filename": "diabetes_management_lab_lipid_panel.pdf",
+        "date": "2025-05-07T23:22:26.746747",
+        "lab": "HealthLab Analytics",
+        "tests": [
+          "total_cholesterol",
+          "hdl",
+          "ldl",
+          "triglycerides"
+        ]
+      }
+    ],
+    "medications": [
+      {
+        "name": "Lisinopril",
+        "dosage": "10mg",
+        "frequency": "once daily",
+        "start_date": "2025-03-08T23:22:26.746747",
+        "prescribing_doctor": "Dr. Patricia Adams"
+      },
+      {
+        "name": "Metformin",
+        "dosage": "500mg",
+        "frequency": "twice daily with meals",
+        "start_date": "2025-03-23T23:22:26.746747",
+        "prescribing_doctor": "Dr. Sarah Johnson"
+      }
+    ],
+    "health_readings": [
+      {
+        "type": "blood_pressure",
+        "systolic": 133,
+        "diastolic": 80,
+        "unit": "mmHg",
+        "date": "2025-03-08T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 134,
+        "diastolic": 82,
+        "unit": "mmHg",
+        "date": "2025-03-17T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 127,
+        "diastolic": 90,
+        "unit": "mmHg",
+        "date": "2025-03-26T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 127,
+        "diastolic": 81,
+        "unit": "mmHg",
+        "date": "2025-04-04T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 131,
+        "diastolic": 95,
+        "unit": "mmHg",
+        "date": "2025-04-13T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 120,
+        "diastolic": 81,
+        "unit": "mmHg",
+        "date": "2025-04-22T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 141,
+        "diastolic": 87,
+        "unit": "mmHg",
+        "date": "2025-05-01T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 138,
+        "diastolic": 90,
+        "unit": "mmHg",
+        "date": "2025-05-10T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 126,
+        "diastolic": 89,
+        "unit": "mmHg",
+        "date": "2025-05-19T23:22:26.746747"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 129,
+        "diastolic": 88,
+        "unit": "mmHg",
+        "date": "2025-05-28T23:22:26.746747"
+      }
+    ],
+    "test_scenarios": [
+      {
+        "name": "Drug Interaction Test",
+        "description": "Add Aspirin to Sarah Martinez's medications to test interaction alerts",
+        "expected_notification": "Drug interaction between blood thinners"
+      },
+      {
+        "name": "Natural Language Query Test",
+        "queries": [
+          "Show Sarah Martinez's blood pressure readings from last month",
+          "What medications did Dr. Johnson prescribe to Sarah Martinez?",
+          "When was Sarah Martinez's last lab test?"
+        ]
+      },
+      {
+        "name": "Trend Analysis Test",
+        "description": "Upload multiple lab results to test trend visualization",
+        "expected_behavior": "Show glucose/BP trends over time"
+      }
+    ]
+  },
+  "heart_disease": {
+    "personal_info": {
+      "name": "Robert Thompson",
+      "age": 62,
+      "conditions": [
+        "Hypertension",
+        "High Cholesterol",
+        "CAD"
+      ]
+    },
+    "documents": [
+      {
+        "type": "prescription",
+        "filename": "heart_disease_prescription_1.pdf",
+        "date": "2025-03-08T23:22:26.754892",
+        "doctor": "Dr. Michael Chen",
+        "medications": [
+          "Lisinopril"
+        ]
+      },
+      {
+        "type": "prescription",
+        "filename": "heart_disease_prescription_2.pdf",
+        "date": "2025-03-23T23:22:26.754892",
+        "doctor": "Dr. Michael Chen",
+        "medications": [
+          "Atorvastatin"
+        ]
+      },
+      {
+        "type": "prescription",
+        "filename": "heart_disease_prescription_3.pdf",
+        "date": "2025-04-07T23:22:26.754892",
+        "doctor": "Dr. Patricia Adams",
+        "medications": [
+          "Aspirin"
+        ]
+      },
+      {
+        "type": "lab_result",
+        "filename": "heart_disease_lab_comprehensive_metabolic.pdf",
+        "date": "2025-04-07T23:22:26.754892",
+        "lab": "HealthLab Analytics",
+        "tests": [
+          "glucose",
+          "creatinine",
+          "bun",
+          "sodium"
+        ]
+      },
+      {
+        "type": "lab_result",
+        "filename": "heart_disease_lab_lipid_panel.pdf",
+        "date": "2025-05-07T23:22:26.754892",
+        "lab": "HealthLab Analytics",
+        "tests": [
+          "total_cholesterol",
+          "hdl",
+          "ldl",
+          "triglycerides"
+        ]
+      }
+    ],
+    "medications": [
+      {
+        "name": "Lisinopril",
+        "dosage": "10mg",
+        "frequency": "once daily",
+        "start_date": "2025-03-08T23:22:26.754892",
+        "prescribing_doctor": "Dr. Michael Chen"
+      },
+      {
+        "name": "Atorvastatin",
+        "dosage": "20mg",
+        "frequency": "once daily at bedtime",
+        "start_date": "2025-03-23T23:22:26.754892",
+        "prescribing_doctor": "Dr. Michael Chen"
+      },
+      {
+        "name": "Aspirin",
+        "dosage": "81mg",
+        "frequency": "once daily",
+        "start_date": "2025-04-07T23:22:26.754892",
+        "prescribing_doctor": "Dr. Patricia Adams"
+      }
+    ],
+    "health_readings": [
+      {
+        "type": "blood_pressure",
+        "systolic": 149,
+        "diastolic": 83,
+        "unit": "mmHg",
+        "date": "2025-03-08T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 137,
+        "diastolic": 88,
+        "unit": "mmHg",
+        "date": "2025-03-17T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 132,
+        "diastolic": 86,
+        "unit": "mmHg",
+        "date": "2025-03-26T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 130,
+        "diastolic": 87,
+        "unit": "mmHg",
+        "date": "2025-04-04T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 134,
+        "diastolic": 91,
+        "unit": "mmHg",
+        "date": "2025-04-13T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 123,
+        "diastolic": 94,
+        "unit": "mmHg",
+        "date": "2025-04-22T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 131,
+        "diastolic": 89,
+        "unit": "mmHg",
+        "date": "2025-05-01T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 121,
+        "diastolic": 92,
+        "unit": "mmHg",
+        "date": "2025-05-10T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 121,
+        "diastolic": 84,
+        "unit": "mmHg",
+        "date": "2025-05-19T23:22:26.754892"
+      },
+      {
+        "type": "blood_pressure",
+        "systolic": 142,
+        "diastolic": 90,
+        "unit": "mmHg",
+        "date": "2025-05-28T23:22:26.754892"
+      }
+    ],
+    "test_scenarios": [
+      {
+        "name": "Drug Interaction Test",
+        "description": "Add Aspirin to Robert Thompson's medications to test interaction alerts",
+        "expected_notification": "Drug interaction between blood thinners"
+      },
+      {
+        "name": "Natural Language Query Test",
+        "queries": [
+          "Show Robert Thompson's blood pressure readings from last month",
+          "What medications did Dr. Johnson prescribe to Robert Thompson?",
+          "When was Robert Thompson's last lab test?"
+        ]
+      },
+      {
+        "name": "Trend Analysis Test",
+        "description": "Upload multiple lab results to test trend visualization",
+        "expected_behavior": "Show glucose/BP trends over time"
+      }
+    ]
+  },
+  "preventive_care": {
+    "personal_info": {
+      "name": "Maria Gonzalez",
+      "age": 35,
+      "conditions": [
+        "Hypothyroidism"
+      ]
+    },
+    "documents": [
+      {
+        "type": "prescription",
+        "filename": "preventive_care_prescription_1.pdf",
+        "date": "2025-03-08T23:22:26.764650",
+        "doctor": "Dr. Patricia Adams",
+        "medications": [
+          "Levothyroxine"
+        ]
+      },
+      {
+        "type": "lab_result",
+        "filename": "preventive_care_lab_comprehensive_metabolic.pdf",
+        "date": "2025-04-07T23:22:26.764650",
+        "lab": "HealthLab Analytics",
+        "tests": [
+          "glucose",
+          "creatinine",
+          "bun",
+          "sodium"
+        ]
+      },
+      {
+        "type": "lab_result",
+        "filename": "preventive_care_lab_lipid_panel.pdf",
+        "date": "2025-05-07T23:22:26.764650",
+        "lab": "HealthLab Analytics",
+        "tests": [
+          "total_cholesterol",
+          "hdl",
+          "ldl",
+          "triglycerides"
+        ]
+      }
+    ],
+    "medications": [
+      {
+        "name": "Levothyroxine",
+        "dosage": "75mcg",
+        "frequency": "once daily on empty stomach",
+        "start_date": "2025-03-08T23:22:26.764650",
+        "prescribing_doctor": "Dr. Patricia Adams"
+      }
+    ],
+    "health_readings": [],
+    "test_scenarios": [
+      {
+        "name": "Drug Interaction Test",
+        "description": "Add Aspirin to Maria Gonzalez's medications to test interaction alerts",
+        "expected_notification": "Drug interaction between blood thinners"
+      },
+      {
+        "name": "Natural Language Query Test",
+        "queries": [
+          "Show Maria Gonzalez's blood pressure readings from last month",
+          "What medications did Dr. Johnson prescribe to Maria Gonzalez?",
+          "When was Maria Gonzalez's last lab test?"
+        ]
+      },
+      {
+        "name": "Trend Analysis Test",
+        "description": "Upload multiple lab results to test trend visualization",
+        "expected_behavior": "Show glucose/BP trends over time"
+      }
+    ]
+  }
+}

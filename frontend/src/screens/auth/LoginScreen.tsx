@@ -40,7 +40,8 @@ const LoginScreen = () => {
       if (authError) {
         setError(authError.message);
       } else if (data.session) {
-        navigation.reset({ index: 0, routes: [{ name: 'Main' as never }] });
+        // Login successful - AuthContext will handle navigation automatically
+        console.log("Login successful, AuthContext will handle navigation");
       } else {
         setError("An unexpected error occurred during login.");
       }
@@ -67,7 +68,7 @@ const LoginScreen = () => {
       if (authError) {
         setError(authError.message);
       } else if (data.session) {
-        navigation.reset({ index: 0, routes: [{ name: 'Main' as never }] });
+        console.log("Dev login successful, AuthContext will handle navigation");
       } else {
         setError("An unexpected error occurred during dev login.");
       }
@@ -92,6 +93,8 @@ const LoginScreen = () => {
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
+        autoComplete="username"
+        textContentType="emailAddress"
         autoCapitalize="none"
         tw="mb-4"
         editable={!isLoading}
@@ -101,6 +104,10 @@ const LoginScreen = () => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        autoComplete="current-password"
+        textContentType="password"
+        autoCorrect={false}
+        spellCheck={false}
         tw="mb-6"
         editable={!isLoading}
       />

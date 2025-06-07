@@ -84,6 +84,8 @@ const SignUpScreen = () => {
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
         autoCapitalize="none"
         tw="mb-4"
         editable={!loading}
@@ -93,7 +95,11 @@ const SignUpScreen = () => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-        tw="mb-4" // Adjusted margin
+        autoComplete="new-password"
+        textContentType="newPassword"
+        autoCorrect={false}
+        spellCheck={false}
+        tw="mb-4"
         editable={!loading}
       />
       <StyledInput
@@ -101,6 +107,10 @@ const SignUpScreen = () => {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
+        autoCorrect={false}
+        spellCheck={false}
         tw="mb-6"
         editable={!loading}
       />
