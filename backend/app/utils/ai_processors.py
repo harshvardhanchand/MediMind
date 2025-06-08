@@ -416,7 +416,7 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
             )
         )
         
-        response = await _async(system_prompt) # Pass the whole crafted prompt
+        response = await model.generate_content_async(system_prompt)
         
         if response.parts:
             answer = response.text
