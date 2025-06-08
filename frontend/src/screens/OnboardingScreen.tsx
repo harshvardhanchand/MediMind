@@ -3,9 +3,9 @@ import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
 import { LogIn, ArrowRight, Shield, Clipboard, Activity, AlertTriangle } from 'lucide-react-native';
 
+import { RootStackParamList } from '../navigation/types';
 import ScreenContainer from '../components/layout/ScreenContainer';
 import StyledText from '../components/common/StyledText';
 import StyledButton from '../components/common/StyledButton';
@@ -68,7 +68,7 @@ const OnboardingScreen = () => {
           <StyledView tw="flex-1">
             <StyledText variant="label" color="textSecondary" tw="font-semibold">Important Disclaimer</StyledText>
             <StyledText variant="caption" color="textSecondary">
-              MedInsight helps organize your health data. It does <StyledText variant="caption" tw="font-bold">not</StyledText> provide medical advice, diagnosis, or treatment. Always consult a healthcare professional for medical concerns.
+              MedInsight helps organize your health data. It does not provide medical advice, diagnosis, or treatment. Always consult a healthcare professional for medical concerns.
             </StyledText>
           </StyledView>
         </StyledView>

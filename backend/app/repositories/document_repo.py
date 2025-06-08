@@ -25,6 +25,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
     ) -> Document:
         """Create a new document record associated with a user."""
         db_obj_data = obj_in.model_dump(exclude_unset=True)
+        
         db_obj = Document(
             **db_obj_data, 
             user_id=user_id,
@@ -32,6 +33,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
             file_hash=file_hash,
             processing_status=ProcessingStatus.PENDING
         )
+        
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)

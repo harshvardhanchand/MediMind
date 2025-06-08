@@ -12,6 +12,10 @@ class ReviewStatus(str, enum.Enum):
     REVIEWED_CORRECTED = "reviewed_corrected"
     REVIEWED_APPROVED = "reviewed_approved"
 
+def enum_values(enum_cls):
+    """Helper function to get enum values for SQLAlchemy"""
+    return [e.value for e in enum_cls]
+
 class ExtractedData(Base):
     """
     SQLAlchemy model for the extracted_data table.
@@ -29,7 +33,17 @@ class ExtractedData(Base):
     # Optional: Store the raw text extracted by OCR before structuring
     raw_text = Column(Text, nullable=True)
     extraction_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
-    review_status = Column(SQLAlchemyEnum(ReviewStatus), default=ReviewStatus.PENDING_REVIEW, nullable=False)
+    review_status = Column(
+        SQLAlchemyEnum(
+            ReviewStatus,
+            values_callable=enum_values,   # Use .value list instead of .name
+            name="reviewstatus",           # Must match existing PG type
+            native_enum=True,              # Keep it a real PG enum
+            create_type=False              # Don't try to recreate
+        ),
+        default=ReviewStatus.PENDING_REVIEW.value,  # Use .value instead of enum directly
+        nullable=False
+    )
     reviewed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
     review_timestamp = Column(DateTime, nullable=True)
     

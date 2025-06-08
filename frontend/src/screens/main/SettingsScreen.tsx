@@ -3,9 +3,8 @@ import { ScrollView, Switch, View } from 'react-native'; // Added View for Style
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MainAppStackParamList } from '../../navigation/types';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 
+import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import Card from '../../components/common/Card';
@@ -88,8 +87,8 @@ const SettingsScreen = () => {
           <Switch 
             value={item.value} 
             onValueChange={item.action} 
-            trackColor={{ false: colors.borderSubtle, true: colors.accentPrimary }} // Changed legacyGray300 to borderSubtle
-            thumbColor={item.value ? colors.backgroundSecondary : colors.backgroundSecondary } // Ensure thumb is visible
+            trackColor={{ false: colors.borderSubtle, true: colors.accentPrimary }}
+            thumbColor={item.value ? colors.backgroundSecondary : colors.backgroundSecondary}
           />
         </StyledView>
       ) : null}

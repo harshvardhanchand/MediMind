@@ -22,5 +22,8 @@ export const PROCESSING_STATES = {
 export const DOCUMENT_TYPES = {
   PRESCRIPTION: 'prescription',
   LAB_RESULT: 'lab_result',
+  IMAGING_REPORT: 'imaging_report',
+  CONSULTATION_NOTE: 'consultation_note',
+  DISCHARGE_SUMMARY: 'discharge_summary',
   OTHER: 'other',
 }; 

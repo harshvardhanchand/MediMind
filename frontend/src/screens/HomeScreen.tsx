@@ -3,7 +3,8 @@ import { View, StyleSheet, FlatList, RefreshControl, ScrollView } from 'react-na
 import { Appbar, FAB, Card, Title, Paragraph, Divider, Chip, Button, ActivityIndicator, Text, IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+
+import { MainAppStackParamList } from '../navigation/types';
 import { supabaseClient } from '../services/supabase'; // Keep for logout
 import { documentServices } from '../api/services';
 import { DocumentRead } from '../types/api'; // Import DocumentRead
@@ -11,7 +12,7 @@ import { DocumentRead } from '../types/api'; // Import DocumentRead
 // Import mock data as fallback
 import { mockDocuments } from '../data/mockData'; // Keep mockDocuments for fallback logic
 
-type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+type HomeScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Home'>;
 
 // Document type definition based on API response
 interface Document extends DocumentRead {} // Use DocumentRead from api.ts
@@ -48,13 +49,7 @@ const HomeScreen = () => {
   const handleLogout = async () => {
     try {
       await supabaseClient.auth.signOut();
-      
-      // AppNavigator will detect the authentication state change
-      // and redirect to Login screen based on its own SecureStore check.
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
+      // The app should automatically navigate to auth screens when auth state changes
     } catch (err) {
       console.error('Logout error:', err);
     }
@@ -227,7 +222,7 @@ const HomeScreen = () => {
       <FAB
         style={styles.fab}
         icon="plus"
-        onPress={() => navigation.navigate('DocumentUpload')}
+        onPress={() => navigation.navigate('Upload')}
       />
     </View>
   );

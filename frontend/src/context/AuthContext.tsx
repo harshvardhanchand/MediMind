@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
+
 import { supabaseClient } from '../services/supabase';
 
 interface AuthContextType {
@@ -45,13 +46,8 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     fetchSession();
 
     const { data: authListenerData } = supabaseClient.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        console.log('🔍 Auth State Change:', {
-          event: _event,
-          hasSession: !!newSession,
-          hasToken: !!newSession?.access_token,
-          tokenPrefix: newSession?.access_token ? newSession.access_token.substring(0, 20) + '...' : 'none'
-        });
+      async (event, newSession) => {
+        
         setSession(newSession);
         setUser(newSession?.user ?? null);
       }

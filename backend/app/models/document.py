@@ -11,14 +11,22 @@ from app.db.session import Base
 class DocumentType(str, enum.Enum):
     PRESCRIPTION = "prescription"
     LAB_RESULT = "lab_result"
+    IMAGING_REPORT = "imaging_report"
+    CONSULTATION_NOTE = "consultation_note"
+    DISCHARGE_SUMMARY = "discharge_summary"
     OTHER = "other"
 
 class ProcessingStatus(str, enum.Enum):
     PENDING = "pending"
-    PROCESSING = "processing"
+    OCR_COMPLETED = "ocr_completed"
+    EXTRACTION_COMPLETED = "extraction_completed"
     REVIEW_REQUIRED = "review_required"
     COMPLETED = "completed"
     FAILED = "failed"
+
+def enum_values(enum_cls):
+    """Helper function to get enum values for SQLAlchemy"""
+    return [e.value for e in enum_cls]
 
 class Document(Base):
     """
@@ -32,9 +40,28 @@ class Document(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True)
     original_filename = Column(String, nullable=False)
     storage_path = Column(String, unique=True, nullable=False) # e.g., GCS path or identifier
-    document_type = Column(SQLAlchemyEnum(DocumentType), nullable=False)
+    document_type = Column(
+        SQLAlchemyEnum(
+            DocumentType,
+            values_callable=enum_values,   # Use .value list instead of .name
+            name="documenttype",           # Must match existing PG type
+            native_enum=True,              # Keep it a real PG enum
+            create_type=False              # Don't try to recreate
+        ),
+        nullable=False
+    )
     upload_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
-    processing_status = Column(SQLAlchemyEnum(ProcessingStatus), default=ProcessingStatus.PENDING, nullable=False)
+    processing_status = Column(
+        SQLAlchemyEnum(
+            ProcessingStatus,
+            values_callable=enum_values,   # Use .value list for ProcessingStatus too
+            name="processingstatus",
+            native_enum=True,
+            create_type=False
+        ),
+        default=ProcessingStatus.PENDING,
+        nullable=False
+    )
     file_hash = Column(String, nullable=True, index=True) # Optional: To detect duplicates
     file_metadata = Column(JSON, nullable=True) # Optional: Store content type, size, etc. Renamed from 'metadata'
 

@@ -1,8 +1,10 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+
+import {MedicationDetailData} from '../screens/main/MedicationDetailScreen';
+ 
 import { MainBottomTabParamList } from './MainTabNavigator';
 // Assuming MedicationDetailData might be defined in MedicationDetailScreen or a shared types file
 // For now, we'll use a generic object for initialData if needed, or define it if you point me to it.
-import {MedicationDetailData} from '../screens/main/MedicationDetailScreen'; 
 
 export type AuthStackParamList = {
   Login: undefined;

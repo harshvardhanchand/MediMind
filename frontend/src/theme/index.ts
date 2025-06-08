@@ -1,4 +1,5 @@
 import { MD3LightTheme as DefaultTheme, useTheme as usePaperTheme } from 'react-native-paper';
+
 import { colors as appColors, AppColors } from './colors';
 
 // Augment the PaperTheme to include our custom colors for type safety with useTheme

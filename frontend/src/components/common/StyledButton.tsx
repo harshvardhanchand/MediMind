@@ -1,9 +1,11 @@
 import React, { ReactNode } from 'react';
 import { TouchableOpacity, View, ViewStyle, TextStyle, ActivityIndicator, StyleProp } from 'react-native';
 import { styled } from 'nativewind';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import StyledText from './StyledText'; // Assuming StyledText is in the same directory
+import { Ionicons } from '@expo/vector-icons';
+
 import { useTheme } from '../../theme';
+
+import StyledText from './StyledText'; // Assuming StyledText is in the same directory
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledView = styled(View); // For icon container
@@ -44,7 +46,7 @@ const StyledButton: React.FC<StyledButtonProps> = ({
   const { colors } = useTheme();
 
   let containerBaseTw = 'flex-row items-center justify-center py-3 px-4 rounded-lg'; // Adjusted padding slightly
-  let textBaseTw = 'font-semibold text-base text-center';
+  const textBaseTw = 'font-semibold text-base text-center';
   let specificContainerTw = '';
   let determinedIconColor = colors.textOnPrimaryColor; // Default for filledPrimary
   let determinedTextColor = colors.textOnPrimaryColor;
@@ -83,7 +85,7 @@ const StyledButton: React.FC<StyledButtonProps> = ({
     if (node) return node; // Prioritize custom ReactNode icon
     if (!name) return null;
     const marginClass = side === 'left' && children ? 'mr-2' : (side === 'right' && children ? 'ml-2' : '');
-    return <Ionicons name={name} size={iconSize} color={determinedIconColor} className={marginClass} />;
+    return <Ionicons name={name as any} size={iconSize} color={determinedIconColor} className={marginClass} />;
   };
 
   return (

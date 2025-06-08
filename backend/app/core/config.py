@@ -52,8 +52,8 @@ class Settings(BaseSettings):
     GCP_STORAGE_BUCKET: str = os.getenv("GCP_STORAGE_BUCKET", "")
 
     # Document AI specific settings
-    DOCUMENT_AI_PROCESSOR_LOCATION: Optional[str] = os.getenv("DOCUMENT_AI_PROCESSOR_LOCATION")
-    DOCUMENT_AI_PROCESSOR_ID: Optional[str] = os.getenv("DOCUMENT_AI_PROCESSOR_ID")
+    DOCUMENT_AI_PROCESSOR_LOCATION: Optional[str] = os.getenv("DOC_AI_LOCATION")
+    DOCUMENT_AI_PROCESSOR_ID: Optional[str] = os.getenv("DOC_AI_PROCESSOR_ID")
 
     # Gemini API Key
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")

@@ -26,6 +26,10 @@ class MedicationStatus(str, enum.Enum):
     COMPLETED = "completed"
     ON_HOLD = "on_hold"
 
+def enum_values(enum_cls):
+    """Helper function to get enum values for SQLAlchemy"""
+    return [e.value for e in enum_cls]
+
 class Medication(Base):
     """
     SQLAlchemy model for the medications table.
@@ -38,7 +42,16 @@ class Medication(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True)
     name = Column(String, nullable=False, index=True)
     dosage = Column(String, nullable=True)  # e.g., "10mg"
-    frequency = Column(SQLAlchemyEnum(MedicationFrequency), nullable=False)
+    frequency = Column(
+        SQLAlchemyEnum(
+            MedicationFrequency,
+            values_callable=enum_values,   # Use .value list instead of .name
+            name="medicationfrequency",    # Must match existing PG type
+            native_enum=True,              # Keep it a real PG enum
+            create_type=False              # Don't try to recreate
+        ),
+        nullable=False
+    )
     frequency_details = Column(String, nullable=True)  # Additional frequency details if needed
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
@@ -48,7 +61,17 @@ class Medication(Base):
     prescribing_doctor = Column(String, nullable=True)
     pharmacy = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
-    status = Column(SQLAlchemyEnum(MedicationStatus), default=MedicationStatus.ACTIVE, nullable=False)
+    status = Column(
+        SQLAlchemyEnum(
+            MedicationStatus,
+            values_callable=enum_values,   # Use .value list instead of .name
+            name="medicationstatus",       # Must match existing PG type
+            native_enum=True,              # Keep it a real PG enum
+            create_type=False              # Don't try to recreate
+        ),
+        default=MedicationStatus.ACTIVE,
+        nullable=False
+    )
     
     # Links to other data
     related_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id"), nullable=True)

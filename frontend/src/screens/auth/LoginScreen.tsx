@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 // import { styled } from 'nativewind'; // No longer directly needed
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ActivityIndicator, View } from 'react-native'; // Added View for centering ActivityIndicator if needed
+
 import { AuthStackParamList } from '../../navigation/types'; // Corrected path
 import { supabaseClient } from '../../services/supabase'; // Import Supabase client
-import { ActivityIndicator, View } from 'react-native'; // Added View for centering ActivityIndicator if needed
 import { useTheme } from '../../theme'; // Import useTheme
 // import { theme } from '../../theme'; // Assuming theme exports colors - Color will be hardcoded for now
 

@@ -11,6 +11,7 @@ psycopg2-binary==2.9.9
 asyncpg==0.29.0
 aiosqlite==0.19.0
 alembic==1.12.1
+greenlet>=1.0.0
 
 # Authentication & Authorization
 supabase==2.0.3
@@ -32,30 +33,41 @@ pytest-asyncio==0.21.1
 pytest-cov==4.1.0
 pytest-mock==3.11.1
 
-# AI/ML (to be added in later phases)
-# google-cloud-vision==3.4.5
-# google-cloud-healthcare==1.8.0
-# google-cloud-aiplatform==1.36.3
-google-generativeai # For Gemini API
+# AI/ML (Python 3.11 compatible)
+scikit-learn==1.7.0
+numpy>=1.22.0
+scipy>=1.8.0
+torch>=2.0.0
+transformers>=4.52.0
+sentence-transformers==2.2.2
+spacy==3.7.2
 
-# Cloud
+# Google AI/ML Services
+google-generativeai==0.3.2
+google-cloud-documentai>=3.5.0
+
+# Cloud Services
 google-cloud-storage==2.13.0
 google-cloud-tasks==2.13.1
 google-cloud-secret-manager==2.16.4
-google-cloud-documentai==3.5.0
 
-# Placeholder for later AI/ML services if they are different from the above
-# google-cloud-healthcare==1.8.0
-# google-cloud-aiplatform==1.36.3
+# Image Processing
+Pillow==10.1.0
 
-# Medical AI & Embeddings
-google-generativeai==0.3.2
-transformers==4.36.0
-torch==2.1.0
-sentence-transformers==2.2.2
-scikit-learn==1.3.2
-numpy==1.24.3
-spacy==3.7.2
+# Data Processing
+pandas>=1.4.0
 
-# Optional medical NER (comment out if not using)
-# https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_ner_bc5cdr_md-0.5.3.tar.gz 
+# HTTP Client
+requests==2.31.0
+
+# File Operations
+aiofiles==23.2.1
+
+# Email
+sendgrid==6.10.0
+
+# Timezone
+pytz==2023.3
+
+# JSON Processing
+orjson==3.9.10 

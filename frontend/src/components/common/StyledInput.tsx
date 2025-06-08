@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { View, TextInput, TextInputProps, StyleProp, ViewStyle, TextStyle, Platform, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import StyledText from './StyledText';
+
 import { useTheme } from '../../theme';
+
+import StyledText from './StyledText';
 
 const StyledNativeInput = styled(TextInput);
 const StyledView = styled(View);

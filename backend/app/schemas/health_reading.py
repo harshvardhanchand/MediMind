@@ -52,5 +52,5 @@ class HealthReadingResponse(HealthReadingBase):
     updated_at: datetime = Field(..., description="Timestamp when the reading was last updated")
 
     class Config:
-        orm_mode = True # For compatibility with SQLAlchemy models
+        from_attributes = True # For compatibility with SQLAlchemy models
         use_enum_values = True 

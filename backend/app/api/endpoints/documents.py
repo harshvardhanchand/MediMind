@@ -19,6 +19,7 @@ from app.models.document import DocumentType
 
 # Import for background task and new sync repository
 from app.services.document_processing_service import run_document_processing_pipeline
+from app.models.extracted_data import ExtractedData
 from app.repositories.extracted_data_repo import ExtractedDataRepository
 
 logger = logging.getLogger(__name__)
@@ -56,101 +57,181 @@ def calculate_hash(content: bytes) -> str:
     sha256_hash.update(content)
     return sha256_hash.hexdigest()
 
-@router.post("/upload", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
-def upload_document(
+@router.post("/upload", response_model=List[DocumentRead], status_code=status.HTTP_201_CREATED)
+async def upload_document(
     *,
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks,
     token_data: dict = Depends(verify_token),
     document_type: DocumentType = Form(...),
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(..., description="Upload up to 5 files simultaneously"),
 ):
     """
-    Uploads a medical document (prescription or lab result) for the authenticated user.
+    Uploads multiple medical documents (up to 5) for the authenticated user.
 
-    Requires form data with 'document_type' (prescription or lab_result) and the 'file' itself.
+    Requires form data with 'document_type' (prescription, lab_result, or other) and multiple 'files'.
+    Returns a list of successfully uploaded documents. If any file fails, it continues with others.
     """
+    
+    # Validate file count
+    if len(files) > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Maximum 5 files allowed per upload"
+        )
+    
+    if len(files) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="At least one file is required"
+        )
+    
     user = get_or_create_user(db, token_data)
     
-    # Read file content to calculate hash and pass to storage
-    # Important: Reading the whole file into memory might be an issue for very large files.
-    # Consider streaming approaches for production if large files are expected.
-    try:
-        file_content = file.file.read()
-        file.file.seek(0) # Reset file pointer after reading for GCS upload
-    except Exception as e:
-         logger.error(f"Failed to read uploaded file {file.filename}: {e}", exc_info=True)
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not read uploaded file.")
-
-    file_hash = calculate_hash(file_content)
-    # Check if a document with this hash already exists for this user to prevent duplicates
-    existing_doc = document_repo.get_by_hash_for_user(db, user_id=user.user_id, file_hash=file_hash)
-    if existing_doc:
-        # Return a 409 Conflict with information about the existing document
-        logger.info(f"Duplicate file detected for user {user.user_id}, existing document: {existing_doc.document_id}")
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, 
-            detail={
-                "message": "Duplicate file detected",
-                "existing_document_id": str(existing_doc.document_id),
-                "uploaded_on": existing_doc.upload_timestamp.isoformat()
-            }
-        )
-
-    # Upload to GCS
-    gcs_path = upload_file_to_gcs(file=file, user_id=user.user_id)
-    if not gcs_path:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload file to storage")
-
-    # Create document metadata schema
-    doc_meta = DocumentCreate(
-        original_filename=file.filename,
-        document_type=document_type,
-        file_metadata={
-            "content_type": file.content_type, 
-            "size": len(file_content),
-            "filename": file.filename
-        }
-    )
-
-    # Save document record to database
-    try:
-        created_document = document_repo.create_with_owner(
-            db=db,
-            obj_in=doc_meta,
-            user_id=user.user_id,
-            storage_path=gcs_path,
-            file_hash=file_hash
-        )
-        logger.info(f"Document record created successfully for {file.filename}, ID: {created_document.document_id}")
-        
-        # Create initial ExtractedData record using the now sync repository
-        extracted_data_repo = ExtractedDataRepository(db)
-        initial_extracted_data = extracted_data_repo.create_initial_extracted_data(document_id=created_document.document_id)
-
-        if not initial_extracted_data:
-            logger.critical(f"CRITICAL: Failed to create initial ExtractedData record for document {created_document.document_id}. This will prevent background processing. Cleaning up GCS file.")
-            # Attempt to cleanup the GCS file as the document processing cannot proceed reliably.
-            if gcs_path:
-                delete_file_from_gcs(gcs_path)
-            # Also consider deleting the created_document record itself to keep DB consistent, though this adds complexity.
-            # await document_repo.remove(db=db, id=created_document.document_id) # If you decide to do this.
+    uploaded_documents = []
+    failed_uploads = []
+    
+    for file_index, file in enumerate(files):
+        try:
+            logger.info(f"Processing file {file_index + 1}/{len(files)}: {file.filename}")
             
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                detail="Failed to initialize document for processing. Uploaded file has been removed."
+            # Read file content to calculate hash and pass to storage
+            try:
+                file_content = file.file.read()
+                file.file.seek(0) # Reset file pointer after reading for GCS upload
+            except Exception as e:
+                logger.error(f"Failed to read uploaded file {file.filename}: {e}", exc_info=True)
+                failed_uploads.append({
+                    "filename": file.filename,
+                    "error": "Could not read uploaded file."
+                })
+                continue
+
+            file_hash = calculate_hash(file_content)
+            
+            # Check if a document with this hash already exists for this user to prevent duplicates
+            existing_doc = document_repo.get_by_hash_for_user(db, user_id=user.user_id, file_hash=file_hash)
+            if existing_doc:
+                logger.info(f"Duplicate file detected for user {user.user_id}, existing document: {existing_doc.document_id}")
+                failed_uploads.append({
+                    "filename": file.filename,
+                    "error": f"Duplicate file detected. Existing document ID: {existing_doc.document_id}",
+                    "existing_document_id": str(existing_doc.document_id),
+                    "uploaded_on": existing_doc.upload_timestamp.isoformat()
+                })
+                continue
+
+            # Upload to GCS
+            gcs_path = await upload_file_to_gcs(file=file, user_id=user.user_id)
+            if not gcs_path:
+                failed_uploads.append({
+                    "filename": file.filename,
+                    "error": "Failed to upload file to storage"
+                })
+                continue
+
+            # Create document metadata schema
+            doc_meta = DocumentCreate(
+                original_filename=file.filename,
+                document_type=document_type,
+                file_metadata={
+                    "content_type": file.content_type, 
+                    "size": len(file_content),
+                    "filename": file.filename
+                }
             )
 
-        # Add document processing to background tasks
-        background_tasks.add_task(run_document_processing_pipeline, created_document.document_id)
-        logger.info(f"Added document processing pipeline to background tasks for document ID: {created_document.document_id}")
+            # Save document record to database with proper transaction handling
+            try:
+                # Create a fresh database session for each file to avoid cascade failures
+                from app.db.session import get_db
+                fresh_db = next(get_db())
+                
+                try:
+                    created_document = document_repo.create_with_owner(
+                        db=fresh_db,
+                        obj_in=doc_meta,
+                        user_id=user.user_id,
+                        storage_path=gcs_path,
+                        file_hash=file_hash
+                    )
+                    fresh_db.commit()
+                    logger.info(f"Document record created successfully for {file.filename}, ID: {created_document.document_id}")
+                    
+                    # Create initial ExtractedData record using the fresh session
+                    extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
+                    initial_extracted_data = extracted_data_repo.create_initial_extracted_data(db=fresh_db, document_id=created_document.document_id)
 
-        return created_document
-    except Exception as e:
-        # Potentially try to clean up the GCS file if DB insert fails?
-        logger.error(f"Failed to create document record in DB for {file.filename} at {gcs_path}: {e}", exc_info=True)
-        # Consider adding GCS cleanup logic here
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save document metadata")
+                    if not initial_extracted_data:
+                        fresh_db.rollback()
+                        logger.critical(f"CRITICAL: Failed to create initial ExtractedData record for document {created_document.document_id}. Rolling back and cleaning up GCS file.")
+                        # Attempt to cleanup the GCS file as the document processing cannot proceed reliably.
+                        if gcs_path:
+                            await delete_file_from_gcs(gcs_path)
+                        
+                        failed_uploads.append({
+                            "filename": file.filename,
+                            "error": "Failed to initialize document for processing. Uploaded file has been removed."
+                        })
+                        continue
+
+                    fresh_db.commit()
+                    
+                    # Add document processing to background tasks
+                    background_tasks.add_task(run_document_processing_pipeline, created_document.document_id)
+                    logger.info(f"Added document processing pipeline to background tasks for document ID: {created_document.document_id}")
+
+                    uploaded_documents.append(created_document)
+                    
+                except Exception as db_error:
+                    fresh_db.rollback()
+                    logger.error(f"Database error for {file.filename}: {db_error}", exc_info=True)
+                    raise db_error
+                finally:
+                    fresh_db.close()
+                    
+            except Exception as e:
+                # Cleanup the GCS file if DB operations fail
+                logger.error(f"Failed to create document record in DB for {file.filename} at {gcs_path}: {e}", exc_info=True)
+                if gcs_path:
+                    try:
+                        await delete_file_from_gcs(gcs_path)
+                    except Exception as cleanup_error:
+                        logger.error(f"Failed to cleanup GCS file {gcs_path}: {cleanup_error}")
+                
+                failed_uploads.append({
+                    "filename": file.filename,
+                    "error": "Failed to save document metadata"
+                })
+                continue
+                
+        except Exception as e:
+            logger.error(f"Unexpected error processing file {file.filename}: {e}", exc_info=True)
+            failed_uploads.append({
+                "filename": file.filename,
+                "error": f"Unexpected error: {str(e)}"
+            })
+            continue
+    
+    # Log summary
+    logger.info(f"Upload batch completed. Successful: {len(uploaded_documents)}, Failed: {len(failed_uploads)}")
+    
+    if failed_uploads:
+        logger.warning(f"Some files failed to upload: {failed_uploads}")
+    
+    # If no files were successfully uploaded, return an error
+    if not uploaded_documents:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "No files were successfully uploaded",
+                "failed_uploads": failed_uploads
+            }
+        )
+    
+    # If some files failed but at least one succeeded, include failed uploads in response headers or log
+    # For now, we'll just return the successful uploads and log the failures
+    return uploaded_documents
 
 @router.get("", response_model=List[DocumentRead])
 @router.get("/", response_model=List[DocumentRead])
@@ -256,7 +337,7 @@ def update_document_metadata(
     return updated_document
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_document(
+async def delete_document(
     *,
     db: Session = Depends(get_db),
     token_data: dict = Depends(verify_token),
@@ -282,7 +363,7 @@ def delete_document(
     
     # Delete the file from GCS storage
     gcs_path = document.storage_path
-    gcs_deletion_success = delete_file_from_gcs(gcs_path)
+    gcs_deletion_success = await delete_file_from_gcs(gcs_path)
     
     if not gcs_deletion_success:
         logger.warning(f"Failed to delete file from GCS: {gcs_path}")

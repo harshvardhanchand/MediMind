@@ -130,6 +130,15 @@ export interface ExtractedDataResponse {
 
 export interface ExtractedDataUpdate {
   content?: any; // For updating the structured content
+  changed_fields?: Array<{
+    section: 'medications' | 'lab_results' | 'notes';
+    index?: number;
+    field: string;
+    oldValue: any;
+    newValue: any;
+    context?: string;
+  }>; // For selective reprocessing
+  trigger_selective_reprocessing?: boolean; // Whether to start selective reprocessing
 }
 
 export interface ExtractedDataStatusUpdate {

@@ -3,10 +3,10 @@ import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MainAppStackParamList } from '../../navigation/types';
 import { ArrowLeft } from 'lucide-react-native';
-import { useTheme } from '../../theme';
 
+import { MainAppStackParamList } from '../../navigation/types';
+import { useTheme } from '../../theme';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';

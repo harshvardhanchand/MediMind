@@ -1,17 +1,18 @@
 import React from 'react';
 import { View, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
+import { styled } from 'nativewind';
+import { ActivityIndicator } from 'react-native';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import Card from '../../components/common/Card';
-import { styled } from 'nativewind';
 import { useTheme } from '../../theme';
 import ListItem from '../../components/common/ListItem';
 import { useAuth } from '../../context/AuthContext';
-import { ActivityIndicator } from 'react-native';
+
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);

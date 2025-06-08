@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
 import { Appbar, Card, Title, Paragraph, Divider, Chip, Button, ActivityIndicator, Text, List } from 'react-native-paper';
+
+import { RootStackParamList } from '../navigation/types';
 import { documentServices, extractedDataServices } from '../api/services';
 import { DocumentRead, ExtractedDataResponse, ExtractionDetailsResponse, ProcessingStatus, ReviewStatus, DocumentType } from '../types/api';
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 import { AuthStackParamList } from '../../navigation/types';
 import { supabaseClient } from '../../services/supabase';
 import ScreenContainer from '../../components/layout/ScreenContainer';

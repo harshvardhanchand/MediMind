@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, FlatList, ListRenderItem, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, FlatList, ListRenderItem, TouchableOpacity, Modal, Pressable, RefreshControl } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MainAppStackParamList } from '../../navigation/types';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator } from 'react-native-paper';
 
+import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
@@ -15,7 +16,7 @@ import Card from '../../components/common/Card';
 import { useTheme } from '../../theme';
 import { DocumentRead, DocumentType } from '../../types/api';
 import { documentServices } from '../../api/services';
-import { ActivityIndicator } from 'react-native-paper';
+
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -144,6 +145,12 @@ const DocumentsScreen = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
             ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-14" />}
+            refreshControl={
+                <RefreshControl
+                    refreshing={isLoadingApi}
+                    onRefresh={loadDocumentsFromApi}
+                />
+            }
         />
     );
   }
@@ -169,8 +176,11 @@ const DocumentsScreen = () => {
           </StyledView>
           <StyledButton 
             variant="textPrimary" 
-            onPress={() => setFilterModalVisible(true)}
-            tw="p-0"
+            onPress={() => {
+              console.log("Filter button pressed!"); // Debug log
+              setFilterModalVisible(true);
+            }}
+            tw="p-2 min-w-12 min-h-12 justify-center items-center"
           >
             <Ionicons name="filter-outline" size={26} color={colors.accentPrimary} />
           </StyledButton>
@@ -208,7 +218,7 @@ const DocumentsScreen = () => {
                             onPress={() => applyDocTypeFilter(item.value)}
                             tw={`px-4 ${selectedDocType === item.value ? 'bg-accentPrimary/10' : ''}`}
                             labelStyle={selectedDocType === item.value ? {color: colors.accentPrimary, fontWeight: '600'} : {}}
-                            iconRight={selectedDocType === item.value ? 'checkmark-circle-outline' : undefined}
+                            iconRight={selectedDocType === item.value ? 'checkmark-circle' : undefined}
                             iconRightColor={colors.accentPrimary}
                             showBottomBorder
                         />

@@ -6,8 +6,9 @@ import {
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
 import * as DocumentPicker from 'expo-document-picker';
+
+import { RootStackParamList } from '../navigation/types';
 import { MAX_FILE_SIZE, SUPPORTED_FILE_TYPES, DOCUMENT_TYPES } from '../config';
 import { documentServices } from '../api/services';
 import { DocumentType as DocumentTypeEnum } from '../types/api';
@@ -17,8 +18,8 @@ type DocumentUploadNavigationProp = NativeStackNavigationProp<RootStackParamList
 const DocumentUploadScreen = () => {
   const navigation = useNavigation<DocumentUploadNavigationProp>();
   
-  const [selectedFileAsset, setSelectedFileAsset] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [documentType, setDocumentType] = useState<string>(DOCUMENT_TYPES.OTHER);
+  const [selectedFileAssets, setSelectedFileAssets] = useState<DocumentPicker.DocumentPickerAsset[]>([]);
+  const [documentType, setDocumentType] = useState<string>(DOCUMENT_TYPES.PRESCRIPTION);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -32,31 +33,47 @@ const DocumentUploadScreen = () => {
       const result = await DocumentPicker.getDocumentAsync({
         type: SUPPORTED_FILE_TYPES,
         copyToCacheDirectory: true,
+        multiple: true,
       });
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const fileInfo = result.assets[0];
-        if (fileInfo.size && fileInfo.size > MAX_FILE_SIZE) {
-          setError(`File is too large. Max size is ${MAX_FILE_SIZE / (1024 * 1024)} MB.`);
+        if (result.assets.length > 5) {
+          setError('Maximum 5 files allowed per upload. Please select fewer files.');
           setShowSnackbar(true);
-          setSelectedFileAsset(null);
           return;
         }
-        setSelectedFileAsset(fileInfo);
+        
+        const invalidFiles = result.assets.filter(file => 
+          file.size && file.size > MAX_FILE_SIZE
+        );
+        
+        if (invalidFiles.length > 0) {
+          setError(`Some files are too large. Max size is ${MAX_FILE_SIZE / (1024 * 1024)} MB per file.`);
+          setShowSnackbar(true);
+          return;
+        }
+        
+        setSelectedFileAssets(result.assets);
       } else {
-        setSelectedFileAsset(null);
+        setSelectedFileAssets([]);
       }
     } catch (err) {
-      console.error('Error picking document:', err);
-      setError('Failed to select document. Please try again.');
+      console.error('Error picking documents:', err);
+      setError('Failed to select documents. Please try again.');
       setShowSnackbar(true);
-      setSelectedFileAsset(null);
+      setSelectedFileAssets([]);
     }
   };
 
+  const removeFile = (index: number) => {
+    const newFiles = [...selectedFileAssets];
+    newFiles.splice(index, 1);
+    setSelectedFileAssets(newFiles);
+  };
+
   const uploadDocument = async () => {
-    if (!selectedFileAsset) {
-      setError('Please select a document first');
+    if (!selectedFileAssets || selectedFileAssets.length === 0) {
+      setError('Please select at least one document first');
       setShowSnackbar(true);
       return;
     }
@@ -67,33 +84,51 @@ const DocumentUploadScreen = () => {
     setSuccessMessage('');
     
     const formData = new FormData();
-    formData.append('file', {
-      uri: selectedFileAsset.uri,
-      name: selectedFileAsset.name,
-      type: selectedFileAsset.mimeType,
-    } as any);
+    
+    selectedFileAssets.forEach((fileAsset) => {
+      formData.append('files', {
+        uri: fileAsset.uri,
+        name: fileAsset.name,
+        type: fileAsset.mimeType,
+      } as any);
+    });
+    
     formData.append('document_type', documentType);
 
     try {
       const response = await documentServices.uploadDocument(formData);
       
-      setSuccessMessage(`Document '${response.data.original_filename}' uploaded successfully! Processing...`);
+      // Handle response which is now an array of uploaded documents
+      const uploadedDocuments = Array.isArray(response.data) ? response.data : [response.data];
+      const uploadedCount = uploadedDocuments.length;
+      const totalCount = selectedFileAssets.length;
+      
+      if (uploadedCount === totalCount) {
+        setSuccessMessage(`All ${uploadedCount} documents uploaded successfully! Processing...`);
+      } else {
+        setSuccessMessage(`${uploadedCount} of ${totalCount} documents uploaded successfully! Check logs for failed uploads.`);
+      }
+      
       setShowSnackbar(true);
-      setSelectedFileAsset(null);
-      setDocumentType(DOCUMENT_TYPES.OTHER);
+      setSelectedFileAssets([]);
+      setDocumentType(DOCUMENT_TYPES.PRESCRIPTION);
       
       setTimeout(() => {
         navigation.goBack();
       }, 2500);
 
     } catch (err: any) {
-      console.error('Error uploading document:', err);
-      let errorMessage = 'Failed to upload document. Please try again.';
+      console.error('Error uploading documents:', err);
+      let errorMessage = 'Failed to upload documents. Please try again.';
       if (err.response?.data?.detail) {
         if (typeof err.response.data.detail === 'string') {
           errorMessage = err.response.data.detail;
         } else if (err.response.data.detail.message) {
-          errorMessage = `${err.response.data.detail.message}. Existing ID: ${err.response.data.detail.existing_document_id}`;
+          errorMessage = err.response.data.detail.message;
+          if (err.response.data.detail.failed_uploads) {
+            const failedNames = err.response.data.detail.failed_uploads.map((f: any) => f.filename).join(', ');
+            errorMessage += ` Failed files: ${failedNames}`;
+          }
         }
       }
       setError(errorMessage);
@@ -131,26 +166,33 @@ const DocumentUploadScreen = () => {
               disabled={isUploading}
               style={styles.uploadButton}
             >
-              Select Document
+              Select Documents
             </Button>
             
-            {selectedFileAsset && (
-              <View style={styles.fileInfoContainer}>
+            {selectedFileAssets.map((fileAsset, index) => (
+              <View key={index} style={styles.fileInfoContainer}>
                 <Text style={styles.fileName}>
-                  {selectedFileAsset.name}
+                  {fileAsset.name}
                 </Text>
-                {selectedFileAsset.mimeType && (
+                {fileAsset.mimeType && (
                   <Text style={styles.fileType}>
-                    Type: {selectedFileAsset.mimeType}
+                    Type: {fileAsset.mimeType}
                   </Text>
                 )}
-                {selectedFileAsset.size && (
+                {fileAsset.size && (
                   <Text style={styles.fileSize}>
-                    Size: {(selectedFileAsset.size / 1024).toFixed(1)} KB
+                    Size: {(fileAsset.size / 1024).toFixed(1)} KB
                   </Text>
                 )}
+                <Button 
+                  mode="outlined" 
+                  onPress={() => removeFile(index)}
+                  style={styles.removeButton}
+                >
+                  Remove
+                </Button>
               </View>
-            )}
+            ))}
           </Card.Content>
         </Card>
         
@@ -163,7 +205,8 @@ const DocumentUploadScreen = () => {
             >
               <RadioButton.Item label="Prescription" value={DOCUMENT_TYPES.PRESCRIPTION} disabled={isUploading}/>
               <RadioButton.Item label="Lab Result" value={DOCUMENT_TYPES.LAB_RESULT} disabled={isUploading}/>
-              <RadioButton.Item label="Other Medical Document" value={DOCUMENT_TYPES.OTHER} disabled={isUploading}/>
+              <RadioButton.Item label="Imaging Report" value={DOCUMENT_TYPES.IMAGING_REPORT} disabled={isUploading}/>
+              <RadioButton.Item label="Discharge Summary" value={DOCUMENT_TYPES.DISCHARGE_SUMMARY} disabled={isUploading}/>
             </RadioButton.Group>
           </Card.Content>
         </Card>
@@ -172,7 +215,7 @@ const DocumentUploadScreen = () => {
           <Card style={styles.progressCard}>
             <Card.Content>
               <Text style={styles.progressText}>
-                Uploading document...
+                Uploading documents...
               </Text>
               <ProgressBar indeterminate={true} color="#2A6BAC" style={styles.progressBar} />
             </Card.Content>
@@ -186,16 +229,16 @@ const DocumentUploadScreen = () => {
             style={styles.cancelButton}
             disabled={isUploading && false}
           >
-            Cancel / Back
+            Cancel
           </Button>
           <Button 
             mode="contained" 
             onPress={uploadDocument}
             loading={isUploading}
-            disabled={isUploading || !selectedFileAsset}
+            disabled={isUploading || !selectedFileAssets || selectedFileAssets.length === 0}
             style={styles.submitButton}
           >
-            Upload Document
+            Upload Documents
           </Button>
         </View>
       </ScrollView>
@@ -289,6 +332,9 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 2,
+  },
+  removeButton: {
+    marginTop: 8,
   },
 });
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+
 import { API_URL } from '../config';
 import { supabaseClient } from '../services/supabase';
 
@@ -14,19 +15,10 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     // Get token from Supabase session instead of manual storage
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const token = session?.access_token;
-    
-    console.log('🔍 API Request Debug:', {
-      url: config.url,
-      method: config.method,
-      hasToken: !!token,
-      tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
-      tokenLength: token ? token.length : 0,
-      tokenParts: token ? token.split('.').length : 0,
-      sessionExists: !!session,
-      sessionUser: session?.user?.id || 'none'
-    });
+    const session = await supabaseClient.auth.getSession();
+    const hasSession = !!session.data.session;
+    const token = session.data.session?.access_token;
+    const hasToken = !!token;
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

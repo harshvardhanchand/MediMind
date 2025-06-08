@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Text as RNText, TextProps as RNTextProps, StyleProp, TextStyle } from 'react-native';
 import { styled } from 'nativewind';
+
 import { useTheme } from '../../theme'; // Ensure this path is correct
 import { colors as appColors } from '../../theme/colors'; // Import base colors for keys
 

@@ -33,7 +33,7 @@ class DocumentRead(DocumentBase):
     metadata_overrides: Optional[Dict[str, Any]] = Field(None, description="User-provided overrides for metadata fields")
 
     class Config:
-        orm_mode = True # Compatibility with SQLAlchemy models
+        from_attributes = True # Compatibility with SQLAlchemy models
 
 # Schema specifically for PATCHing/updating metadata fields by the user
 # Contains only the fields the user is allowed to override

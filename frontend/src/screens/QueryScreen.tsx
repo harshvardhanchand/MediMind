@@ -4,6 +4,7 @@ import { Appbar, TextInput, Button, ActivityIndicator, Text, Chip, Card, Title, 
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
+
 import { API_URL } from '../config';
 
 // Example query suggestions

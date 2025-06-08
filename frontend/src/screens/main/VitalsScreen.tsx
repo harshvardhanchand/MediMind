@@ -3,16 +3,16 @@ import { View, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MainAppStackParamList } from '../../navigation/types';
 import { Activity, Heart, Calendar, Footprints, Plus, LineChart, Droplets, ActivitySquare, Thermometer } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator as PaperActivityIndicator } from 'react-native-paper';
 
+import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import { HealthReadingResponse, HealthReadingType } from '../../types/api';
 import { healthReadingsServices } from '../../api/services';
-import { ActivityIndicator as PaperActivityIndicator } from 'react-native-paper';
 import { useTheme } from '../../theme';
 
 const StyledView = styled(View);

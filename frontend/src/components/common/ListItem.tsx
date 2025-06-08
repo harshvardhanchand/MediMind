@@ -2,8 +2,10 @@ import React, { ReactNode } from 'react';
 import { View, TouchableOpacity, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { styled } from 'nativewind';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import StyledText from './StyledText';
+
 import { useTheme } from '../../theme';
+
+import StyledText from './StyledText';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);

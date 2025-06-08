@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.utils.ai_processors import extract_query_filters_with_gemini, answer_query_with_filtered_context_gemini
 from app.core.config import settings
 # Need ExtractedDataRepository to fetch user's data
+from app.models.extracted_data import ExtractedData
 from app.repositories.extracted_data_repo import ExtractedDataRepository
 from app.repositories.document_repo import document_repo # Assuming singleton instance
 
@@ -115,7 +116,7 @@ async def natural_language_query_endpoint(
 
         # --- Step 3: Prepare Context and Answer using LLM --- 
         logger.debug(f"Step 3: Preparing context from {len(filtered_documents)} documents and generating answer...")
-        extracted_data_repo = ExtractedDataRepository(db)
+        extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
         user_json_contents = [] # This will become a list of medical_events lists
         all_medical_events = [] # This will be a flat list of all medical_events objects
         # Collect document IDs used for context
@@ -123,7 +124,7 @@ async def natural_language_query_endpoint(
 
         for doc in filtered_documents:
             # Fetch associated ExtractedData
-            extracted_data = extracted_data_repo.get_by_document_id(doc.document_id)
+            extracted_data = extracted_data_repo.get_by_document_id(db=db, document_id=doc.document_id)
             if extracted_data and extracted_data.content:
                 # Check if 'medical_events' key exists and is a list
                 medical_events_from_doc = extracted_data.content.get("medical_events")

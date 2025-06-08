@@ -1,14 +1,14 @@
 import uuid
 from datetime import datetime
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from app.models.extracted_data import ReviewStatus
 from app.schemas.document import DocumentRead
 
 # Base schema for extracted data attributes
 class ExtractedDataBase(BaseModel):
-    content: Dict[str, Any] = Field(..., description="Structured data extracted from the document as JSON")
+    content: Any = Field(..., description="Structured data extracted from the document as JSON (can be dict, list, or any JSON structure)")
     raw_text: Optional[str] = Field(None, description="Raw text extracted by OCR, if available")
     review_status: ReviewStatus = Field(..., description="Current review status of the extracted data")
     reviewed_by_user_id: Optional[uuid.UUID] = Field(None, description="ID of the user who reviewed/corrected the data")
@@ -17,7 +17,7 @@ class ExtractedDataBase(BaseModel):
 # Schema for creating extracted data (input)
 # document_id will be set based on the related document
 class ExtractedDataCreate(BaseModel):
-    content: Dict[str, Any] = Field(..., description="Structured data extracted from the document as JSON")
+    content: Any = Field(..., description="Structured data extracted from the document as JSON (can be dict, list, or any JSON structure)")
     raw_text: Optional[str] = Field(None, description="Raw text extracted by OCR, if available")
     # Status typically starts as PENDING_REVIEW
 
@@ -32,7 +32,7 @@ class ExtractedDataRead(ExtractedDataBase):
 
 # Schema for updating extracted data (e.g., during user review)
 class ExtractedDataUpdate(BaseModel):
-    content: Optional[Dict[str, Any]] = Field(None, description="Corrected structured data")
+    content: Optional[Any] = Field(None, description="Corrected structured data (can be dict, list, or any JSON structure)")
     review_status: Optional[ReviewStatus] = Field(None, description="Updated review status (e.g., approved, corrected)")
     # reviewed_by_user_id and review_timestamp should be set by the backend upon update
 
@@ -45,7 +45,9 @@ class ExtractedDataStatusUpdate(BaseModel):
 
 # Schema specifically for updating the content
 class ExtractedDataContentUpdate(BaseModel):
-    content: Dict[str, Any] = Field(..., description="Updated structured content")
+    content: Any = Field(..., description="Updated structured content (can be dict, list, or any JSON structure)")
+    changed_fields: Optional[List[Dict[str, Any]]] = Field(None, description="List of fields that were changed by the user")
+    trigger_selective_reprocessing: Optional[bool] = Field(False, description="Whether to trigger selective reprocessing for changed fields")
 
 # New schema for combined document and extracted data details
 class ExtractionDetailsResponse(BaseModel):

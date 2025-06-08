@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { MainAppStackParamList } from './types';
+
 
 // Screen imports
 import HomeScreen from '../screens/main/HomeScreen';
@@ -16,6 +16,8 @@ import AddHealthReadingScreen from '../screens/AddHealthReadingScreen'; // Corre
 import QueryScreen from '../screens/QueryScreen'; // Corrected path
 import DocumentDetailScreen from '../screens/main/DocumentDetailScreen';
 import DataReviewScreen from '../screens/main/DataReviewScreen';
+
+import { MainAppStackParamList } from './types';
 
 // Placeholder for screens that might not exist yet to avoid import errors
 const PlaceholderScreen = () => null; // Or a simple View with Text

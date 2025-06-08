@@ -192,12 +192,8 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
             system_instruction=SYSTEM_PROMPT_MEDICAL_STRUCTURING,
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
-                # Ensure the output is treated as JSON by asking for it explicitly if the model supports it
-                # or by instructing it in the prompt. The prompt already asks for JSON.
-                # For some models, you might specify response_mime_type='application/json' here.
-                # However, for gemini-1.5-flash, direct JSON mode is typically enabled by instruction.
-                # We can also try to parse the output and validate if it's JSON.
-                temperature=0.1 # Lower temperature for more deterministic, structured output
+                temperature=0.1, # Lower temperature for more deterministic, structured output
+                response_mime_type="application/json" # Force JSON output directly
             )
         )
         
@@ -224,20 +220,42 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
             else:
                 logger.warning(f"Gemini output does not appear to be a valid JSON object. Output: {llm_output[:500]}...")
                 # Fallback: attempt to extract JSON object from markdown code blocks
+                json_content = None
+                
+                # Try multiple patterns for extracting JSON
                 if "```json" in llm_output:
                     try:
-                        json_block = llm_output.split("```json")[1].split("```")[0].strip()
-                        if json_block.strip().startswith("{") and json_block.strip().endswith("}"):
-                            # Perform deeper validation on extracted block too
-                            parsed_output = json.loads(json_block)
-                            if 'extracted_metadata' in parsed_output and 'medical_events' in parsed_output:
-                                logger.info("Successfully extracted and validated JSON object from markdown block.")
-                                return json_block
-                            else:
-                                logger.warning("Extracted JSON object from markdown block is missing required keys.")
-                                return None
-                    except Exception as parse_error: # Broader exception for parsing/splitting issues
-                        logger.warning(f"Could not extract valid JSON object from markdown block: {parse_error}")
+                        # Extract content between ```json and ```
+                        json_content = llm_output.split("```json")[1].split("```")[0].strip()
+                    except IndexError:
+                        logger.warning("Found ```json marker but could not extract content")
+                elif "```" in llm_output and "{" in llm_output:
+                    try:
+                        # Look for any code block that contains JSON
+                        parts = llm_output.split("```")
+                        for part in parts:
+                            if part.strip().startswith("{") and part.strip().endswith("}"):
+                                json_content = part.strip()
+                                break
+                    except Exception:
+                        pass
+                
+                # If we found potential JSON content, validate it
+                if json_content and json_content.startswith("{") and json_content.endswith("}"):
+                    try:
+                        parsed_output = json.loads(json_content)
+                        if 'extracted_metadata' in parsed_output and 'medical_events' in parsed_output:
+                            logger.info("Successfully extracted and validated JSON object from markdown block.")
+                            return json_content
+                        else:
+                            logger.warning("Extracted JSON object from markdown block is missing required keys.")
+                            return None
+                    except json.JSONDecodeError as parse_error:
+                        logger.warning(f"Could not parse extracted JSON content: {parse_error}")
+                        logger.warning(f"Extracted content: {json_content[:200]}...")
+                        return None
+                
+                logger.warning("Could not extract valid JSON from Gemini response")
                 return None # Output wasn't a JSON object
         else:
             logger.warning("Gemini response has no parts or text for structuring.")
@@ -398,7 +416,7 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
             )
         )
         
-        response = await model.generate_content_async(system_prompt) # Pass the whole crafted prompt
+        response = await _async(system_prompt) # Pass the whole crafted prompt
         
         if response.parts:
             answer = response.text
@@ -520,7 +538,9 @@ async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Op
         # Pass empty content as the prompt is in system_instruction now for Gemini 1.5
         # Or pass the query again if system_instruction doesn't fully take complex prompts.
         # Let's try passing the query again in the content for clarity.
-        response = await model.generate_content_async(query_text)
+        response = await model.generate_content_async(query_text,generation_config = {
+    "response_mime_type": "application/json"
+})
         
         if response.parts:
             filter_json_str = response.text

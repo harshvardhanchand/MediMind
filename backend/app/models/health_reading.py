@@ -8,19 +8,23 @@ from sqlalchemy.orm import relationship, Mapped
 from app.db.session import Base # Assuming Base is in app.db.session
 
 class HealthReadingType(str, enum.Enum):
-    BLOOD_PRESSURE = "blood_pressure"
-    GLUCOSE = "glucose"
-    HEART_RATE = "heart_rate"
-    WEIGHT = "weight"
-    HEIGHT = "height"
-    BMI = "bmi"
-    SPO2 = "spo2" # Blood oxygen saturation
-    TEMPERATURE = "temperature"
-    RESPIRATORY_RATE = "respiratory_rate"
-    PAIN_LEVEL = "pain_level" # e.g., scale of 1-10
-    STEPS = "steps"
-    SLEEP = "sleep" # Could be duration in minutes or more complex object
-    OTHER = "other"
+    BLOOD_PRESSURE = "BLOOD_PRESSURE"
+    GLUCOSE = "GLUCOSE"
+    HEART_RATE = "HEART_RATE"
+    WEIGHT = "WEIGHT"
+    HEIGHT = "HEIGHT"
+    BMI = "BMI"
+    SPO2 = "SPO2" # Blood oxygen saturation
+    TEMPERATURE = "TEMPERATURE"
+    RESPIRATORY_RATE = "RESPIRATORY_RATE"
+    PAIN_LEVEL = "PAIN_LEVEL" # e.g., scale of 1-10
+    STEPS = "STEPS"
+    SLEEP = "SLEEP" # Could be duration in minutes or more complex object
+    OTHER = "OTHER"
+
+def enum_values(enum_cls):
+    """Helper function to get enum values for SQLAlchemy"""
+    return [e.value for e in enum_cls]
 
 class HealthReading(Base):
     __tablename__ = "health_readings"
@@ -28,7 +32,17 @@ class HealthReading(Base):
     health_reading_id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
     
-    reading_type = Column(SQLAlchemyEnum(HealthReadingType), nullable=False, index=True)
+    reading_type = Column(
+        SQLAlchemyEnum(
+            HealthReadingType,
+            values_callable=enum_values,   # Use .value list instead of .name
+            name="healthreadingtype",      # Must match existing PG type
+            native_enum=True,              # Keep it a real PG enum
+            create_type=False              # Don't try to recreate
+        ),
+        nullable=False,
+        index=True
+    )
     
     # For simple numeric values like weight, height, glucose, heart_rate, spo2, temperature, respiratory_rate, pain_level, steps
     numeric_value = Column(Numeric(precision=10, scale=2), nullable=True)

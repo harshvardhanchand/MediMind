@@ -1,4 +1,5 @@
-import apiClient from './client';
+import { AxiosResponse } from 'axios'; // To type the full response
+
 import {
   UserResponse, // Assuming you might have a /me endpoint returning this
   DocumentRead,
@@ -19,7 +20,8 @@ import {
   DocumentType, // Make sure DocumentType is imported if used in params, it was missing here
   // UUID, // No longer directly needed here if types handle it
 } from '../types/api';
-import { AxiosResponse } from 'axios'; // To type the full response
+
+import apiClient from './client';
 
 // Authentication services
 // Login and Register are now handled by Supabase client-side SDK directly in the frontend.

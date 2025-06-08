@@ -53,4 +53,4 @@ class MedicationResponse(MedicationBase):
     updated_at: datetime = Field(..., description="Timestamp when the medication was last updated")
 
     class Config:
-        orm_mode = True # Compatibility with SQLAlchemy models 
+        from_attributes = True # Compatibility with SQLAlchemy models 

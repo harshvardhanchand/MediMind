@@ -3,10 +3,10 @@ import { View, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, TextI
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MainAppStackParamList } from '../../navigation/types';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useTheme } from '../../theme';
 
+import { MainAppStackParamList } from '../../navigation/types';
+import { useTheme } from '../../theme';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledInput from '../../components/common/StyledInput';

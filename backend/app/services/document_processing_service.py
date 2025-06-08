@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings # For API keys and other settings
 from app.db.session import SessionLocal # To create a new session for the background task
-from app.models.document import  ProcessingStatus
+from app.models.document import Document, ProcessingStatus
+from app.models.extracted_data import ExtractedData
 from app.repositories.document_repo import DocumentRepository
 from app.repositories.extracted_data_repo import ExtractedDataRepository
 from app.utils.ai_processors import process_document_with_docai, structure_text_with_gemini
@@ -21,8 +22,8 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
     logger.info(f"Starting document processing pipeline for document_id: {document_id}")
     
     db: Session = SessionLocal() # Create a new session for this background task
-    doc_repo = DocumentRepository(db)
-    extracted_data_repo = ExtractedDataRepository(db)
+    doc_repo = DocumentRepository(Document)  # Pass model class, not session
+    extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Now uses same pattern as DocumentRepository
 
     try:
         document = doc_repo.get_document(db=db, document_id=document_id)
@@ -31,24 +32,33 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
             db.close() # Close session before returning
             return
 
-        # Caching Check 1: Already completed or in review
-        if document.processing_status in [ProcessingStatus.COMPLETED, ProcessingStatus.REVIEW_REQUIRED]:
+        # Caching Check 1: Already completed or failed
+        if document.processing_status in [ProcessingStatus.COMPLETED, ProcessingStatus.FAILED]:
             logger.info(f"Document {document_id} already processed (status: {document.processing_status}). Skipping.")
             db.close() # Close session before returning
+            return
+
+        # Concurrency Check: Don't process if already processing
+        if document.processing_status in [ProcessingStatus.OCR_COMPLETED, ProcessingStatus.EXTRACTION_COMPLETED, ProcessingStatus.REVIEW_REQUIRED]:
+            logger.info(f"Document {document_id} is already being processed by another worker (status: {document.processing_status}). Skipping.")
+            db.close()
             return
 
         # Caching Check 2: Already processed based on ExtractedData content (more granular if needed)
         # This might be redundant if processing_status is managed well, but can be an extra safeguard.
         # For instance, if a previous run failed after OCR but before LLM.
-        existing_extracted_data = extracted_data_repo.get_by_document_id(document_id)
+        existing_extracted_data = extracted_data_repo.get_by_document_id(db, document_id=document_id)
         if existing_extracted_data and existing_extracted_data.content and existing_extracted_data.content != {}: # content is not empty
-             if document.processing_status != ProcessingStatus.FAILED: # If not failed, assume it's done or in review
-                logger.info(f"Document {document_id} appears to have structured content already. Status: {document.processing_status}. Skipping LLM if applicable.")
-                # Potentially skip only the LLM part if raw_text is also present and status indicates OCR done.
-                # For now, assume we proceed but skip LLM step later
+             if document.processing_status != ProcessingStatus.FAILED: # If not failed, assume it's done
+                logger.info(f"Document {document_id} appears to have structured content already. Status: {document.processing_status}. Skipping processing.")
+                # Set to completed if not already
+                if document.processing_status != ProcessingStatus.COMPLETED:
+                    doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.COMPLETED)
+                    logger.info(f"Document {document_id} status updated to COMPLETED.")
+                db.close()
+                return
 
-        doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.PROCESSING)
-        logger.info(f"Document {document_id} status updated to PROCESSING.")
+        # Document starts at PENDING status, proceed with processing
 
         # --- OCR Step ---
         raw_text_content = None
@@ -65,10 +75,10 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
 
             if doc_ai_result and doc_ai_result.text:
                 raw_text_content = doc_ai_result.text
-                extracted_data_repo.update_raw_text(document_id, raw_text_content)
-                logger.info(f"OCR successful for document {document_id}. Raw text stored.")
-                # Optionally update status to an intermediate one like 'OCR_COMPLETED'
-                # doc_repo.update_status(document_id, ProcessingStatus.OCR_COMPLETED) 
+                extracted_data_repo.update_raw_text(db, document_id=document_id, raw_text=raw_text_content)
+                # Update status to OCR_COMPLETED
+                doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.OCR_COMPLETED)
+                logger.info(f"OCR successful for document {document_id}. Raw text stored. Status: OCR_COMPLETED")
             else:
                 logger.error(f"OCR processing failed for document {document_id}.")
                 doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
@@ -90,15 +100,26 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
         # Caching: Check if content is already richly populated (not just '{}')
         if existing_extracted_data and existing_extracted_data.content and existing_extracted_data.content != {}:
              logger.info(f"Structured content already exists for document {document_id}. Skipping LLM structuring.")
-             # If skipping LLM, ensure final status is set correctly if it wasn't already
-             if document.processing_status != ProcessingStatus.REVIEW_REQUIRED and document.processing_status != ProcessingStatus.COMPLETED:
-                 doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
-                 logger.info(f"Document {document_id} status updated to REVIEW_REQUIRED after skipping LLM.")
+             # Set to review required or completed
+             doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
+             logger.info(f"Document {document_id} status updated to REVIEW_REQUIRED after skipping LLM.")
         else:
-            structured_json_str = structure_text_with_gemini(
-                api_key=settings.GEMINI_API_KEY,
-                raw_text=raw_text_content
-            )
+            # Retry wrapper to prevent silent failures
+            structured_json_str = None
+            for attempt in range(3):
+                try:
+                    structured_json_str = structure_text_with_gemini(
+                        api_key=settings.GEMINI_API_KEY,
+                        raw_text=raw_text_content
+                    )
+                    break
+                except Exception as exc:
+                    logger.warning("Gemini structuring attempt %d/3 failed: %s", attempt+1, exc)
+            else:
+                logger.error(f"All Gemini structuring attempts failed for document {document_id}")
+                doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                db.close()
+                return
 
             if structured_json_str:
                 try:
@@ -118,8 +139,10 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
                         extracted_metadata = {} # Default to empty dict
                         
                     # 1. Update ExtractedData content
-                    extracted_data_repo.update_structured_content(document_id, medical_events)
-                    logger.info(f"LLM structuring successful for document {document_id}. Structured content stored.")
+                    extracted_data_repo.update_structured_content(db, document_id=document_id, content=medical_events)
+                    # Update status to EXTRACTION_COMPLETED
+                    doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.EXTRACTION_COMPLETED)
+                    logger.info(f"LLM structuring successful for document {document_id}. Structured content stored. Status: EXTRACTION_COMPLETED")
                     
                     # 2. Update Document metadata (if any extracted)
                     if extracted_metadata:
@@ -146,7 +169,7 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
                                 # or just log the warning and continue (as metadata update might be non-critical)
                                 # For now, log error and continue with setting status to REVIEW_REQUIRED
 
-                    # 3. Update Document status
+                    # 3. Update Document status to REVIEW_REQUIRED (requires human review)
                     doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
                     
                 except (json.JSONDecodeError, ValueError, KeyError) as e:
@@ -155,9 +178,9 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
             else:
                 logger.error(f"LLM structuring failed for document {document_id} (no output or error in call).")
                 doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.FAILED)
-                db.close() # Close session before returning
+                db.close()
                 return
-        
+
         logger.info(f"Document processing pipeline completed for document_id: {document_id}")
 
     except Exception as e:

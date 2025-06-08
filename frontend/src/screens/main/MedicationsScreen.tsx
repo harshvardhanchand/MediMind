@@ -3,6 +3,7 @@ import { View, Text, Button, FlatList } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 import { MainAppStackParamList } from '../../navigation/types';
 
 const StyledView = styled(View);

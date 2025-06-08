@@ -3,8 +3,9 @@ import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { Appbar, Button, Card, Title, Text, Paragraph, Chip, FAB, Divider, SegmentedButtons, TouchableRipple } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
 import { LineChart } from 'react-native-chart-kit';
+
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 type HealthReadingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HealthReadings'>;
 

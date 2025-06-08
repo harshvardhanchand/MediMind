@@ -8,9 +8,10 @@ import DocumentsScreen from '../screens/main/DocumentsScreen';
 import HealthDataScreen from '../screens/main/HealthDataScreen'; // The placeholder we created
 import AssistantScreen from '../screens/main/AssistantScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
+import { colors } from '../theme/colors'; // Your new color palette
+
 import DashboardStackNavigator from './DashboardStackNavigator'; // Import the new stack navigator
 
-import { colors } from '../theme/colors'; // Your new color palette
 
 // Define ParamList for the Tab Navigator
 export type MainBottomTabParamList = {

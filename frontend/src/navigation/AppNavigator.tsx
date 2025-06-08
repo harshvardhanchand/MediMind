@@ -1,18 +1,20 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { RootStackParamList, AuthStackParamList } from './types';
-import MainTabNavigator from './MainTabNavigator';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+
+import OnboardingScreen from '../screens/OnboardingScreen';
+
 
 // Import actual OnboardingScreen
-import OnboardingScreen from '../screens/OnboardingScreen';
 
 // Import actual Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
-
 import { useAuth } from '../context/AuthContext';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { theme } from '../theme'; // Assuming theme is correctly exported from ../theme
+
+import MainTabNavigator from './MainTabNavigator';
+import { RootStackParamList, AuthStackParamList } from './types';
 
 // Auth Stack
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();

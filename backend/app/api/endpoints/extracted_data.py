@@ -1,7 +1,8 @@
 import uuid
+import logging
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -19,8 +20,10 @@ from app.schemas.extracted_data import (
     ExtractedDataContentUpdate,
     ExtractionDetailsResponse # Added import for the new schema
 )
+from app.services.selective_reprocessing_service import SelectiveReprocessingService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Helper function to get user_id from token
 # Based on unit tests and architecture document example
@@ -59,8 +62,8 @@ async def get_extracted_data(
     if doc.user_id != current_user_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this document's extracted data")
 
-    extracted_data_repo = ExtractedDataRepository(db)
-    extracted_data = extracted_data_repo.get_by_document_id(document_id=document_id)
+    extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
+    extracted_data = extracted_data_repo.get_by_document_id(db=db, document_id=document_id)
     if not extracted_data:
         # Check if document exists but extracted_data is missing (should ideally be created with document)
         # For robustness, we can create an initial one if missing, or return 404.
@@ -87,9 +90,10 @@ async def update_extracted_data_status(
     if doc.user_id != current_user_id:
         raise HTTPException(status_code=403, detail="Not authorized to update this document's extracted data")
 
-    extracted_data_repo = ExtractedDataRepository(db)
+    extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
     # The repository's update_review_status expects document_id, status, and user_id
     updated_extracted_data = extracted_data_repo.update_review_status(
+        db=db,
         document_id=document_id,
         review_status=status_update.review_status,
         reviewed_by_user_id=current_user_id # Assuming current user is the reviewer
@@ -102,11 +106,12 @@ async def update_extracted_data_status(
     "/{document_id}/content",
     response_model=ExtractedDataRead,
     summary="Update Extracted Data Content",
-    description="Update the structured content of the extracted data and set its status to 'reviewed_corrected'."
+    description="Update the structured content of the extracted data and set its status to 'reviewed_corrected'. Optionally trigger selective reprocessing for changed fields."
 )
 async def update_extracted_data_content(
     document_id: uuid.UUID,
     content_update: ExtractedDataContentUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user_id: uuid.UUID = Depends(get_current_user_id_from_token),
 ):
@@ -116,9 +121,11 @@ async def update_extracted_data_content(
     if doc.user_id != current_user_id:
         raise HTTPException(status_code=403, detail="Not authorized to update this document's extracted data")
 
-    extracted_data_repo = ExtractedDataRepository(db)
+    extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
+    
     # Update content
     updated_data = extracted_data_repo.update_structured_content(
+        db=db,
         document_id=document_id,
         content=content_update.content
     )
@@ -126,20 +133,71 @@ async def update_extracted_data_content(
         raise HTTPException(status_code=404, detail="Failed to update extracted data content or data not found")
 
     # Set status to REVIEWED_CORRECTED as per test logic
-    # The test for update_content asserts that review_status becomes REVIEWED_CORRECTED.
-    # The ExtractedDataRepository().update_structured_content does not do this automatically.
-    # So we need a subsequent call to update_review_status.
     final_updated_data = extracted_data_repo.update_review_status(
+        db=db,
         document_id=document_id,
         review_status=ReviewStatus.REVIEWED_CORRECTED,
         reviewed_by_user_id=current_user_id
     )
     if not final_updated_data:
-        # This should ideally not happen if previous step succeeded
         raise HTTPException(status_code=500, detail="Failed to update review status after content update")
+
+    # Trigger selective reprocessing if requested and there are changed fields
+    if (content_update.trigger_selective_reprocessing and 
+        content_update.changed_fields and 
+        len(content_update.changed_fields) > 0):
+        
+        background_tasks.add_task(
+            run_selective_reprocessing,
+            db=db,
+            document_id=str(document_id),
+            changed_fields=content_update.changed_fields,
+            current_content=content_update.content,
+            raw_text=final_updated_data.raw_text
+        )
 
     return final_updated_data
 
+async def run_selective_reprocessing(
+    db: Session,
+    document_id: str,
+    changed_fields: list,
+    current_content: Any,
+    raw_text: str = None
+):
+    """Background task for running selective reprocessing."""
+    try:
+        selective_service = SelectiveReprocessingService()
+        
+        # Run selective reprocessing
+        enhanced_content = await selective_service.reprocess_changed_fields(
+            db=db,
+            document_id=document_id,
+            changed_fields=changed_fields,
+            current_content=current_content,
+            raw_text=raw_text
+        )
+        
+        # Update the content with enhanced results
+        extracted_data_repo = ExtractedDataRepository(ExtractedData)
+        extracted_data_repo.update_structured_content(
+            db=db,
+            document_id=uuid.UUID(document_id),
+            content=enhanced_content
+        )
+        
+        # Update status to completed after successful reprocessing
+        extracted_data_repo.update_review_status(
+            db=db,
+            document_id=uuid.UUID(document_id),
+            review_status=ReviewStatus.REVIEWED_APPROVED,
+            reviewed_by_user_id=None  # System enhancement
+        )
+        
+        logger.info(f"Selective reprocessing completed successfully for document {document_id}")
+        
+    except Exception as e:
+        logger.error(f"Selective reprocessing failed for document {document_id}: {e}", exc_info=True)
 
 @router.get(
     "/all/{document_id}",
@@ -158,8 +216,8 @@ async def get_extraction_details(
     if doc.user_id != current_user_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this document's details")
 
-    extracted_data_repo = ExtractedDataRepository(db)
-    extracted_data = extracted_data_repo.get_by_document_id(document_id=document_id)
+    extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
+    extracted_data = extracted_data_repo.get_by_document_id(db=db, document_id=document_id)
     if not extracted_data:
         raise HTTPException(status_code=404, detail="Extracted data not found for this document")
 

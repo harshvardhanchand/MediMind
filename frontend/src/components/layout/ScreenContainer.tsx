@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { View, ScrollView, SafeAreaView, StatusBar as RNStatusBar } from 'react-native'; // Renamed StatusBar to avoid conflict
 import { styled } from 'nativewind';
+
 import { useTheme } from '../../theme'; // Import your custom useTheme
 
 const StyledSafeAreaView = styled(SafeAreaView);
