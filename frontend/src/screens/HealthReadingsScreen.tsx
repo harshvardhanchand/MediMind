@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import { Appbar, Button, Card, Title, Text, Paragraph, Chip, FAB, Divider, SegmentedButtons, TouchableRipple } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LineChart } from 'react-native-chart-kit';
 
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { MainAppStackParamList } from '../navigation/types';
+import { healthReadingsServices } from '../api/services';
+import { HealthReadingResponse } from '../types/api';
 
-type HealthReadingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HealthReadings'>;
+type HealthReadingsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'HealthReadings'>;
 
 type ReadingType = 'all' | 'bloodPressure' | 'bloodGlucose' | 'heartRate';
 
@@ -27,8 +29,8 @@ interface ChartDataset {
   label: string;
 }
 
-// Mock health reading data
-const mockReadings: ReadingData[] = [
+// Dummy health reading data for fallback
+const dummyReadings: ReadingData[] = [
   {
     date: 'May 3',
     bloodPressureSystolic: 128,
@@ -85,7 +87,73 @@ const HealthReadingsScreen = () => {
   const [selectedReadingType, setSelectedReadingType] = useState<ReadingType>('all');
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
   
+  // Data states
+  const [readings, setReadings] = useState<ReadingData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [usingDummyData, setUsingDummyData] = useState(false);
+  
   const screenWidth = Dimensions.get('window').width - 32; // Adjust for padding
+
+  useEffect(() => {
+    fetchHealthReadings();
+  }, []);
+
+  const fetchHealthReadings = async () => {
+    try {
+      setLoading(true);
+      setUsingDummyData(false);
+      
+      console.log('Trying to fetch real health readings from API...');
+      const response = await healthReadingsServices.getHealthReadings();
+      
+      if (response.data && response.data.length > 0) {
+        console.log(`Loaded ${response.data.length} real health readings from API`);
+        const convertedReadings = convertApiReadingsToDisplayFormat(response.data);
+        setReadings(convertedReadings);
+        setUsingDummyData(false);
+      } else {
+        console.log('API returned empty data, using dummy health readings');
+        setReadings(dummyReadings);
+        setUsingDummyData(true);
+      }
+    } catch (err: any) {
+      console.log('API call failed, falling back to dummy data:', err.message);
+      setReadings(dummyReadings);
+      setUsingDummyData(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const convertApiReadingsToDisplayFormat = (apiReadings: HealthReadingResponse[]): ReadingData[] => {
+    // Group readings by date
+    const groupedByDate = apiReadings.reduce((acc: any, reading) => {
+      const date = new Date(reading.reading_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (!acc[date]) {
+        acc[date] = {
+          date,
+          bloodPressureSystolic: undefined,
+          bloodPressureDiastolic: undefined,
+          bloodGlucose: undefined,
+          heartRate: undefined,
+        };
+      }
+
+      // Map reading types to display format
+      if (reading.reading_type === 'blood_pressure') {
+        acc[date].bloodPressureSystolic = reading.systolic_value;
+        acc[date].bloodPressureDiastolic = reading.diastolic_value;
+      } else if (reading.reading_type === 'glucose') {
+        acc[date].bloodGlucose = reading.numeric_value;
+      } else if (reading.reading_type === 'heart_rate') {
+        acc[date].heartRate = reading.numeric_value;
+      }
+
+      return acc;
+    }, {});
+
+    return Object.values(groupedByDate) as ReadingData[];
+  };
   
   const handleReadingTypeChange = (value: ReadingType) => {
     setSelectedReadingType(value);
@@ -93,13 +161,13 @@ const HealthReadingsScreen = () => {
   
   // Get chart data based on reading type
   const getChartData = () => {
-    const labels = mockReadings.map(reading => reading.date);
+    const labels = readings.map(reading => reading.date);
     
     const datasets: ChartDataset[] = [];
     
     if (selectedReadingType === 'all' || selectedReadingType === 'bloodPressure') {
       datasets.push({
-        data: mockReadings.map(reading => reading.bloodPressureSystolic || 0),
+        data: readings.map(reading => reading.bloodPressureSystolic || 0),
         color: () => '#2196F3', // blue
         strokeWidth: 2,
         label: 'Blood Pressure (systolic)',
@@ -108,7 +176,7 @@ const HealthReadingsScreen = () => {
     
     if (selectedReadingType === 'all' || selectedReadingType === 'bloodGlucose') {
       datasets.push({
-        data: mockReadings.map(reading => reading.bloodGlucose || 0),
+        data: readings.map(reading => reading.bloodGlucose || 0),
         color: () => '#4CAF50', // green
         strokeWidth: 2,
         label: 'Blood Glucose (mg/dL)',
@@ -117,7 +185,7 @@ const HealthReadingsScreen = () => {
     
     if (selectedReadingType === 'all' || selectedReadingType === 'heartRate') {
       datasets.push({
-        data: mockReadings.map(reading => reading.heartRate || 0),
+        data: readings.map(reading => reading.heartRate || 0),
         color: () => '#F44336', // red
         strokeWidth: 2,
         label: 'Heart Rate (bpm)',
@@ -129,6 +197,15 @@ const HealthReadingsScreen = () => {
       datasets,
     };
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>Loading health readings...</Text>
+      </View>
+    );
+  }
   
   // Render the chart view
   const renderChartView = () => {
@@ -191,7 +268,7 @@ const HealthReadingsScreen = () => {
             <Text style={styles.tableHeaderCell}>Heart Rate (bpm)</Text>
           ) : null}
         </View>
-        {mockReadings.map((reading, index) => (
+        {readings.map((reading, index) => (
           <View key={index} style={styles.tableRow}>
             <Text style={[styles.tableCell, { flex: 1.5 }]}>{reading.date}</Text>
             {selectedReadingType === 'all' || selectedReadingType === 'bloodPressure' ? (
@@ -221,6 +298,14 @@ const HealthReadingsScreen = () => {
       <View style={styles.headerContainer}>
         <Title style={styles.headerTitle}>Health Readings</Title>
         <Text style={styles.headerSubtitle}>Track and monitor your health metrics</Text>
+        
+        {usingDummyData && (
+          <View style={styles.dummyDataBanner}>
+            <Text style={styles.dummyDataText}>
+              📱 Showing sample data (API not connected)
+            </Text>
+          </View>
+        )}
       </View>
       
       <View style={styles.filterContainer}>
@@ -402,6 +487,27 @@ const styles = StyleSheet.create({
   activeViewToggleText: {
     fontSize: 12,
     color: '#FFF',
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+  },
+  dummyDataBanner: {
+    backgroundColor: '#FFEBEE',
+    padding: 8,
+    borderRadius: 4,
+    marginTop: 8,
+  },
+  dummyDataText: {
+    fontSize: 12,
+    color: '#F44336',
     fontWeight: 'bold',
   },
 });

@@ -28,7 +28,7 @@ class GeminiMedicalService:
         
         # Initialize model with medical-focused configuration
         self.model = genai.GenerativeModel(
-            model_name="gemini-pro",
+            model_name="gemini-2.0-flash",
             generation_config={
                 "temperature": 0.1,  # Low temperature for consistent medical analysis
                 "top_p": 0.9,

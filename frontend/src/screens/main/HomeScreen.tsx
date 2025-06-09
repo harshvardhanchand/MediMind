@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,8 @@ import Card from '../../components/common/Card';
 import { useTheme } from '../../theme';
 import ListItem from '../../components/common/ListItem';
 import { useAuth } from '../../context/AuthContext';
-
+import { documentServices, medicationServices, healthReadingsServices } from '../../api/services';
+import { DocumentRead, MedicationResponse, HealthReadingResponse } from '../../types/api';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
@@ -22,58 +23,210 @@ const HomeScreen = () => {
   const { colors } = useTheme();
   const { signOut, isLoading: authLoading } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  
+  // Data states
+  const [documents, setDocuments] = useState<DocumentRead[]>([]);
+  const [medications, setMedications] = useState<MedicationResponse[]>([]);
+  const [healthReadings, setHealthReadings] = useState<HealthReadingResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [usingDummyData, setUsingDummyData] = useState(false);
 
-  const keyMetrics = [
+  // Dummy data fallbacks
+  const dummyDocuments: DocumentRead[] = [
     {
-      id: 'bp',
-      label: 'Blood Pressure',
-      value: '120/80',
-      unit: 'mmHg',
-      lastChecked: 'Today',
-      iconName: 'heart-outline',
-      iconColor: colors.dataColor4,
+      document_id: 'dummy-doc1',
+      user_id: 'dummy-user',
+      original_filename: 'Lab Report - Blood Test.pdf',
+      document_type: 'lab_result' as any,
+      storage_path: 'dummy/path',
+      upload_timestamp: '2024-05-10T00:00:00Z',
+      processing_status: 'completed' as any,
+      document_date: '2024-05-10',
+      source_name: 'Central Lab',
     },
     {
-      id: 'hr',
-      label: 'Heart Rate',
-      value: '72',
-      unit: 'bpm',
-      lastChecked: '2 hours ago',
-      iconName: 'pulse-outline',
-      iconColor: colors.dataColor4,
+      document_id: 'dummy-doc2',
+      user_id: 'dummy-user',
+      original_filename: 'Prescription - Amoxicillin.pdf',
+      document_type: 'prescription' as any,
+      storage_path: 'dummy/path',
+      upload_timestamp: '2024-05-08T00:00:00Z',
+      processing_status: 'completed' as any,
+      document_date: '2024-05-08',
+      source_name: 'Dr. Smith',
     },
     {
-      id: 'glucose',
-      label: 'Glucose',
-      value: '98',
-      unit: 'mg/dL',
-      lastChecked: 'Yesterday',
-      iconName: 'thermometer-outline',
-      iconColor: colors.dataColor2,
+      document_id: 'dummy-doc3',
+      user_id: 'dummy-user',
+      original_filename: 'X-Ray - Chest Scan.pdf',
+      document_type: 'imaging_report' as any,
+      storage_path: 'dummy/path',
+      upload_timestamp: '2024-05-05T00:00:00Z',
+      processing_status: 'completed' as any,
+      document_date: '2024-05-05',
+      source_name: 'Radiology Center',
     },
   ];
 
-  // Mock data for Recent Documents - replace with actual data fetching
-  const recentDocuments = [
+  const dummyMedications: MedicationResponse[] = [
     {
-      id: 'doc1',
-      name: 'Lab Report - Blood Test',
-      type: 'lab_result',
-      date: 'May 10, 2024',
+      medication_id: 'dummy-med1',
+      user_id: 'dummy-user',
+      name: 'Lisinopril',
+      dosage: '10mg',
+      frequency: 'once_daily' as any,
+      status: 'active' as any,
+      created_at: '2024-05-01T09:00:00Z',
+      updated_at: '2024-05-01T09:00:00Z',
     },
     {
-      id: 'doc2',
-      name: 'Prescription - Amoxicillin',
-      type: 'prescription',
-      date: 'May 08, 2024',
-    },
-    {
-      id: 'doc3',
-      name: 'X-Ray - Chest Scan',
-      type: 'imaging',
-      date: 'May 05, 2024',
+      medication_id: 'dummy-med2',
+      user_id: 'dummy-user',
+      name: 'Metformin',
+      dosage: '500mg',
+      frequency: 'twice_daily' as any,
+      status: 'active' as any,
+      created_at: '2024-05-01T19:00:00Z',
+      updated_at: '2024-05-01T19:00:00Z',
     },
   ];
+
+  const dummyHealthReadings: any[] = [
+    { reading_type: 'blood_pressure', systolic_value: 120, diastolic_value: 80, unit: 'mmHg', reading_date: new Date().toISOString() },
+    { reading_type: 'heart_rate', numeric_value: 72, unit: 'bpm', reading_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+    { reading_type: 'glucose', numeric_value: 98, unit: 'mg/dL', reading_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
+  ];
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setUsingDummyData(false);
+      
+      console.log('Fetching dashboard data...');
+      
+      // Fetch all data in parallel
+      const [docsResult, medsResult, healthResult] = await Promise.allSettled([
+        documentServices.getDocuments({ limit: 5 }),
+        medicationServices.getMedications({ limit: 5, active_only: true }),
+        healthReadingsServices.getHealthReadings().catch(() => ({ data: [] })) // Graceful fallback for health readings
+      ]);
+
+      let hasRealData = false;
+
+      // Process documents
+      if (docsResult.status === 'fulfilled' && docsResult.value.data?.length > 0) {
+        setDocuments(docsResult.value.data);
+        hasRealData = true;
+        console.log(`Loaded ${docsResult.value.data.length} real documents`);
+      } else {
+        setDocuments(dummyDocuments);
+        console.log('Using dummy documents');
+      }
+
+      // Process medications
+      if (medsResult.status === 'fulfilled' && medsResult.value.data?.length > 0) {
+        setMedications(medsResult.value.data);
+        hasRealData = true;
+        console.log(`Loaded ${medsResult.value.data.length} real medications`);
+      } else {
+        setMedications(dummyMedications);
+        console.log('Using dummy medications');
+      }
+
+      // Process health readings
+      if (healthResult.status === 'fulfilled' && healthResult.value.data?.length > 0) {
+        setHealthReadings(healthResult.value.data);
+        hasRealData = true;
+        console.log(`Loaded ${healthResult.value.data.length} real health readings`);
+      } else {
+        setHealthReadings(dummyHealthReadings);
+        console.log('Using dummy health readings');
+      }
+
+      setUsingDummyData(!hasRealData);
+      
+    } catch (err: any) {
+      console.log('Dashboard API calls failed, using dummy data:', err.message);
+      setDocuments(dummyDocuments);
+      setMedications(dummyMedications);
+      setHealthReadings(dummyHealthReadings);
+      setUsingDummyData(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate key metrics from health readings
+  const getKeyMetrics = () => {
+    const metrics = [];
+    
+    // Find latest readings
+    const latestBP = healthReadings.find(r => r.reading_type === 'blood_pressure' || (r as any).reading_type === 'blood_pressure');
+    const latestHR = healthReadings.find(r => r.reading_type === 'heart_rate' || (r as any).reading_type === 'heart_rate');
+    const latestGlucose = healthReadings.find(r => r.reading_type === 'glucose' || (r as any).reading_type === 'glucose');
+
+    if (latestBP) {
+      const bp = latestBP as any;
+      metrics.push({
+        id: 'bp',
+        label: 'Blood Pressure',
+        value: `${bp.systolic_value || 120}/${bp.diastolic_value || 80}`,
+        unit: 'mmHg',
+        lastChecked: 'Today',
+        iconName: 'heart-outline',
+        iconColor: colors.dataColor4,
+      });
+    }
+
+    if (latestHR) {
+      const hr = latestHR as any;
+      metrics.push({
+        id: 'hr',
+        label: 'Heart Rate',
+        value: (hr.numeric_value || 72).toString(),
+        unit: 'bpm',
+        lastChecked: '2 hours ago',
+        iconName: 'pulse-outline',
+        iconColor: colors.dataColor4,
+      });
+    }
+
+    if (latestGlucose) {
+      const glucose = latestGlucose as any;
+      metrics.push({
+        id: 'glucose',
+        label: 'Glucose',
+        value: (glucose.numeric_value || 98).toString(),
+        unit: 'mg/dL',
+        lastChecked: 'Yesterday',
+        iconName: 'thermometer-outline',
+        iconColor: colors.dataColor2,
+      });
+    }
+
+    return metrics;
+  };
+
+  const keyMetrics = getKeyMetrics();
+
+  // Convert documents to display format
+  const recentDocuments = documents.slice(0, 3).map(doc => ({
+    id: doc.document_id,
+    name: doc.original_filename.replace(/\.[^/.]+$/, ''), // Remove file extension
+    type: doc.document_type,
+    date: doc.document_date ? new Date(doc.document_date).toLocaleDateString() : 'Unknown date',
+  }));
+
+  // Convert medications to upcoming format
+  const upcomingMedications = medications.slice(0, 3).map(med => ({
+    id: med.medication_id,
+    name: `${med.name}${med.dosage ? ` - ${med.dosage}` : ''}`,
+    nextDue: 'Today', // Would calculate from frequency in real app
+  }));
 
   const getDocIconName = (docType: string) => {
     switch (docType) {
@@ -81,7 +234,7 @@ const HomeScreen = () => {
         return 'flask-outline';
       case 'prescription':
         return 'medkit-outline';
-      case 'imaging':
+      case 'imaging_report':
         return 'images-outline';
       default:
         return 'document-text-outline';
@@ -94,28 +247,6 @@ const HomeScreen = () => {
     { id: 'vitals', label: 'Track Vitals', iconNameLeft: 'pulse-outline', screen: 'Vitals', variant: 'filledSecondary' as const },
     { id: 'symptoms', label: 'Log Symptoms', iconNameLeft: 'clipboard-outline', screen: 'SymptomTracker', variant: 'filledSecondary' as const },
     { id: 'assistant', label: 'Ask Assistant', iconNameLeft: 'chatbubbles-outline', screen: 'AssistantTab' as any, variant: 'filledSecondary' as const, fullWidth: true },
-  ];
-
-  // Mock data for Upcoming Medications - replace with actual data fetching
-  const upcomingMedications = [
-    {
-      id: 'med1',
-      name: 'Lisinopril - 10mg',
-      nextDue: 'Today, 9:00 AM',
-      // type: 'cardiovascular' // Optional: for icon color logic if needed
-    },
-    {
-      id: 'med2',
-      name: 'Metformin - 500mg',
-      nextDue: 'Today, 7:00 PM',
-      // type: 'diabetes'
-    },
-    {
-      id: 'med3',
-      name: 'Atorvastatin - 20mg',
-      nextDue: 'Tomorrow, 8:00 AM',
-      // type: 'cholesterol'
-    },
   ];
 
   // Mock data for Health Insights
@@ -152,6 +283,17 @@ const HomeScreen = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <ScreenContainer scrollable={false} withPadding={false}>
+        <StyledView className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" />
+          <StyledText tw="mt-2 text-gray-600">Loading dashboard...</StyledText>
+        </StyledView>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer scrollable={false} withPadding={false}>
       <StyledScrollView className="flex-1 px-4 pt-6 pb-20" showsVerticalScrollIndicator={false}>
@@ -160,30 +302,48 @@ const HomeScreen = () => {
           <StyledText variant="body1" color="textSecondary" tw="mt-1">
             Welcome to your health insights.
           </StyledText>
+          
+          {usingDummyData && (
+            <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+              <StyledText tw="text-yellow-800 text-sm text-center">
+                📱 Showing sample data (API not connected)
+              </StyledText>
+            </StyledView>
+          )}
         </StyledView>
 
-        <StyledText variant="h4" tw="mb-3 font-semibold">Highlights</StyledText>
-        <StyledView className="flex-row -mx-1.5 mb-8">
-          {keyMetrics.map((metric) => (
-            <StyledView key={metric.id} className="flex-1 px-1.5">
-              <Card withShadow={true} tw="flex-1">
-                <StyledView className="flex-row justify-between items-start mb-1">
-                  <StyledText variant="label" color="textSecondary" tw="mb-1">
-                    {metric.label}
-                  </StyledText>
-                  <Ionicons name={metric.iconName as any} size={20} color={metric.iconColor} />
+        {keyMetrics.length > 0 && (
+          <>
+            <StyledText variant="h4" tw="mb-3 font-semibold">Highlights</StyledText>
+            <StyledView className="flex-row -mx-1 mb-8">
+              {keyMetrics.map((metric) => (
+                <StyledView key={metric.id} className="flex-1 px-1">
+                  <Card withShadow={true} tw="flex-1 min-h-[120]">
+                    <StyledView className="flex-row justify-between items-center mb-3">
+                      <StyledText variant="label" color="textSecondary" tw="text-xs font-medium flex-1 mr-2">
+                        {metric.label === 'Blood Pressure' ? 'Blood Pressure' : metric.label}
+                      </StyledText>
+                      <Ionicons name={metric.iconName as any} size={20} color={metric.iconColor} style={{ marginRight: -2 }} />
+                    </StyledView>
+                    <StyledView className="mb-2">
+                      <StyledText variant="h3" color="textPrimary" tw="font-bold text-2xl" numberOfLines={1} adjustsFontSizeToFit>
+                        {metric.value}
+                        {metric.unit && (
+                          <StyledText variant="body2" color="textSecondary" tw="text-base">
+                            {metric.unit}
+                          </StyledText>
+                        )}
+                      </StyledText>
+                    </StyledView>
+                    <StyledText variant="caption" color="textMuted" tw="mt-auto text-xs">
+                      {metric.lastChecked}
+                    </StyledText>
+                  </Card>
                 </StyledView>
-                <StyledText variant="h3" color="textPrimary" tw="font-bold">
-                  {metric.value}
-                  {metric.unit && <StyledText variant="body2" color="textSecondary">{metric.unit}</StyledText>}
-                </StyledText>
-                <StyledText variant="caption" color="textMuted" tw="mt-0.5">
-                  {metric.lastChecked}
-                </StyledText>
-              </Card>
+              ))}
             </StyledView>
-          ))}
-        </StyledView>
+          </>
+        )}
 
         {/* Section: Recent Documents */}
         <Card title="Recent Activity" withShadow={true} tw="mb-6">

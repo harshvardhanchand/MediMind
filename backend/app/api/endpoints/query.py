@@ -5,6 +5,7 @@ import json # For formatting the JSON context
 from datetime import date # Added for date range handling
 from typing import Any, Optional, Tuple, List
 import uuid
+import google.generativeai as genai
 
 from app.schemas.query import QueryRequest, NaturalLanguageQueryResponse # Updated schema
 from app.core.auth import verify_token, get_user_id_from_token # Added get_user_id_from_token
@@ -19,6 +20,57 @@ from app.repositories.document_repo import document_repo # Assuming singleton in
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+async def classify_and_handle_general_query(api_key: str, query_text: str) -> Optional[str]:
+    """
+    Uses LLM to classify if a query is general conversation vs medical-specific.
+    If general, provides a natural conversational response.
+    If medical, returns None to proceed with medical document pipeline.
+    """
+    system_prompt = """
+    You are a health assistant AI. Analyze the user's query and determine if it's:
+    1. General conversation (greetings, how are you, what can you do, general chat)
+    2. Medical-specific (asking about medications, lab results, symptoms, health data)
+
+    If it's GENERAL conversation:
+    - Respond naturally and helpfully as a health assistant
+    - Mention that you can help with medical questions when they have documents
+    - Be warm and conversational
+
+    If it's MEDICAL-specific:
+    - Respond with exactly: "MEDICAL_QUERY"
+
+    Examples:
+    - "Hello" → Natural greeting response
+    - "How are you?" → Natural friendly response  
+    - "What can you do?" → Explain capabilities naturally
+    - "Tell me about my medications" → "MEDICAL_QUERY"
+    - "What were my lab results?" → "MEDICAL_QUERY"
+    """
+
+    try:
+        genai.configure(api_key=api_key)
+        
+        model = genai.GenerativeModel(
+            model_name='gemini-2.0-flash',
+            system_instruction=system_prompt,
+            generation_config=genai.types.GenerationConfig(temperature=0.7)
+        )
+        
+        response = await model.generate_content_async(query_text)
+        
+        if response.parts:
+            answer = response.text.strip()
+            if answer == "MEDICAL_QUERY":
+                return None  # Proceed with medical pipeline
+            else:
+                return answer  # Return the conversational response
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error in query classification: {e}")
+        return None
 
 # Helper function to interpret relative dates (can be expanded)
 # This is a simple example; a robust version would use libraries or more logic
@@ -43,10 +95,10 @@ async def natural_language_query_endpoint(
     token_data: dict = Depends(verify_token) 
 ):
     """
-    Answers a natural language query using a two-step LLM process:
-    1. Extract filter criteria from the query based on Document metadata.
-    2. Retrieve filtered documents and their data.
-    3. Generate an answer based on the filtered data context.
+    Answers a natural language query using a smart classification system:
+    1. First classify if it's general conversation vs medical-specific
+    2. Handle general conversation naturally with LLM
+    3. For medical queries, use the document-based pipeline
     """
     if not settings.GEMINI_API_KEY:
         logger.error("GEMINI_API_KEY is not configured.")
@@ -59,6 +111,23 @@ async def natural_language_query_endpoint(
         raise HTTPException(status_code=403, detail="User not found or invalid token.")
 
     logger.info(f"Processing query: '{query_request.query_text}' for user_id: {user_id}")
+
+    # Step 0: Classify and handle general conversation
+    general_response = await classify_and_handle_general_query(
+        api_key=settings.GEMINI_API_KEY,
+        query_text=query_request.query_text
+    )
+    
+    if general_response:
+        logger.info(f"Handled as general conversation: {query_request.query_text}")
+        return NaturalLanguageQueryResponse(
+            query_text=query_request.query_text,
+            answer=general_response,
+            relevant_document_ids=[]
+        )
+
+    # If we get here, it's a medical query - proceed with document pipeline
+    logger.info(f"Processing as medical query: {query_request.query_text}")
 
     try:
         # --- Step 1: Extract Filters using LLM --- 
@@ -110,7 +179,7 @@ async def natural_language_query_endpoint(
             logger.info(f"No documents found matching filters for user_id: {user_id}")
             return NaturalLanguageQueryResponse(
                 query_text=query_request.query_text,
-                answer="I couldn't find any documents matching your specific criteria. You might want to broaden your search.",
+                answer="I couldn't find any documents matching your specific criteria. You might want to broaden your search, or try uploading some medical documents first so I can help analyze your health data.",
                 relevant_document_ids=[] # Return empty list
             )
 

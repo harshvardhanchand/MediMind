@@ -3,7 +3,7 @@ import { View, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, TextI
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';
@@ -172,21 +172,21 @@ const AssistantScreen = () => {
         </StyledView>
 
         {/* Message Input Area */}
-        <StyledView className="flex-row items-center px-3 py-2.5 border-t border-borderSubtle bg-backgroundSecondary">
+        <StyledView className="flex-row items-center px-4 py-3 border-t border-borderSubtle bg-backgroundSecondary">
           <StyledInput
             placeholder="Ask anything..."
             value={inputText}
             onChangeText={setInputText}
             multiline
             inputStyle={{ maxHeight: 100, paddingTop: Platform.OS === 'ios' ? 8 : 0, paddingBottom: Platform.OS === 'ios' ? 8 : 0 }}
-            tw="flex-1 mr-2"
+            tw="flex-1 mr-3"
             onSubmitEditing={handleSendMessage}
           />
           <StyledButton
             variant={inputText.trim() === '' ? 'filledSecondary' : 'filledPrimary'}
             onPress={handleSendMessage}
             disabled={inputText.trim() === '' && !isTyping}
-            tw="w-10 h-10 p-0 items-center justify-center rounded-full"
+            tw="w-10 h-10 p-0 items-center justify-center rounded-full ml-1"
             iconNameLeft={inputText.trim() === '' ? "mic-outline" : "arrow-up-outline"}
             iconSize={22}
           >

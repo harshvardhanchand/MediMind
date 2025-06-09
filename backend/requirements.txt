@@ -43,8 +43,9 @@ sentence-transformers==2.2.2
 spacy==3.7.2
 
 # Google AI/ML Services
-google-generativeai==0.3.2
 google-cloud-documentai>=3.5.0
+greenlet>=3.0.0 
+google-generativeai>=0.4.2
 
 # Cloud Services
 google-cloud-storage==2.13.0
@@ -53,6 +54,7 @@ google-cloud-secret-manager==2.16.4
 
 # Image Processing
 Pillow==10.1.0
+reportlab>=4.4.1
 
 # Data Processing
 pandas>=1.4.0

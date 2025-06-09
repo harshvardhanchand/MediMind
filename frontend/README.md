@@ -17,7 +17,7 @@ This is the React Native frontend for the Medical Data Hub application. It's bui
    ```bash
    npm install
    ```
-4. Create a `.env` file in the frontend directory with the following variables:
+4. Create a `.env` file outside  frontend directory with the following variables:
    ```
    SUPABASE_URL=your-supabase-url
    SUPABASE_ANON_KEY=your-supabase-anon-key

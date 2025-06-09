@@ -69,31 +69,38 @@ const VitalsScreen = () => {
   const navigation = useNavigation<VitalsScreenNavigationProp>();
   const { colors } = useTheme();
 
-  const [displayedReadings, setDisplayedReadings] = useState<HealthReadingResponse[]>(initialMockHealthReadings);
-  const [apiReadings, setApiReadings] = useState<HealthReadingResponse[]>([]);
-  const [isLoadingApi, setIsLoadingApi] = useState(false);
-  const [errorApi, setErrorApi] = useState<string | null>(null);
-  const [useApiData, setUseApiData] = useState(false);
+  const [displayedReadings, setDisplayedReadings] = useState<HealthReadingResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [usingDummyData, setUsingDummyData] = useState(false);
 
   const loadHealthReadingsFromApi = async () => {
-    setIsLoadingApi(true);
-    setErrorApi(null);
+    setLoading(true);
+    setUsingDummyData(false);
+    
     try {
+      console.log('Trying to fetch real health readings from API...');
       const response = await healthReadingsServices.getHealthReadings();
-      setApiReadings(response.data || []);
-      if (useApiData) {
-        setDisplayedReadings(response.data || []);
+      
+      if (response.data && response.data.length > 0) {
+        console.log(`Loaded ${response.data.length} real health readings from API`);
+        setDisplayedReadings(response.data);
+        setUsingDummyData(false);
+      } else {
+        console.log('API returned empty data, using dummy health readings');
+        setDisplayedReadings(initialMockHealthReadings);
+        setUsingDummyData(true);
       }
     } catch (err: any) {
-      console.error("Failed to fetch health readings:", err);
-      setErrorApi(err.message || 'Failed to load health readings.');
+      console.log('API call failed, falling back to dummy data:', err.message);
+      setDisplayedReadings(initialMockHealthReadings);
+      setUsingDummyData(true);
     } finally {
-      setIsLoadingApi(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log('VitalsScreen mounted. API call can be triggered via a button/toggle for now.');
+    loadHealthReadingsFromApi();
   }, []);
 
   const getVitalIcon = (type: HealthReadingType, color: string) => {
@@ -161,20 +168,11 @@ const VitalsScreen = () => {
   };
 
   let mainContent;
-  if (isLoadingApi && useApiData) {
+  if (loading && usingDummyData) {
     mainContent = (
         <StyledView className="flex-1 items-center justify-center">
             <PaperActivityIndicator animating={true} size="large" />
             <StyledText variant="body1" color="textSecondary" tw="mt-2">Loading vitals...</StyledText>
-        </StyledView>
-    );
-  } else if (errorApi && useApiData) {
-    mainContent = (
-        <StyledView className="flex-1 items-center justify-center p-4">
-            <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
-            <StyledText variant="h4" color="error" tw="mt-4 mb-2 text-center">Error Loading Vitals</StyledText>
-            <StyledText color="textSecondary" tw="text-center mb-4">{errorApi}</StyledText>
-            <StyledButton variant="filledPrimary" onPress={loadHealthReadingsFromApi}>Retry</StyledButton>
         </StyledView>
     );
   } else if (displayedReadings.length === 0) {
@@ -206,9 +204,17 @@ const VitalsScreen = () => {
           <StyledText variant="body2" color="textSecondary" tw="mt-1">
             Track your health measurements
           </StyledText>
+          
+          {usingDummyData && (
+            <StyledView tw="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+              <StyledText tw="text-yellow-800 text-sm text-center">
+                📱 Showing sample data (API not connected)
+              </StyledText>
+            </StyledView>
+          )}
         </View>
-        <StyledButton variant="textPrimary" onPress={() => setUseApiData(prev => !prev)} tw="px-2 py-1">
-            {useApiData ? "Show Mock" : "Show API"}
+        <StyledButton variant="textPrimary" onPress={loadHealthReadingsFromApi} tw="px-2 py-1">
+            {usingDummyData ? "Show API" : "Show Mock"}
         </StyledButton>
       </StyledView>
       

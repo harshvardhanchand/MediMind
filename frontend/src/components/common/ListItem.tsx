@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { View, TouchableOpacity, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { styled } from 'nativewind';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../theme';
 
@@ -70,10 +70,10 @@ const ListItem: React.FC<ListItemProps> = ({
     >
       {iconLeft && (
         <Ionicons 
-          name={iconLeft} 
+          name={iconLeft as any} 
           size={iconLeftSize} 
           color={finalIconLeftColor} 
-          className="mr-4" 
+          className="mr-5" 
         />
       )}
       <StyledView className="flex-1">
@@ -101,7 +101,7 @@ const ListItem: React.FC<ListItemProps> = ({
       ) : null}
       {onPress && iconRight && (
         <Ionicons 
-          name={iconRight} 
+          name={iconRight as any} 
           size={iconRightSize} 
           color={finalIconRightColor} 
           className="ml-2" 

@@ -51,20 +51,83 @@ const DocumentsScreen = () => {
   const [apiDocuments, setApiDocuments] = useState<DocumentRead[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [errorApi, setErrorApi] = useState<string | null>(null);
+  const [usingDummyData, setUsingDummyData] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState<DocumentType | 'All'>('All');
 
+  // Dummy data fallback
+  const dummyDocuments: DocumentRead[] = [
+    {
+      document_id: 'dummy-doc1',
+      user_id: 'dummy-user',
+      original_filename: 'Lab Report - Blood Test.pdf',
+      document_type: DocumentType.LAB_RESULT,
+      storage_path: 'dummy/path',
+      upload_timestamp: '2024-05-10T00:00:00Z',
+      processing_status: 'completed' as any,
+      document_date: '2024-05-10',
+      source_name: 'Central Lab',
+    },
+    {
+      document_id: 'dummy-doc2',
+      user_id: 'dummy-user',
+      original_filename: 'Prescription - Amoxicillin.pdf',
+      document_type: DocumentType.PRESCRIPTION,
+      storage_path: 'dummy/path',
+      upload_timestamp: '2024-05-08T00:00:00Z',
+      processing_status: 'completed' as any,
+      document_date: '2024-05-08',
+      source_name: 'Dr. Smith',
+    },
+    {
+      document_id: 'dummy-doc3',
+      user_id: 'dummy-user',
+      original_filename: 'X-Ray - Chest Scan.pdf',
+      document_type: DocumentType.IMAGING_REPORT,
+      storage_path: 'dummy/path',
+      upload_timestamp: '2024-05-05T00:00:00Z',
+      processing_status: 'completed' as any,
+      document_date: '2024-05-05',
+      source_name: 'Radiology Center',
+    },
+    {
+      document_id: 'dummy-doc4',
+      user_id: 'dummy-user',
+      original_filename: 'Consultation Notes.pdf',
+      document_type: DocumentType.OTHER,
+      storage_path: 'dummy/path',
+      upload_timestamp: '2024-05-03T00:00:00Z',
+      processing_status: 'completed' as any,
+      document_date: '2024-05-03',
+      source_name: 'Dr. Johnson',
+    },
+  ];
+
   const loadDocumentsFromApi = async () => {
     setIsLoadingApi(true);
     setErrorApi(null);
+    setUsingDummyData(false);
+    
     try {
+      console.log('Trying to fetch real documents from API...');
       const response = await documentServices.getDocuments(); 
-      setApiDocuments(response.data || []);
+      
+      if (response.data && response.data.length > 0) {
+        console.log(`Loaded ${response.data.length} real documents from API`);
+        setApiDocuments(response.data);
+        setUsingDummyData(false);
+      } else {
+        console.log('API returned empty data, using dummy documents');
+        setApiDocuments(dummyDocuments);
+        setUsingDummyData(true);
+      }
     } catch (err: any) {
-      console.error("Failed to fetch documents:", err);
-      setErrorApi(err.message || 'Failed to load documents.');
+      console.log('API call failed, falling back to dummy data:', err.message);
+      setApiDocuments(dummyDocuments);
+      setUsingDummyData(true);
+      setErrorApi(null); // Clear error since we're showing dummy data
     } finally {
       setIsLoadingApi(false);
     }
@@ -117,16 +180,7 @@ const DocumentsScreen = () => {
         <StyledText variant="body1" color="textSecondary" tw="mt-2">Loading documents...</StyledText>
       </StyledView>
     );
-  } else if (errorApi) {
-    mainContent = (
-      <StyledView className="flex-1 items-center justify-center p-4">
-        <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
-        <StyledText variant="h4" color="error" tw="mt-4 mb-2 text-center">Error Loading Documents</StyledText>
-        <StyledText color="textSecondary" tw="text-center mb-4">{errorApi}</StyledText>
-        <StyledButton variant="filledPrimary" onPress={loadDocumentsFromApi}>Retry</StyledButton>
-      </StyledView>
-    );
-  } else if (filteredDocuments.length === 0) {
+  } else if (filteredDocuments.length === 0 && !usingDummyData) {
     mainContent = (
         <StyledView className="flex-1 items-center justify-center">
             <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
@@ -163,6 +217,14 @@ const DocumentsScreen = () => {
           <StyledText variant="body1" color="textSecondary" tw="mt-1">
             Manage your lab results, prescriptions, and records.
           </StyledText>
+          
+          {usingDummyData && (
+            <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+              <StyledText tw="text-yellow-800 text-sm text-center">
+                📱 Showing sample data (API not connected)
+              </StyledText>
+            </StyledView>
+          )}
         </StyledView>
         
         <StyledView className="px-4 mb-4 flex-row items-center">
@@ -198,37 +260,50 @@ const DocumentsScreen = () => {
       </StyledTouchableOpacity>
 
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         visible={filterModalVisible}
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <StyledPressable 
-            className="flex-1 justify-center items-center bg-black/50"
+        <StyledView className="flex-1 justify-end bg-black/50">
+          <StyledPressable 
+            className="flex-1"
             onPress={() => setFilterModalVisible(false)}
-        >
-            <Card tw="w-4/5 max-w-sm bg-backgroundSecondary rounded-xl p-0">
-                <StyledText variant="h3" tw="p-4 font-semibold border-b border-borderSubtle">Filter by Type</StyledText>
-                <FlatList 
-                    data={documentFilterOptions}
-                    keyExtractor={(item) => item.label}
-                    renderItem={({item}) => (
-                        <ListItem
-                            label={item.label}
-                            onPress={() => applyDocTypeFilter(item.value)}
-                            tw={`px-4 ${selectedDocType === item.value ? 'bg-accentPrimary/10' : ''}`}
-                            labelStyle={selectedDocType === item.value ? {color: colors.accentPrimary, fontWeight: '600'} : {}}
-                            iconRight={selectedDocType === item.value ? 'checkmark-circle' : undefined}
-                            iconRightColor={colors.accentPrimary}
-                            showBottomBorder
-                        />
-                    )}
-                />
-                <StyledButton variant="textPrimary" onPress={() => setFilterModalVisible(false)} tw="p-4 self-center">
-                    Close
-                </StyledButton>
-            </Card>
-        </StyledPressable>
+          />
+          <StyledView className="bg-white rounded-t-xl">
+            <StyledView className="p-4 border-b border-gray-200">
+              <StyledText variant="h3" tw="font-semibold text-center">Filter by Type</StyledText>
+            </StyledView>
+            
+            {documentFilterOptions.map((item, index) => (
+              <StyledTouchableOpacity
+                key={item.label}
+                className={`p-4 flex-row items-center justify-between ${index < documentFilterOptions.length - 1 ? 'border-b border-gray-100' : ''}`}
+                onPress={() => applyDocTypeFilter(item.value)}
+              >
+                <StyledText 
+                  variant="body1" 
+                  style={selectedDocType === item.value ? {color: colors.accentPrimary, fontWeight: '600'} : {}}
+                >
+                  {item.label}
+                </StyledText>
+                {selectedDocType === item.value && (
+                  <Ionicons name="checkmark-circle" size={24} color={colors.accentPrimary} />
+                )}
+              </StyledTouchableOpacity>
+            ))}
+            
+            <StyledView className="p-4 border-t border-gray-200">
+              <StyledButton 
+                variant="filledPrimary" 
+                onPress={() => setFilterModalVisible(false)} 
+                tw="w-full"
+              >
+                Close
+              </StyledButton>
+            </StyledView>
+          </StyledView>
+        </StyledView>
       </Modal>
     </ScreenContainer>
   );

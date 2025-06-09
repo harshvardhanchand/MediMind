@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
+import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,7 +30,17 @@ const SymptomTrackerScreen = () => {
   const navigation = useNavigation<SymptomTrackerScreenNavigationProp>();
   const { colors } = useTheme();
 
-  const [symptoms, setSymptoms] = useState<SymptomEntry[]>([
+  // Data states
+  const [symptoms, setSymptoms] = useState<SymptomEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [usingDummyData, setUsingDummyData] = useState(false);
+  
+  const [newSymptom, setNewSymptom] = useState('');
+  const [severity, setSeverity] = useState('3');
+  const [showForm, setShowForm] = useState(false);
+
+  // Dummy data fallback
+  const dummySymptoms: SymptomEntry[] = [
     { 
       id: '1', 
       reading_date: new Date(Date.now() - 3600000 * 1).toISOString(),
@@ -63,15 +73,37 @@ const SymptomTrackerScreen = () => {
       notes: 'After exercise, right shoulder.', 
       color: '#ea384c'
     }
-  ]);
-  
-  const [newSymptom, setNewSymptom] = useState('');
-  const [severity, setSeverity] = useState('3');
-  const [showForm, setShowForm] = useState(false);
+  ];
 
   useEffect(() => {
-    console.log("SymptomTrackerScreen mounted. Future API call to fetch symptoms here.");
+    fetchSymptoms();
   }, []);
+
+  const fetchSymptoms = async () => {
+    try {
+      setLoading(true);
+      setUsingDummyData(false);
+      
+      console.log('Trying to fetch real symptoms from API...');
+      // TODO: Replace with actual symptom API call when available
+      // const response = await symptomServices.getSymptoms();
+      
+      // Simulate API call that might fail
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For now, always use dummy data since symptom API doesn't exist yet
+      console.log('Using dummy symptoms (API not implemented yet)');
+      setSymptoms(dummySymptoms);
+      setUsingDummyData(true);
+      
+    } catch (err: any) {
+      console.log('API call failed, falling back to dummy data:', err.message);
+      setSymptoms(dummySymptoms);
+      setUsingDummyData(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddSymptom = () => {
     if (newSymptom.trim() === '') return;
@@ -142,6 +174,17 @@ const SymptomTrackerScreen = () => {
     </StyledTouchableOpacity>
   );
 
+  if (loading) {
+    return (
+      <ScreenContainer scrollable={false} withPadding>
+        <StyledView tw="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" />
+          <StyledText tw="mt-2 text-gray-600">Loading symptoms...</StyledText>
+        </StyledView>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer scrollable={false} withPadding>
       <StyledView tw="pt-2 pb-4 flex-row items-center justify-between">
@@ -150,6 +193,14 @@ const SymptomTrackerScreen = () => {
           <StyledText variant="body2" color="textSecondary" tw="mt-1">
             Record and monitor your symptoms over time
           </StyledText>
+          
+          {usingDummyData && (
+            <StyledView tw="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+              <StyledText tw="text-yellow-800 text-sm text-center">
+                📱 Showing sample data (API not connected)
+              </StyledText>
+            </StyledView>
+          )}
         </StyledView>
       </StyledView>
       

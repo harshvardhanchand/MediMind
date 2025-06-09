@@ -409,7 +409,7 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
         # For very long prompts that include a lot of data, it's common to put the entire prompt
         # (system instructions + user query + data context) directly into the content generation call.
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest', 
+            model_name='gemini-2.0-flash', 
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.2 # Slightly higher temp for more natural language, but still fairly factual
@@ -526,7 +526,7 @@ async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Op
         ]
 
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest',
+            model_name='gemini-2.0-flash',
             system_instruction=system_prompt, # Pass prompt via system_instruction
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
@@ -648,7 +648,7 @@ async def answer_query_with_filtered_context_gemini(api_key: str, query_text: st
         prompt_content = f"User's Question: {query_text}\\n\\nJSON Context:\\n```json\\n{json_data_context}\\n```"
 
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest', # Using 1.5 flash for potentially better reasoning
+            model_name='gemini-2.0-flash', # Using 1.5 flash for potentially better reasoning
             system_instruction=system_instruction,
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
