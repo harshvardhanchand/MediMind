@@ -23,6 +23,7 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
   * **Storage**: Expo SecureStore for tokens, AsyncStorage for preferences
   * **File Handling**: Expo Document Picker + Expo File System
   * **Development**: TypeScript 5.3.3 with strict type checking
+  * **Push Notifications**: Expo Notifications with local scheduling and deep linking
 * **Cloud Platform**: Google Cloud Platform (GCP)
 
 ## Directory Structure
@@ -33,7 +34,15 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   ├── alembic/                # Database migration scripts
 │   ├── app/                    # Application code
 │   │   ├── api/                # API related modules
-│   │   │   ├── endpoints/      # API route handler modules (e.g., documents.py, users.py)
+│   │   │   ├── endpoints/      # API route handler modules
+│   │   │   │   ├── documents.py        # Document management endpoints
+│   │   │   │   ├── users.py             # User management endpoints  
+│   │   │   │   ├── medications.py       # Medication management endpoints
+│   │   │   │   ├── health_readings.py   # Health readings endpoints
+│   │   │   │   ├── extracted_data.py    # Extracted data endpoints
+│   │   │   │   ├── query.py             # Natural language query endpoints
+│   │   │   │   ├── health.py            # Health check endpoints
+│   │   │   │   └── notifications.py     # Medical AI notification endpoints
 │   │   │   └── router.py       # Main API router (aggregates endpoint routers, mounted at /api)
 │   │   ├── core/               # Core functionality
 │   │   │   ├── auth.py         # Authentication logic (token verification, user retrieval)
@@ -57,13 +66,15 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   ├── extracted_data_repo.py # ExtractedData repository
 │   │   │   ├── user_repo.py    # User repository implementation
 │   │   │   ├── medication_repo.py # Medication repository
-│   │   │   └── health_reading_repo.py # HealthReading repository
+│   │   │   ├── health_reading_repo.py # HealthReading repository
+│   │   │   └── notification_repo.py # Notification repository
 │   │   ├── schemas/            # Pydantic schemas
 │   │   │   ├── document.py     # Document schemas
 │   │   │   ├── extracted_data.py # ExtractedData schemas
 │   │   │   ├── user.py         # User schemas
 │   │   │   ├── medication.py   # Medication schemas
-│   │   │   └── health_reading.py # HealthReading schemas
+│   │   │   ├── health_reading.py # HealthReading schemas
+│   │   │   └── notification.py # Notification schemas
 │   │   ├── services/           # Business logic services
 │   │   │   ├── document_processing_service.py # Document processing pipeline
 │   │   │   ├── notification_service.py        # Medical notification management
@@ -71,8 +82,6 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   ├── medical_embedding_service.py   # BioBERT medical embeddings
 │   │   │   ├── medical_vector_db.py           # Vector database operations
 │   │   │   └── gemini_service.py              # Gemini LLM integration
-│   │   ├── routers/            # FastAPI routers
-│   │   │   └── notifications.py # Notification API endpoints
 │   │   └── utils/              # Utility functions
 │   │       ├── ai_processors.py # OCR and LLM utilities
 │   │       └── storage.py      # Cloud storage utilities
@@ -80,7 +89,7 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   ├── unit/               # Unit tests
 │   │   ├── integration/        # Integration tests
 │   │   └── security/           # Security tests
-│   ├── .env            # Example environment variables
+│   ├── .env.example            # Example environment variables
 │   ├── Dockerfile              # Docker configuration for backend
 │   ├── alembic.ini             # Alembic configuration
 │   ├── requirements.txt        # Python dependencies
@@ -100,11 +109,14 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   │   │   ├── StyledText.tsx   # Styled text component
 │   │   │   │   └── ListItem.tsx     # List item component
 │   │   │   └── layout/         # Layout components
+│   │   │       └── ScreenContainer.tsx # Screen container component
 │   │   ├── config/             # Application configuration (e.g., API_URL, constants)
 │   │   ├── context/            # React Context providers
-│   │   │   └── AuthContext.tsx # Authentication context and provider
+│   │   │   ├── AuthContext.tsx # Authentication context and provider
+│   │   │   └── NotificationContext.tsx # Notification context and provider
 │   │   ├── data/               # Mock data or static data sets
 │   │   ├── hooks/              # Custom React hooks
+│   │   │   └── useMedicationReminders.ts # Medication reminders management hook
 │   │   ├── navigation/         # Navigation setup
 │   │   │   ├── AppNavigator.tsx           # Main app navigator
 │   │   │   ├── MainTabNavigator.tsx       # Bottom tab navigator
@@ -113,22 +125,27 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   │   ├── screens/            # Top-level screen components
 │   │   │   ├── auth/           # Authentication screens
 │   │   │   ├── main/           # Main application screens
-│   │   │   ├── HomeScreen.tsx            # Main dashboard screen
+│   │   │   │   ├── HomeScreen.tsx            # Main dashboard screen
+│   │   │   │   ├── DocumentUploadScreen.tsx  # Document upload interface
+│   │   │   │   ├── DocumentDetailScreen.tsx  # Document detail view
+│   │   │   │   ├── MedicationsScreen.tsx     # Medication management (includes reminder toggles)
+│   │   │   │   ├── AddMedicationScreen.tsx   # Add/edit medication screen
+│   │   │   │   ├── HealthReadingsScreen.tsx  # Health readings management
+│   │   │   │   ├── AddHealthReadingScreen.tsx # Add/edit health reading screen
+│   │   │   │   ├── QueryScreen.tsx           # AI query interface
+│   │   │   │   ├── NotificationScreen.tsx    # Notification display screen
+│   │   │   │   └── SettingsScreen.tsx        # App settings (includes notification preferences)
 │   │   │   ├── LoginScreen.tsx           # User login screen
-│   │   │   ├── OnboardingScreen.tsx      # User onboarding screen
-│   │   │   ├── DocumentUploadScreen.tsx  # Document upload interface
-│   │   │   ├── DocumentDetailScreen.tsx  # Document detail view
-│   │   │   ├── MedicationsScreen.tsx     # Medication management
-│   │   │   ├── AddMedicationScreen.tsx   # Add/edit medication screen
-│   │   │   ├── HealthReadingsScreen.tsx  # Health readings management
-│   │   │   ├── AddHealthReadingScreen.tsx # Add/edit health reading screen
-│   │   │   └── QueryScreen.tsx           # AI query interface
+│   │   │   └── OnboardingScreen.tsx      # User onboarding screen
 │   │   ├── services/           # Specific service integrations
 │   │   │   ├── supabaseClient.ts # Supabase client configuration
-│   │   │   └── supabase.ts       # Supabase service functions
+│   │   │   ├── supabase.ts       # Supabase service functions
+│   │   │   ├── pushNotificationService.ts # Push notification management
+│   │   │   └── deepLinkingService.ts # Deep linking navigation service
 │   │   ├── store/              # Global state management (currently empty - using Context API)
 │   │   ├── theme/              # Styling and theme configuration
 │   │   ├── types/              # TypeScript type definitions
+│   │   │   └── api.ts          # API response type definitions
 │   │   ├── utils/              # Utility functions
 │   │   ├── global.css          # Global stylesheets
 │   │   ├── env.d.ts            # Environment type definitions
@@ -153,7 +170,8 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 │   ├── implementation.md       # Implementation plan
 │   ├── progress.md             # Progress tracking
 │   ├── prd.md                  # Product Requirements
-│   └── tech-stack.md           # Tech stack details
+│   ├── tech-stack.md           # Tech stack details
+│   └── mvp-launch-plan.md      # MVP launch planning
 └── package.json                # Root package.json
 ```
 
@@ -779,9 +797,9 @@ erDiagram
         JSONB analysis_result
         Float confidence_score
         Float similarity_threshold "Default 0.85"
-        Integer usage_count "Default 1"
+        Integer usage_count INTEGER DEFAULT 1
         DateTime created_at
-        DateTime last_used_at
+        DateTime last_used_at TIMESTAMP DEFAULT NOW()
     }
 
     AI_ANALYSIS_LOG {
@@ -949,7 +967,7 @@ alembic upgrade head
 **Backend:**
 - ✅ Core application structure and FastAPI configuration
 - ✅ Basic authentication with Supabase JWT verification
-- ✅ Database models (User, Document, ExtractedData)
+- ✅ Database models (User, Document, ExtractedData, Medication, HealthReading, Notification, MedicalSituation, AIAnalysisLog)
 - ✅ Repository pattern implementation with standardized naming conventions
 - ✅ Document AI integration for OCR processing
 - ✅ Gemini LLM integration for semantic structuring
@@ -958,8 +976,25 @@ alembic upgrade head
 - ✅ GCS storage integration for document storage
 - ✅ Security features (authentication, authorization)
 - ✅ Comprehensive testing framework with mock objects
-- ✅ Added enhanced metadata fields to Document model and DB schema
+- ✅ Enhanced metadata fields to Document model and DB schema
 - ✅ Updated Pydantic schemas for Document model
+- ✅ Complete Medical AI Notification System with:
+  - ✅ BioBERT medical embedding service (768-dimensional embeddings)
+  - ✅ Medical vector database with pgvector (HNSW indexing)
+  - ✅ Medical AI service orchestrator with 70-80% cost reduction via caching
+  - ✅ Gemini LLM service for medical reasoning
+  - ✅ Notification service with automatic expiration and entity relationships
+  - ✅ Comprehensive API endpoints for notification management
+  - ✅ Medical analysis triggers for all data types
+  - ✅ Performance optimizations and security features
+- ✅ Natural Language Querying with three-stage LLM approach:
+  - ✅ Filter extraction from user queries (LLM Call 2)
+  - ✅ Document retrieval with metadata filtering
+  - ✅ Contextual answering from filtered data (LLM Call 3)
+- ✅ Complete medication management endpoints
+- ✅ Health readings management endpoints
+- ✅ User management endpoints
+- ✅ Document processing with enhanced metadata extraction
 
 **Frontend:**
 - ✅ React Native with Expo development environment setup
@@ -973,6 +1008,7 @@ alembic upgrade head
   - ✅ MedicationsScreen and AddMedicationScreen
   - ✅ HealthReadingsScreen and AddHealthReadingScreen
   - ✅ QueryScreen for AI-powered queries
+  - ✅ NotificationScreen for medical alerts display
 - ✅ Reusable component library (Card, StyledButton, StyledInput, StyledText, ListItem)
 - ✅ API client with Axios and automatic token management
 - ✅ API services for all major endpoints
@@ -980,17 +1016,27 @@ alembic upgrade head
 - ✅ TypeScript integration with type definitions
 - ✅ Expo SecureStore for secure token storage
 - ✅ Development fallbacks and mock data integration
+- ✅ Complete Push Notification System with:
+  - ✅ Push Notification Service (singleton pattern, permission handling)
+  - ✅ Deep Linking Service (context-aware navigation)
+  - ✅ Notification Context (real-time state management)
+  - ✅ Medication Reminders System (useMedicationReminders hook)
+  - ✅ Comprehensive medication reminders UI
+  - ✅ App configuration and navigation integration
+  - ✅ Security and privacy implementation
+  - ✅ Performance optimizations
+  - ✅ Integration with Medical AI notification system
 
 ### In Progress
 
 **Backend:**
-- 🔄 Natural Language Querying (Filtered Approach):
-  - ✅ Implement LLM-based filter extraction (LLM Call 2)
-  - ✅ Implement document retrieval logic based on filters
-  - ✅ Implement contextual answering LLM call (LLM Call 3) using filtered data
-  - 🔄 Refine prompts for all LLM calls
-- 🔄 Enhance initial document processing (LLM Call 1) to extract new metadata (document_date, source_name, tags, etc.)
-- 🔄 Develop API endpoints for managing user tags/episodes
+- 🔄 Enhanced natural language querying refinements:
+  - ✅ LLM-based filter extraction (LLM Call 2)
+  - ✅ Document retrieval logic based on filters
+  - ✅ Contextual answering LLM call (LLM Call 3) using filtered data
+  - 🔄 Prompt optimization for all LLM calls
+- 🔄 Advanced search capabilities beyond natural language
+- 🔄 Data export functionality
 
 **Frontend:**
 - 🔄 Migration from mock data to full API integration across all screens
@@ -1107,7 +1153,6 @@ This level of synchronization indicates a mature, production-ready API integrati
 
 **Frontend:**
 - ⏳ Offline functionality and data synchronization
-- ⏳ Push notifications integration
 - ⏳ Advanced data visualization components
 - ⏳ Performance optimizations and code splitting
 - ⏳ Accessibility improvements (screen reader support, keyboard navigation)
@@ -1257,3 +1302,214 @@ The application implements comprehensive error handling:
 - Advanced data visualization
 - Performance optimizations
 - Accessibility improvements
+
+## Push Notification System
+
+The Medical Data Hub features a comprehensive push notification system that provides medication reminders, health alerts, and deep linking functionality. The system is built using modern React Native notification APIs with offline capability and cross-platform support.
+
+### Architecture Overview
+
+The push notification system implements a multi-layered architecture:
+- **Push Notification Service**: Core notification management using Expo Notifications
+- **Deep Linking Service**: Smart navigation based on notification context
+- **Notification Context**: React Context for state management and real-time updates
+- **Medication Reminders**: Automated scheduling and management system
+- **UI Components**: Comprehensive user interface for notification management
+
+### Core Components
+
+#### 1. Push Notification Service (`pushNotificationService.ts`)
+- **Purpose**: Centralized notification management using singleton pattern
+- **Technology**: Expo Notifications with platform-specific optimizations
+- **Features**:
+  - Permission handling for iOS/Android physical devices
+  - Expo push token registration with project ID validation
+  - Android notification channels (medical-alerts, medication-reminders)
+  - Local notification scheduling with flexible trigger options
+  - Badge count management and synchronization
+  - Medication reminder scheduling with daily repeat functionality
+  - Notification cancellation and cleanup
+
+**Key Methods**:
+```typescript
+- registerForPushNotifications(): Promise<string | null>
+- scheduleMedicationReminder(name, dosage, time, repeat): Promise<string | null>
+- cancelNotification(notificationId): Promise<void>
+- setBadgeCount(count): Promise<void>
+- setupNotificationListeners(onReceived, onResponse): void
+```
+
+#### 2. Deep Linking Service (`deepLinkingService.ts`)
+- **Purpose**: Context-aware navigation from notification taps
+- **Technology**: React Navigation with custom URL scheme support
+- **Features**:
+  - Parse notification data to determine target screen
+  - Handle different notification types with appropriate navigation
+  - URL scheme support (`medimind://`) for external links
+  - Fallback navigation patterns for unknown notification types
+  - Deep link URL generation for sharing
+
+**Notification Type Handling**:
+- `interaction_alert` → Navigate to NotificationsTab with highlight
+- `medication_reminder` → Navigate to MedicationDetail or MedicationsScreen
+- `lab_followup` → Navigate to LabResultDetail or DataTab
+- `symptom_monitoring` → Navigate to SymptomTracker
+- `general_info` → Navigate to NotificationsTab
+
+#### 3. Notification Context (`NotificationContext.tsx`)
+- **Purpose**: Centralized notification state management
+- **Technology**: React Context API with polling and push integration
+- **Features**:
+  - Push token state and initialization
+  - Notification listeners for foreground/background handling
+  - Medication reminder scheduling and canceling functions
+  - Automatic badge count updates
+  - Real-time polling every 30 seconds
+  - Deep linking trigger on notification tap
+
+**Context API**:
+```typescript
+interface NotificationContextType {
+  stats: NotificationStatsResponse | null;
+  unreadCount: number;
+  pushToken: string | null;
+  initializePushNotifications(): Promise<void>;
+  scheduleMedicationReminder(name, dosage, time): Promise<string | null>;
+  cancelMedicationReminder(notificationId): Promise<void>;
+  refreshStats(): Promise<void>;
+}
+```
+
+#### 4. Medication Reminders Hook (`useMedicationReminders.ts`)
+- **Purpose**: Comprehensive medication reminder management
+- **Features**:
+  - Load active medications from API
+  - Parse medication frequency to specific reminder times
+  - Enable/disable reminders with local notification scheduling
+  - Update reminder times with automatic rescheduling
+  - State synchronization between UI and notification system
+
+**Frequency Parsing**:
+- `ONCE_DAILY` → ['08:00']
+- `TWICE_DAILY` → ['08:00', '20:00']
+- `THREE_TIMES_DAILY` → ['08:00', '14:00', '20:00']
+- `FOUR_TIMES_DAILY` → ['08:00', '12:00', '16:00', '20:00']
+
+#### 5. Medication Reminders UI Integration
+- **Purpose**: Medication reminder management integrated into existing screens
+- **Implementation**: Functionality integrated into MedicationsScreen and SettingsScreen rather than standalone screen
+- **Features**:
+  - Visual toggle switches for each medication in medication list
+  - Formatted reminder times display with user-friendly formatting
+  - Success/error feedback via native alerts
+  - Integration with existing navigation structure
+  - Pull-to-refresh functionality for real-time updates
+  - Comprehensive loading and error states
+
+**Design Decision**: Rather than creating a separate MedicationRemindersScreen, the medication reminder functionality is integrated directly into existing screens for better UX:
+- **MedicationsScreen**: Shows reminder toggles alongside each medication
+- **SettingsScreen**: Contains global notification preferences
+- **NotificationScreen**: Displays medication reminder notifications
+
+### App Configuration
+
+#### Expo Configuration (`app.config.js`)
+```javascript
+"scheme": "medimind",
+"plugins": [
+  ["expo-notifications", {
+    "icon": "./assets/notification-icon.png",
+    "color": "#ffffff",
+    "defaultChannel": "default"
+  }]
+],
+"notification": {
+  "icon": "./assets/notification-icon.png",
+  "color": "#ffffff",
+  "iosDisplayInForeground": true,
+  "androidMode": "default",
+  "androidCollapsedTitle": "MediMind Alert"
+}
+```
+
+#### Navigation Integration (`App.tsx`)
+```typescript
+// Deep linking service integration
+const navigationRef = useRef<NavigationContainerRef<any>>(null);
+const deepLinkService = DeepLinkingService.getInstance();
+
+const handleNavigationReady = () => {
+  if (navigationRef.current) {
+    deepLinkService.setNavigationRef(navigationRef.current);
+  }
+};
+```
+
+### Notification Flow Architecture
+
+The complete notification system follows this flow:
+
+1. **User enables medication reminders** → Hook schedules local notifications
+2. **Notifications fire at scheduled times** → System displays reminder
+3. **User taps notification** → Deep linking navigates to relevant screen
+4. **Badge counts update automatically** → Context syncs with unread notifications
+5. **Real-time polling refreshes** → Stats update every 30 seconds
+
+### Platform-Specific Features
+
+#### iOS Configuration
+- **Permissions**: Explicit notification permission request
+- **Display**: Foreground notifications with banner and alert
+- **Sounds**: Default system sounds with badge updates
+- **Background**: Notifications work when app is backgrounded/closed
+
+#### Android Configuration
+- **Channels**: Separate channels for medical alerts and medication reminders
+- **Importance**: HIGH for medication reminders, MAX for medical alerts
+- **Vibration**: Custom vibration patterns (250ms intervals)
+- **Colors**: Brand-specific notification accent colors
+
+### Security and Privacy
+
+#### Permission Management
+- **Device Check**: Notifications only enabled on physical devices
+- **Graceful Degradation**: App functions normally without notification permissions
+- **User Control**: Complete user control over notification preferences
+- **Token Security**: Expo push tokens securely managed and registered
+
+#### Data Protection
+- **Local Storage**: Notification IDs stored locally for management
+- **No PII**: Notification content contains no personally identifiable information
+- **Scoped Access**: All notifications scoped to individual user accounts
+- **Secure Communication**: All API calls use authenticated endpoints
+
+### Performance Optimization
+
+#### Efficient Scheduling
+- **Local Notifications**: No network dependency for basic medication reminders
+- **Batch Operations**: Multiple reminders scheduled efficiently
+- **Memory Management**: Singleton services prevent memory leaks
+- **Background Processing**: Notification setup doesn't block UI
+
+#### Cost Optimization
+- **Local Processing**: Medication reminders work offline
+- **Minimal API Calls**: Only stats polling and manual triggers use network
+- **Efficient Polling**: 30-second intervals balance freshness with battery life
+- **Smart Caching**: Notification stats cached to reduce redundant requests
+
+### Integration with Medical AI System
+
+The push notification system integrates seamlessly with the existing Medical AI Notification System:
+
+#### Trigger Integration
+- **AI Notifications** → Generate push notifications for high-priority alerts
+- **Medication Analysis** → Trigger notification analysis when reminders are set
+- **Health Alerts** → Push notifications for drug interactions and side effects
+- **Lab Results** → Notifications for follow-up recommendations
+
+#### Badge Synchronization
+- **Unread Count** → Automatically synced with AI notification stats
+- **Priority Levels** → Badge urgency based on notification severity
+- **Real-time Updates** → Immediate badge updates when new AI notifications arrive
+
+This push notification system provides a complete, production-ready solution for medication adherence, health monitoring, and user engagement while maintaining the highest standards for security, performance, and user experience.

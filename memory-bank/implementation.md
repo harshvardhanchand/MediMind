@@ -220,41 +220,285 @@ This plan outlines the initial steps to build the foundational structure of the 
 
 ---
 
-## Phase 6: Deployment Setup (Basic Backend)
+## Phase 6: Push Notification System Implementation
 
-*   **Step 6.1: Configure Cloud Run Service for Backend**
+**Goal:** Implement a complete push notification system with medication reminders, deep linking, and seamless integration with the Medical AI notification system.
+
+---
+
+### Step 6.1: Install and Configure Push Notification Dependencies
+
+**Instruction:** Add the necessary dependencies to the frontend project:
+```bash
+cd frontend/
+npm install expo-notifications expo-device expo-constants
+```
+
+Configure the `app.config.js` file to include:
+- Expo notifications plugin with custom icons and colors
+- URL scheme for deep linking (`medimind://`)
+- Notification channel configuration for Android
+- iOS notification settings for foreground display
+
+**Validation:** Build the app and verify no dependency errors. Check that the app.config.js includes all required notification configurations. Confirm the app builds successfully on both iOS and Android.
+
+---
+
+### Step 6.2: Implement Core Push Notification Service
+
+**Instruction:** Create `src/services/pushNotificationService.ts` as a singleton service:
+- Implement permission handling for iOS/Android physical devices
+- Configure notification behavior (sound, badge, banner, list display)
+- Add Expo push token registration with project ID validation
+- Create Android notification channels for different types:
+  - `medical-alerts`: MAX importance with vibration patterns
+  - `medication-reminders`: HIGH importance with default sound
+- Implement local notification scheduling with flexible triggers
+- Add badge count management and synchronization methods
+- Create notification cancellation and cleanup functionality
+
+**Validation:** Test on a physical device (notifications don't work on simulators):
+1. Verify permission request appears correctly
+2. Check that notification channels are created on Android
+3. Test badge count updates work properly
+4. Confirm notifications can be scheduled and cancelled
+5. Verify push token is generated and registered
+
+---
+
+### Step 6.3: Implement Deep Linking Service
+
+**Instruction:** Create `src/services/deepLinkingService.ts` for context-aware navigation:
+- Implement notification data parsing to determine target screens
+- Add navigation handling for different notification types:
+  - `interaction_alert` → NotificationsTab with highlight
+  - `medication_reminder` → MedicationDetail or MedicationsScreen
+  - `lab_followup` → LabResultDetail or DataTab
+  - `symptom_monitoring` → SymptomTracker
+  - `general_info` → NotificationsTab
+- Configure custom URL scheme support (`medimind://`)
+- Add fallback navigation patterns for unknown types
+- Implement deep link URL generation for sharing
+
+**Validation:** Test deep linking functionality:
+1. Test notification tap navigation to correct screens
+2. Verify URL scheme handling works properly
+3. Check fallback navigation for unknown notification types
+4. Confirm navigation reference is properly managed
+5. Test deep link URL generation
+
+---
+
+### Step 6.4: Create Notification Context Provider
+
+**Instruction:** Implement `src/context/NotificationContext.tsx` with:
+- Centralized notification state management using React Context
+- Push token state and initialization
+- Notification listeners for foreground/background handling
+- Integration with existing notification stats API
+- Automatic badge count updates with real-time synchronization
+- Real-time polling every 30 seconds for fresh stats
+- Deep linking trigger on notification tap
+- Medication reminder scheduling/canceling functions
+
+**Validation:** Test the context provider:
+1. Verify stats are loaded and updated correctly
+2. Check that badge counts sync with unread notifications
+3. Test notification listeners respond to incoming notifications
+4. Confirm polling updates work every 30 seconds
+5. Verify deep linking triggers properly on notification tap
+
+---
+
+### Step 6.5: Build Medication Reminders System
+
+**Instruction:** Create `src/hooks/useMedicationReminders.ts` with comprehensive functionality:
+- Load active medications from API with error handling
+- Parse medication frequency to specific reminder times:
+  - `ONCE_DAILY` → ['08:00']
+  - `TWICE_DAILY` → ['08:00', '20:00']
+  - `THREE_TIMES_DAILY` → ['08:00', '14:00', '20:00']
+  - `FOUR_TIMES_DAILY` → ['08:00', '12:00', '16:00', '20:00']
+- Implement enable/disable reminders with local notification scheduling
+- Add reminder time updates with automatic rescheduling
+- Create state synchronization between UI and notification system
+
+**Validation:** Test medication reminder functionality:
+1. Verify medications are loaded correctly from API
+2. Check frequency parsing generates correct reminder times
+3. Test enable/disable functionality schedules notifications properly
+4. Confirm reminder time updates work correctly
+5. Verify state synchronization between UI and notifications
+
+---
+
+### Step 6.6: Create Medication Reminders UI Screen
+
+**Instruction:** Instead of creating a standalone MedicationRemindersScreen, integrate medication reminder functionality into existing screens for better UX:
+
+1. **MedicationsScreen Integration**:
+   - Add reminder toggle switches alongside each medication in the list
+   - Display formatted reminder times with user-friendly formatting
+   - Implement success/error feedback via native alerts
+   - Add pull-to-refresh functionality for real-time updates
+
+2. **SettingsScreen Integration**:
+   - Add global notification preferences section
+   - Include master toggle for all medication reminders
+   - Provide notification sound and vibration settings
+
+3. **NotificationScreen Integration**:
+   - Display medication reminder notifications with clear medication context
+   - Allow users to snooze or dismiss individual reminders
+   - Show reminder history and adherence tracking
+
+**Design Rationale**: This approach provides better user experience by keeping related functionality together rather than creating a separate screen that users might not discover.
+
+**Validation:** Test the medication reminders screen:
+1. Verify toggle switches enable/disable reminders correctly
+2. Check reminder times are displayed in user-friendly format
+3. Test success/error alerts appear appropriately
+4. Confirm empty state displays when no medications exist
+5. Verify pull-to-refresh updates the medication list
+
+---
+
+### Step 6.7: Integrate with App Navigation and Configuration
+
+**Instruction:** Update main app components for full integration:
+- Modify `App.tsx` to integrate navigation reference with deep linking service
+- Add navigation ready handler for proper initialization
+- Update `NotificationProvider` to wrap the entire app
+- Ensure proper initialization order: Auth → Notifications → Navigation
+- Add notification context to main provider hierarchy
+
+**Validation:** Test full app integration:
+1. Verify app initializes without errors
+2. Check navigation reference is properly set for deep linking
+3. Confirm notification context is available throughout app
+4. Test initialization order doesn't cause any conflicts
+5. Verify deep linking works from app launch
+
+---
+
+### Step 6.8: Security and Privacy Implementation
+
+**Instruction:** Implement comprehensive security measures:
+- Add device validation (notifications only on physical devices)
+- Implement graceful degradation when permissions are denied
+- Add token validation with project ID verification
+- Implement secure error handling that doesn't expose sensitive information
+- Add comprehensive logging for debugging without exposing PII
+- Ensure all API calls use authenticated endpoints
+- Implement proper cleanup on app termination
+
+**Validation:** Test security and privacy features:
+1. Verify app works properly without notification permissions
+2. Check device validation prevents simulator/emulator issues
+3. Test token validation works correctly
+4. Confirm error handling doesn't leak sensitive information
+5. Verify all API calls are properly authenticated
+
+---
+
+### Step 6.9: Performance Optimization
+
+**Instruction:** Implement performance optimizations:
+- Use singleton pattern for services to prevent memory leaks
+- Implement efficient notification scheduling with batch operations
+- Add smart caching for notification stats to reduce API calls
+- Configure optimal polling intervals (30 seconds) for battery life
+- Implement background processing that doesn't block UI
+- Add proper cleanup of notification listeners
+
+**Validation:** Test performance optimizations:
+1. Verify memory usage remains stable during extended use
+2. Check notification scheduling is efficient and doesn't block UI
+3. Test that caching reduces unnecessary API requests
+4. Confirm polling interval balances freshness with battery life
+5. Verify proper cleanup prevents memory leaks
+
+---
+
+### Step 6.10: Integration Testing with Medical AI System
+
+**Instruction:** Test integration with existing Medical AI notification system:
+- Verify AI notifications trigger push notifications correctly
+- Test badge synchronization between AI stats and push notifications
+- Confirm medication analysis triggers when reminders are set
+- Test priority levels affect notification importance
+- Verify real-time updates work across both systems
+
+**Validation:** Test end-to-end integration:
+1. Add a medication and verify AI analysis is triggered
+2. Check that AI notifications generate push notifications
+3. Test badge counts sync between systems
+4. Confirm notification priority levels work correctly
+5. Verify real-time updates propagate across all systems
+
+---
+
+## Phase 6 Completion Checklist
+
+✅ **Core Services Implemented:**
+- Push Notification Service with permission handling and token management
+- Deep Linking Service with context-aware navigation
+- Notification Context with real-time updates and state management
+
+✅ **Medication Reminder System:**
+- Medication Reminders Hook with frequency parsing and scheduling
+- Medication Reminders Screen with comprehensive UI
+- Local notification scheduling with offline capability
+
+✅ **App Integration:**
+- Navigation integration with deep linking support
+- Security and privacy measures implemented
+- Performance optimizations applied
+
+✅ **Testing Complete:**
+- All services tested on physical devices
+- Integration with Medical AI system verified
+- Security and performance validated
+
+The push notification system provides a complete, production-ready solution for medication adherence, health monitoring, and user engagement while maintaining the highest standards for security, performance, and user experience.
+
+---
+
+## Phase 7: Deployment Setup (Basic Backend)
+
+*   **Step 7.1: Configure Cloud Run Service for Backend**
     *   **Instruction:** Using the GCP console or `gcloud`, create a Cloud Run service. Configure it to build and deploy from the source code in the `backend/` directory (or from a pre-built container image pushed to Google Artifact Registry). Set necessary environment variables (Database URL, Firebase service account credentials - use Secret Manager). Ensure the service allows unauthenticated invocations for the public health check endpoint *initially* (will be locked down later). Configure CPU/memory resources (start small). Set up Cloud Armor in front of Cloud Run to add an additional layer of protection (WAF rules, rate limiting at the infrastructure level).
     *   **Validation:** Trigger a deployment. Wait for the deployment to complete successfully. Access the public URL provided by Cloud Run for the health check endpoint (`<service-url>/api/v1/health`). Verify the `{"status": "ok"}` response is received. Test that Cloud Armor protection is working by simulating a simple attack pattern and verifying it's blocked.
 
-*   **Step 6.2: Set up Basic CI/CD for Backend Deployment**
-    *   **Instruction:** Create a basic `cloudbuild.yaml` file in the `backend/` directory. Define steps to run tests, check for security vulnerabilities in dependencies, build the Docker image and deploy it to the Cloud Run service created in Step 6.1. Set up a Cloud Build trigger that automatically starts this build process on pushes to the main branch of the Git repository.
+*   **Step 7.2: Set up Basic CI/CD for Backend Deployment**
+    *   **Instruction:** Create a basic `cloudbuild.yaml` file in the `backend/` directory. Define steps to run tests, check for security vulnerabilities in dependencies, build the Docker image and deploy it to the Cloud Run service created in Step 7.1. Set up a Cloud Build trigger that automatically starts this build process on pushes to the main branch of the Git repository.
     *   **Validation:** Make a small, non-breaking change to the backend code (e.g., update the health check response slightly). Push the change to the main branch. Verify the Cloud Build trigger runs automatically, runs tests, checks for vulnerabilities, builds the image, and deploys the new revision to Cloud Run. Access the health check endpoint again and confirm the change is live.
 
-*   **Step 6.3: Configure Monitoring and Alerting**
+*   **Step 7.3: Configure Monitoring and Alerting**
     *   **Instruction:** Set up basic monitoring and alerting using Google Cloud Monitoring. Configure alerts for high error rates, unusual authentication attempt patterns, and resource utilization. Set up a dashboard for visualizing API traffic, error rates, and authentication events.
     *   **Validation:** Simulate error conditions and verify that alerts are triggered appropriately. Check that the monitoring dashboard correctly displays application metrics.
 
 ---
 
-## Phase 7: Security Review and Hardening
+## Phase 8: Security Review and Hardening
 
-*   **Step 7.1: Conduct Security Configuration Review**
+*   **Step 8.1: Conduct Security Configuration Review**
     *   **Instruction:** Review all security configurations implemented so far: authentication, rate limiting, secure storage, database access controls, API protection, and Cloud infrastructure security. Create a document listing all implemented security measures and any potential gaps.
     *   **Validation:** Complete a checklist of security best practices, verifying each item is addressed in the implementation.
 
-*   **Step 7.2: Implement Security Testing**
+*   **Step 8.2: Implement Security Testing**
     *   **Instruction:** Create basic security tests for the API endpoints, testing for common vulnerabilities: authentication bypass attempts, rate limit evasion, injection attacks, and insecure direct object references. Use tools like OWASP ZAP or manual testing.
     *   **Validation:** Run the security tests and verify all tested attack vectors are properly mitigated.
 
-*   **Step 7.3: Secure Infrastructure Review**
+*   **Step 8.3: Secure Infrastructure Review**
     *   **Instruction:** Review GCP infrastructure security settings, ensuring appropriate VPC configurations, IAM permissions following the principle of least privilege, and secure connections between services.
     *   **Validation:** Create a checklist of infrastructure security best practices and verify all items are addressed.
 
 ---
 
-## Phase 8: Testing Strategy for MVP
+## Phase 9: Testing Strategy for MVP
 
-*   **Step 8.1: Backend Testing Setup**
+*   **Step 9.1: Backend Testing Setup**
     *   **Instruction:** Set up a testing environment for the FastAPI backend. Create a `tests/` directory with subdirectories `tests/unit/`, `tests/integration/`, and `tests/security/`. Add the following testing dependencies to `requirements.txt`:
         ```
         pytest==7.4.x
@@ -265,7 +509,7 @@ This plan outlines the initial steps to build the foundational structure of the 
         Configure pytest in a `pytest.ini` file with appropriate settings. Set up test database fixtures and mock Firebase authentication.
     *   **Validation:** Run `pytest --version` to verify installation. Ensure a basic test passes with `pytest -xvs tests/`.
 
-*   **Step 8.2: Backend Critical Path Tests**
+*   **Step 9.2: Backend Critical Path Tests**
     *   **Instruction:** Implement unit and integration tests for the most critical backend components:
         * **Authentication Unit Tests:** Test the token verification middleware, focusing on valid tokens, expired tokens, and invalid tokens.
         * **API Integration Tests:** Test the protected endpoints to ensure they reject unauthenticated requests and accept authenticated ones.
@@ -275,7 +519,7 @@ This plan outlines the initial steps to build the foundational structure of the 
         Aim for 70%+ test coverage on authentication and data handling code.
     *   **Validation:** Run `pytest -xvs tests/ --cov=app` and verify coverage meets the target for critical components. Ensure all tests pass.
 
-*   **Step 8.3: Frontend Testing Setup**
+*   **Step 9.3: Frontend Testing Setup**
     *   **Instruction:** Set up testing for the React Native frontend. Jest should already be included with the React Native template. Add the following testing dependencies:
         ```
         @testing-library/react-native
@@ -284,7 +528,7 @@ This plan outlines the initial steps to build the foundational structure of the 
         Configure Jest in `package.json` with appropriate settings, including module mappings and transformers for React Native.
     *   **Validation:** Run `npm test -- --version` to verify Jest is installed. Ensure a basic component test passes.
 
-*   **Step 8.4: Frontend Critical Path Tests**
+*   **Step 9.4: Frontend Critical Path Tests**
     *   **Instruction:** Implement tests for the most critical frontend components:
         * **Authentication Components:** Test login and registration forms, focusing on input validation, submission handling, and error states.
         * **Auth State Hook Tests:** Test the authentication state management and token handling.
@@ -294,7 +538,7 @@ This plan outlines the initial steps to build the foundational structure of the 
         Use snapshot testing for UI components to detect unintended UI changes.
     *   **Validation:** Run `npm test` and verify all tests pass. Ensure critical components have adequate test coverage.
 
-*   **Step 8.5: CI Integration for Tests**
+*   **Step 9.5: CI Integration for Tests**
     *   **Instruction:** Extend the CI/CD configuration in `cloudbuild.yaml` to include running tests as part of the build and deployment process. Configure the pipeline to:
         * Run backend tests with a minimum coverage threshold of 60% for critical code
         * Run frontend tests
@@ -302,7 +546,7 @@ This plan outlines the initial steps to build the foundational structure of the 
         * Generate and store test reports as build artifacts
     *   **Validation:** Push a change to trigger the CI/CD pipeline and verify tests run successfully as part of the build process. Check the build logs for test results and coverage reports.
 
-*   **Step 8.6: End-to-End Test for Critical Flow**
+*   **Step 9.6: End-to-End Test for Critical Flow**
     *   **Instruction:** Implement a basic end-to-end test that verifies the critical user journey:
         * User registration
         * User login

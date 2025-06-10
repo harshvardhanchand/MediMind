@@ -20,24 +20,41 @@ export default {
       "supportsTablet": true,
       "bundleIdentifier": "com.medicaldatahub",
       "infoPlist": {
-      "ITSAppUsesNonExemptEncryption": false
-    }
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.medicaldatahub"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "scheme": "medimind",
     "plugins": [
       "expo-secure-store",
       "expo-document-picker",
       "expo-file-system",
-      "expo-build-properties"
+      "expo-build-properties",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "default"
+        }
+      ]
     ],
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#ffffff",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedTitle": "MediMind Alert"
+    },
     "extra": {
       "supabaseUrl": process.env.SUPABASE_URL,
       "supabaseAnonKey": process.env.SUPABASE_ANON_KEY,

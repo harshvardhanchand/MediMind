@@ -16,13 +16,21 @@ from sqlalchemy import text
 from .medical_embedding_service import medical_embedding_service
 from .medical_vector_db import MedicalVectorDatabase, SimplifiedVectorSearch
 from .gemini_service import analyze_medical_situation
+from .openfda_service import openfda_service
+from .correlation_engines import multi_correlation_analyzer
+
+# Import models for ORM queries
+from app.models.medication import Medication, MedicationStatus
+from app.models.health_reading import HealthReading
+from app.models.symptom import Symptom
+from app.models.health_condition import HealthCondition
 
 logger = logging.getLogger(__name__)
 
 class MedicalAIService:
     """
     Core medical AI service for proactive notifications
-    Uses BioBERT embeddings + Gemini LLM for intelligent medical analysis
+    Uses BioBERT embeddings + Gemini LLM + OpenFDA API + Multi-Correlation Analysis for intelligent medical analysis
     """
     
     def __init__(self, db: Session):
@@ -60,54 +68,73 @@ class MedicalAIService:
                 logger.warning(f"No medical profile available for user {user_id}")
                 return []
             
-            # 2. Create medical embedding
+            # 2. Check for drug interactions using OpenFDA (if medications involved)
+            fda_analysis = None
+            if medical_profile.get("medications") and len(medical_profile["medications"]) >= 2:
+                fda_analysis = await self._analyze_drug_interactions_fda(medical_profile)
+            
+            # 3. Comprehensive Multi-Correlation Analysis
+            correlation_analysis = await multi_correlation_analyzer.analyze_comprehensive_correlations(
+                medical_profile, 
+                {"type": trigger_type, **event_data}
+            )
+            
+            # 4. Create medical embedding for similarity search (for cost optimization)
             medical_embedding = medical_embedding_service.create_medical_embedding(medical_profile)
             
-            # 3. Search for similar situations
+            # 5. Search for similar situations
             similar_situations = await self.vector_search.find_similar_situations(
                 medical_embedding, 
                 medical_profile
             )
             
-            # 4. Determine if we need LLM analysis
+            # 6. Determine if we need LLM analysis (only if correlations are insufficient)
             llm_called = False
-            analysis_result = None
+            llm_analysis = None
             
-            if similar_situations:
+            # Use LLM only if correlation analysis confidence is low or no high-priority correlations found
+            high_priority_correlations = [
+                c for c in correlation_analysis.get("correlations", []) 
+                if c.get("priority_score", 0) > 0.8
+            ]
+            
+            if not high_priority_correlations and not similar_situations:
+                # No high-confidence correlations and no similar situations - use LLM
+                logger.info("Low-confidence correlations, calling LLM for additional analysis")
+                llm_analysis = await self._perform_llm_analysis(medical_profile)
+                llm_called = True
+                
+                # Store new analysis in vector database
+                if llm_analysis and llm_analysis.get("confidence", 0) >= self.confidence_threshold:
+                    await self.vector_db.store_medical_situation(
+                        medical_embedding,
+                        medical_profile,
+                        llm_analysis,
+                        llm_analysis.get("confidence", 0.8)
+                    )
+            elif similar_situations:
                 # Found similar situation - adapt existing analysis
-                logger.info(f"Found {len(similar_situations)} similar situations")
-                analysis_result = await self._adapt_similar_analysis(
+                logger.info(f"Found {len(similar_situations)} similar situations, adapting analysis")
+                llm_analysis = await self._adapt_similar_analysis(
                     medical_profile, 
                     similar_situations[0]  # Use most similar
                 )
                 
                 # Update usage count for the reused situation
                 await self.vector_db.update_usage_count(similar_situations[0]["situation_id"])
-                
-            else:
-                # No similar situation - call LLM
-                logger.info("No similar situations found, calling LLM")
-                analysis_result = await self._perform_llm_analysis(medical_profile)
-                llm_called = True
-                
-                # Store new analysis in vector database
-                if analysis_result and analysis_result.get("confidence", 0) >= self.confidence_threshold:
-                    await self.vector_db.store_medical_situation(
-                        medical_embedding,
-                        medical_profile,
-                        analysis_result,
-                        analysis_result.get("confidence", 0.8)
-                    )
             
-            # 5. Create notifications from analysis
+            # 7. Merge FDA, Correlation, and LLM analysis results
+            merged_analysis = self._merge_all_analysis_results(fda_analysis, correlation_analysis, llm_analysis)
+            
+            # 8. Create notifications from merged analysis
             notifications = await self._create_notifications_from_analysis(
                 user_id, 
-                analysis_result, 
+                merged_analysis, 
                 trigger_type,
                 event_data
             )
             
-            # 6. Log analysis for debugging
+            # 9. Log analysis for debugging
             processing_time = int((time.time() - start_time) * 1000)
             await self._log_analysis(
                 user_id,
@@ -116,7 +143,7 @@ class MedicalAIService:
                 medical_embedding,
                 similar_situations,
                 llm_called,
-                analysis_result,
+                merged_analysis,
                 processing_time,
                 event_data
             )
@@ -130,7 +157,7 @@ class MedicalAIService:
     
     async def _build_medical_profile(self, user_id: str, event_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Build comprehensive medical profile from database
+        Build comprehensive medical profile from database using ORM
         """
         try:
             profile = {
@@ -142,92 +169,70 @@ class MedicalAIService:
                 "recent_event": event_data
             }
             
-            # Get current medications
-            medications_result = self.db.execute(
-                """
-                SELECT name, dosage, frequency, start_date, is_active
-                FROM medications 
-                WHERE user_id = %s AND is_active = true
-                ORDER BY start_date DESC
-                """,
-                (user_id,)
-            ).fetchall()
+            # Get current medications using ORM
+            medications = self.db.query(Medication).filter(
+                Medication.user_id == user_id,
+                Medication.status == MedicationStatus.ACTIVE
+            ).order_by(Medication.start_date.desc()).all()
             
             profile["medications"] = [
                 {
-                    "name": row[0],
-                    "dosage": row[1],
-                    "frequency": row[2],
-                    "start_date": row[3].isoformat() if row[3] else None
+                    "name": med.name,
+                    "dosage": med.dosage,
+                    "frequency": med.frequency.value if med.frequency else None,
+                    "start_date": med.start_date.isoformat() if med.start_date else None
                 }
-                for row in medications_result
+                for med in medications
             ]
             
-            # Get recent symptoms (last 30 days)
+            # Get recent symptoms (last 30 days) using ORM
             cutoff_date = datetime.now() - timedelta(days=30)
-            symptoms_result = self.db.execute(
-                """
-                SELECT symptom, severity, reported_date, notes
-                FROM symptoms 
-                WHERE user_id = %s AND reported_date >= %s
-                ORDER BY reported_date DESC
-                LIMIT 10
-                """,
-                (user_id, cutoff_date)
-            ).fetchall()
+            symptoms = self.db.query(Symptom).filter(
+                Symptom.user_id == user_id,
+                Symptom.reported_date >= cutoff_date
+            ).order_by(Symptom.reported_date.desc()).limit(10).all()
             
             profile["recent_symptoms"] = [
                 {
-                    "symptom": row[0],
-                    "severity": row[1],
-                    "date": row[2].isoformat() if row[2] else None,
-                    "notes": row[3]
+                    "symptom": symptom.symptom,
+                    "severity": symptom.severity.value if symptom.severity else None,
+                    "date": symptom.reported_date.isoformat() if symptom.reported_date else None,
+                    "notes": symptom.notes
                 }
-                for row in symptoms_result
+                for symptom in symptoms
             ]
             
-            # Get health conditions
-            conditions_result = self.db.execute(
-                """
-                SELECT condition_name, diagnosed_date, severity, status
-                FROM health_conditions 
-                WHERE user_id = %s AND status = 'active'
-                ORDER BY diagnosed_date DESC
-                """,
-                (user_id,)
-            ).fetchall()
+            # Get health conditions using ORM
+            conditions = self.db.query(HealthCondition).filter(
+                HealthCondition.user_id == user_id,
+                HealthCondition.status == "active"
+            ).order_by(HealthCondition.diagnosed_date.desc()).all()
             
             profile["health_conditions"] = [
                 {
-                    "condition": row[0],
-                    "diagnosed_date": row[1].isoformat() if row[1] else None,
-                    "severity": row[2]
+                    "condition": condition.condition_name,
+                    "diagnosed_date": condition.diagnosed_date.isoformat() if condition.diagnosed_date else None,
+                    "severity": condition.severity.value if condition.severity else None
                 }
-                for row in conditions_result
+                for condition in conditions
             ]
             
-            # Get recent lab results (last 90 days)
+            # Get recent lab results (last 90 days) using ORM
             lab_cutoff = datetime.now() - timedelta(days=90)
-            labs_result = self.db.execute(
-                """
-                SELECT test_name, value, unit, reference_range, test_date
-                FROM health_readings 
-                WHERE user_id = %s AND test_date >= %s
-                ORDER BY test_date DESC
-                LIMIT 15
-                """,
-                (user_id, lab_cutoff)
-            ).fetchall()
+            health_readings = self.db.query(HealthReading).filter(
+                HealthReading.user_id == user_id,
+                HealthReading.reading_date >= lab_cutoff
+            ).order_by(HealthReading.reading_date.desc()).limit(15).all()
             
             profile["lab_results"] = [
                 {
-                    "test": row[0],
-                    "value": row[1],
-                    "unit": row[2],
-                    "reference_range": row[3],
-                    "date": row[4].isoformat() if row[4] else None
+                    "test": reading.reading_type.value if reading.reading_type else "Unknown",
+                    "value": float(reading.numeric_value) if reading.numeric_value else reading.text_value,
+                    "unit": reading.unit,
+                    "reference_range": "Normal",  # TODO: Add reference ranges to health_reading model
+                    "date": reading.reading_date.isoformat() if reading.reading_date else None
                 }
-                for row in labs_result
+                for reading in health_readings
             ]
             
             return profile
@@ -235,6 +240,231 @@ class MedicalAIService:
         except Exception as e:
             logger.error(f"Failed to build medical profile: {str(e)}")
             return {}
+    
+    async def _analyze_drug_interactions_fda(self, medical_profile: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Analyze drug interactions using OpenFDA API with significance filtering
+        """
+        try:
+            medications = medical_profile.get("medications", [])
+            if len(medications) < 2:
+                return None
+            
+            # Create patient context for risk scoring
+            patient_context = {
+                "age": self._extract_patient_age(medical_profile),
+                "health_conditions": medical_profile.get("health_conditions", []),
+                "medications": medications,
+                "recent_symptoms": medical_profile.get("recent_symptoms", [])
+            }
+            
+            # Call OpenFDA service
+            fda_result = await openfda_service.analyze_drug_interactions(
+                medications, 
+                patient_context
+            )
+            
+            logger.info(f"FDA analysis result: {fda_result.get('total_interactions', 0)} interactions found")
+            return fda_result
+            
+        except Exception as e:
+            logger.error(f"FDA drug interaction analysis failed: {str(e)}")
+            return None
+    
+    def _extract_patient_age(self, medical_profile: Dict[str, Any]) -> int:
+        """
+        Extract patient age from medical profile (placeholder implementation)
+        """
+        # TODO: Add age field to user profile or extract from demographics
+        return 35  # Default age for now
+    
+    def _merge_all_analysis_results(
+        self, 
+        fda_analysis: Optional[Dict[str, Any]], 
+        correlation_analysis: Dict[str, Any],
+        llm_analysis: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Merge FDA, correlation, and LLM analysis results with correlation analysis taking priority
+        """
+        # Start with correlation analysis as the foundation
+        merged = {
+            "correlations": correlation_analysis.get("correlations", []),
+            "insights": correlation_analysis.get("insights", {}),
+            "correlation_confidence": self._calculate_correlation_confidence(correlation_analysis),
+            "analysis_sources": ["correlation_engine"]
+        }
+        
+        # Add FDA analysis for drug interactions
+        if fda_analysis and fda_analysis.get("has_interactions"):
+            merged["fda_drug_interactions"] = fda_analysis
+            merged["analysis_sources"].append("openfda")
+            
+            # Convert FDA interactions to correlation format for consistency
+            fda_correlations = self._convert_fda_to_correlation_format(fda_analysis)
+            merged["correlations"].extend(fda_correlations)
+        
+        # Add LLM analysis if available (lowest priority)
+        if llm_analysis:
+            merged["llm_supplement"] = llm_analysis
+            merged["analysis_sources"].append("gemini_llm")
+            
+            # Add LLM insights that aren't covered by correlations
+            merged = self._merge_llm_insights(merged, llm_analysis)
+        
+        # Prioritize and deduplicate all correlations
+        merged["correlations"] = self._prioritize_and_deduplicate_correlations(merged["correlations"])
+        
+        # Generate final recommendations from all sources
+        merged["final_recommendations"] = self._generate_final_recommendations(merged)
+        
+        # Calculate overall confidence
+        merged["overall_confidence"] = self._calculate_overall_confidence(merged)
+        
+        return merged
+    
+    def _calculate_correlation_confidence(self, correlation_analysis: Dict[str, Any]) -> float:
+        """Calculate confidence from correlation analysis"""
+        correlations = correlation_analysis.get("correlations", [])
+        if not correlations:
+            return 0.0
+        
+        # Use average of top 3 correlations
+        top_correlations = sorted(correlations, key=lambda x: x.get("confidence", 0), reverse=True)[:3]
+        avg_confidence = sum(c.get("confidence", 0) for c in top_correlations) / len(top_correlations)
+        
+        return avg_confidence
+    
+    def _convert_fda_to_correlation_format(self, fda_analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Convert FDA analysis to correlation format"""
+        correlations = []
+        
+        # Convert immediate attention interactions
+        for interaction in fda_analysis.get("immediate_attention", []):
+            correlations.append({
+                "type": "drug_interaction_fda",
+                "medication": " + ".join(interaction.get("drug_pair", [])),
+                "confidence": 0.95,
+                "severity": "high",
+                "priority_score": 0.95,
+                "recommendation": "⚠️ IMMEDIATE: Contact your doctor before taking these medications together",
+                "source": "OpenFDA"
+            })
+        
+        # Convert high priority interactions
+        for interaction in fda_analysis.get("high_priority", []):
+            correlations.append({
+                "type": "drug_interaction_fda",
+                "medication": " + ".join(interaction.get("drug_pair", [])),
+                "confidence": 0.85,
+                "severity": "medium", 
+                "priority_score": 0.85,
+                "recommendation": "🔴 HIGH: Discuss these medication combinations with your healthcare provider",
+                "source": "OpenFDA"
+            })
+        
+        return correlations
+    
+    def _merge_llm_insights(self, merged: Dict[str, Any], llm_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Merge LLM insights that complement correlation analysis"""
+        # Add LLM recommendations that aren't covered by correlations
+        llm_recommendations = llm_analysis.get("recommendations", [])
+        correlation_topics = set()
+        
+        # Extract topics covered by correlations
+        for correlation in merged.get("correlations", []):
+            if correlation.get("medication"):
+                correlation_topics.add(correlation["medication"].lower())
+            if correlation.get("symptom"):
+                correlation_topics.add(correlation["symptom"].lower())
+            if correlation.get("lab_test"):
+                correlation_topics.add(correlation["lab_test"].lower())
+        
+        # Add LLM recommendations for uncovered topics
+        supplemental_recommendations = []
+        for rec in llm_recommendations:
+            rec_lower = rec.lower()
+            # Check if recommendation covers new ground
+            if not any(topic in rec_lower for topic in correlation_topics):
+                supplemental_recommendations.append(rec)
+        
+        if supplemental_recommendations:
+            if "insights" not in merged:
+                merged["insights"] = {}
+            merged["insights"]["llm_supplemental"] = supplemental_recommendations
+        
+        return merged
+    
+    def _prioritize_and_deduplicate_correlations(self, correlations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Prioritize and remove duplicate correlations"""
+        # Sort by priority score
+        sorted_correlations = sorted(correlations, key=lambda x: x.get("priority_score", 0), reverse=True)
+        
+        # Deduplicate based on similar entities
+        deduplicated = []
+        seen_combinations = set()
+        
+        for correlation in sorted_correlations:
+            # Create a signature for this correlation
+            signature_parts = []
+            for key in ["medication", "symptom", "lab_test", "type"]:
+                if correlation.get(key):
+                    signature_parts.append(f"{key}:{correlation[key].lower()}")
+            
+            signature = "|".join(sorted(signature_parts))
+            
+            if signature not in seen_combinations:
+                seen_combinations.add(signature)
+                deduplicated.append(correlation)
+        
+        return deduplicated[:10]  # Return top 10 correlations
+    
+    def _generate_final_recommendations(self, merged_analysis: Dict[str, Any]) -> List[str]:
+        """Generate final prioritized recommendations"""
+        recommendations = []
+        
+        # Add correlation-based recommendations (highest priority)
+        correlation_insights = merged_analysis.get("insights", {})
+        if correlation_insights.get("recommendations"):
+            recommendations.extend(correlation_insights["recommendations"][:3])
+        
+        # Add FDA recommendations
+        fda_analysis = merged_analysis.get("fda_drug_interactions", {})
+        if fda_analysis.get("recommendations"):
+            recommendations.extend(fda_analysis["recommendations"][:2])
+        
+        # Add supplemental LLM recommendations
+        llm_supplemental = correlation_insights.get("llm_supplemental", [])
+        recommendations.extend(llm_supplemental[:2])
+        
+        # Deduplicate and limit
+        unique_recommendations = []
+        for rec in recommendations:
+            if rec not in unique_recommendations:
+                unique_recommendations.append(rec)
+        
+        return unique_recommendations[:5]  # Top 5 recommendations
+    
+    def _calculate_overall_confidence(self, merged_analysis: Dict[str, Any]) -> float:
+        """Calculate overall confidence from all analysis sources"""
+        confidences = []
+        
+        # Correlation analysis confidence (highest weight)
+        corr_confidence = merged_analysis.get("correlation_confidence", 0)
+        if corr_confidence > 0:
+            confidences.append(corr_confidence * 0.6)  # 60% weight
+        
+        # FDA confidence
+        fda_analysis = merged_analysis.get("fda_drug_interactions", {})
+        if fda_analysis.get("confidence"):
+            confidences.append(fda_analysis["confidence"] * 0.3)  # 30% weight
+        
+        # LLM confidence (lowest weight)
+        llm_analysis = merged_analysis.get("llm_supplement", {})
+        if llm_analysis.get("confidence"):
+            confidences.append(llm_analysis["confidence"] * 0.1)  # 10% weight
+        
+        return sum(confidences) if confidences else 0.5
     
     async def _adapt_similar_analysis(
         self, 
@@ -413,7 +643,7 @@ class MedicalAIService:
         event_data: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Create notification objects from analysis results
+        Create notification objects from comprehensive analysis results
         """
         notifications = []
         
@@ -427,126 +657,274 @@ class MedicalAIService:
         extracted_data_id = event_data.get("extracted_data_id") if event_data else None
         
         try:
-            # Drug interaction notifications
-            drug_interactions = analysis_result.get("drug_interactions", [])
-            if drug_interactions:
-                notification = {
-                    "id": str(uuid.uuid4()),
-                    "user_id": user_id,
-                    "type": "drug_interaction",
-                    "severity": analysis_result.get("severity", "medium"),
-                    "title": "Potential Drug Interaction Detected",
-                    "message": self._format_drug_interaction_message(drug_interactions),
-                    "metadata": {
-                        "interactions": drug_interactions,
-                        "trigger_type": trigger_type,
-                        "confidence": analysis_result.get("confidence", 0.8)
-                    },
-                    # Entity relationships
-                    "related_medication_id": medication_id,
-                    "related_document_id": document_id,
-                    "related_health_reading_id": health_reading_id,
-                    "related_extracted_data_id": extracted_data_id
-                }
-                notifications.append(notification)
+            # Create notifications from correlations (primary source)
+            correlations = analysis_result.get("correlations", [])
+            correlation_notifications = self._create_correlation_notifications(
+                user_id, correlations, trigger_type, event_data
+            )
+            notifications.extend(correlation_notifications)
             
-            # Side effect notifications
-            side_effects = analysis_result.get("side_effects", [])
-            if side_effects:
-                notification = {
-                    "id": str(uuid.uuid4()),
-                    "user_id": user_id,
-                    "type": "side_effect_warning",
-                    "severity": "medium",
-                    "title": "Side Effects to Monitor",
-                    "message": self._format_side_effects_message(side_effects),
-                    "metadata": {
-                        "side_effects": side_effects,
-                        "trigger_type": trigger_type,
-                        "confidence": analysis_result.get("confidence", 0.8)
-                    },
-                    # Entity relationships
-                    "related_medication_id": medication_id,
-                    "related_document_id": document_id,
-                    "related_health_reading_id": health_reading_id,
-                    "related_extracted_data_id": extracted_data_id
-                }
-                notifications.append(notification)
+            # Create notifications from insights
+            insights = analysis_result.get("insights", {})
+            if insights.get("risk_alerts"):
+                risk_notifications = self._create_risk_alert_notifications(
+                    user_id, insights["risk_alerts"], trigger_type, event_data
+                )
+                notifications.extend(risk_notifications)
             
-            # Health trend notifications
-            health_trends = analysis_result.get("health_trends", [])
-            if health_trends:
-                notification = {
-                    "id": str(uuid.uuid4()),
-                    "user_id": user_id,
-                    "type": "health_trend",
-                    "severity": "low",
-                    "title": "Health Pattern Analysis",
-                    "message": self._format_health_trends_message(health_trends),
-                    "metadata": {
-                        "trends": health_trends,
-                        "trigger_type": trigger_type,
-                        "confidence": analysis_result.get("confidence", 0.8)
-                    },
-                    # Entity relationships  
-                    "related_medication_id": medication_id,
-                    "related_document_id": document_id,
-                    "related_health_reading_id": health_reading_id,
-                    "related_extracted_data_id": extracted_data_id
-                }
-                notifications.append(notification)
+            # Create summary notification if we have significant findings
+            if analysis_result.get("overall_confidence", 0) > 0.7:
+                summary_notification = self._create_summary_notification(
+                    user_id, analysis_result, trigger_type, event_data
+                )
+                if summary_notification:
+                    notifications.append(summary_notification)
             
-            # Recommendation notifications
-            recommendations = analysis_result.get("recommendations", [])
-            if recommendations:
-                notification = {
-                    "id": str(uuid.uuid4()),
-                    "user_id": user_id,
-                    "type": "medical_recommendation",
-                    "severity": "low",
-                    "title": "Health Recommendations",
-                    "message": self._format_recommendations_message(recommendations),
-                    "metadata": {
-                        "recommendations": recommendations,
-                        "trigger_type": trigger_type,
-                        "confidence": analysis_result.get("confidence", 0.8)
-                    },
-                    # Entity relationships
-                    "related_medication_id": medication_id,
-                    "related_document_id": document_id,
-                    "related_health_reading_id": health_reading_id,
-                    "related_extracted_data_id": extracted_data_id
-                }
-                notifications.append(notification)
-                
+            # Create monitoring notifications
+            monitoring_suggestions = insights.get("monitoring_suggestions", [])
+            if monitoring_suggestions:
+                monitoring_notification = self._create_monitoring_notification(
+                    user_id, monitoring_suggestions, trigger_type, event_data
+                )
+                if monitoring_notification:
+                    notifications.append(monitoring_notification)
+                    
         except Exception as e:
             logger.error(f"Failed to create notifications: {str(e)}")
         
+        return notifications[:5]  # Limit to top 5 notifications
+    
+    def _create_correlation_notifications(
+        self,
+        user_id: str,
+        correlations: List[Dict[str, Any]],
+        trigger_type: str,
+        event_data: Optional[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Create notifications from correlation analysis"""
+        notifications = []
+        
+        # Group correlations by type for better notification organization
+        correlation_groups = {}
+        for correlation in correlations[:3]:  # Top 3 correlations
+            corr_type = correlation.get("type", "unknown")
+            if corr_type not in correlation_groups:
+                correlation_groups[corr_type] = []
+            correlation_groups[corr_type].append(correlation)
+        
+        # Create notifications for each correlation type
+        for corr_type, corr_list in correlation_groups.items():
+            notification = self._create_correlation_type_notification(
+                user_id, corr_type, corr_list, trigger_type, event_data
+            )
+            if notification:
+                notifications.append(notification)
+        
         return notifications
     
-    def _format_drug_interaction_message(self, interactions: List[str]) -> str:
-        """Format drug interaction message"""
-        if isinstance(interactions, list) and interactions:
-            return f"We've detected potential interactions between your medications: {', '.join(interactions[:2])}. Please consult your healthcare provider."
-        return "Potential drug interactions detected with your current medications. Please review with your healthcare provider."
+    def _create_correlation_type_notification(
+        self,
+        user_id: str,
+        correlation_type: str,
+        correlations: List[Dict[str, Any]],
+        trigger_type: str,
+        event_data: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """Create notification for a specific correlation type"""
+        if not correlations:
+            return None
+        
+        # Use the highest priority correlation for the notification
+        primary_correlation = max(correlations, key=lambda x: x.get("priority_score", 0))
+        
+        # Determine notification type and severity
+        notification_type, severity = self._map_correlation_to_notification_type(correlation_type, primary_correlation)
+        
+        # Generate title and message
+        title, message = self._generate_correlation_notification_content(correlation_type, correlations)
+        
+        # Extract entity IDs
+        medication_id = event_data.get("medication_id") if event_data else None
+        document_id = event_data.get("document_id") if event_data else None
+        health_reading_id = event_data.get("health_reading_id") if event_data else None
+        extracted_data_id = event_data.get("extracted_data_id") if event_data else None
+        
+        return {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": notification_type,
+            "severity": severity,
+            "title": title,
+            "message": message,
+            "metadata": {
+                "correlations": correlations,
+                "correlation_type": correlation_type,
+                "trigger_type": trigger_type,
+                "confidence": primary_correlation.get("confidence", 0.8),
+                "priority_score": primary_correlation.get("priority_score", 0.5)
+            },
+            # Entity relationships
+            "related_medication_id": medication_id,
+            "related_document_id": document_id,
+            "related_health_reading_id": health_reading_id,
+            "related_extracted_data_id": extracted_data_id
+        }
     
-    def _format_side_effects_message(self, side_effects: List[str]) -> str:
-        """Format side effects message"""
-        if isinstance(side_effects, list) and side_effects:
-            return f"Monitor for these potential side effects: {', '.join(side_effects[:3])}. Contact your doctor if you experience any of these symptoms."
-        return "Please monitor for potential side effects from your current medications."
+    def _map_correlation_to_notification_type(self, correlation_type: str, correlation: Dict[str, Any]) -> Tuple[str, str]:
+        """Map correlation type to notification type and severity"""
+        type_mapping = {
+            "drug_symptom_correlation": ("side_effect_warning", correlation.get("severity", "medium")),
+            "lab_symptom_correlation": ("health_trend", "medium"),
+            "drug_lab_correlation": ("monitoring_alert", correlation.get("concern_level", "medium")),
+            "drug_interaction_fda": ("drug_interaction", correlation.get("severity", "high")),
+            "temporal_cluster": ("pattern_alert", "low"),
+            "medication_symptom_sequence": ("side_effect_warning", "medium")
+        }
+        
+        return type_mapping.get(correlation_type, ("medical_insight", "low"))
     
-    def _format_health_trends_message(self, trends: List[str]) -> str:
-        """Format health trends message"""
-        if isinstance(trends, list) and trends:
-            return f"Health pattern analysis shows: {trends[0]}. Consider discussing this trend with your healthcare provider."
-        return "We've identified some health patterns worth discussing with your healthcare provider."
+    def _generate_correlation_notification_content(self, correlation_type: str, correlations: List[Dict[str, Any]]) -> Tuple[str, str]:
+        """Generate title and message for correlation notification"""
+        primary = correlations[0]
+        
+        if correlation_type == "drug_symptom_correlation":
+            title = "Medication Side Effect Detected"
+            symptom = primary.get("symptom", "symptom")
+            medication = primary.get("medication", "medication")
+            message = f"Your {symptom} may be related to {medication}. {primary.get('recommendation', 'Consult your healthcare provider.')}"
+            
+        elif correlation_type == "lab_symptom_correlation":
+            title = "Lab Result Explains Symptom"
+            symptom = primary.get("symptom", "symptom")
+            lab_test = primary.get("lab_test", "lab test")
+            lab_value = primary.get("lab_value", "abnormal")
+            message = f"Your {symptom} may be explained by {lab_test} level ({lab_value}). {primary.get('recommendation', 'Discuss with your doctor.')}"
+            
+        elif correlation_type == "drug_lab_correlation":
+            title = "Medication Monitoring Alert"
+            medication = primary.get("medication", "medication")
+            lab_test = primary.get("lab_test", "lab test")
+            message = f"Monitor {lab_test} levels while taking {medication}. {primary.get('recommendation', 'Regular monitoring recommended.')}"
+            
+        elif correlation_type == "drug_interaction_fda":
+            title = "Drug Interaction Warning"
+            medication = primary.get("medication", "medications")
+            message = f"Potential interaction detected: {medication}. {primary.get('recommendation', 'Contact your healthcare provider.')}"
+            
+        elif correlation_type == "temporal_cluster":
+            title = "Medical Events Pattern"
+            event_count = len(correlations)
+            message = f"Multiple medical events ({event_count}) occurred close together. Consider reviewing for connections."
+            
+        else:
+            title = "Medical Correlation Detected"
+            message = primary.get("recommendation", "Review this correlation with your healthcare provider.")
+        
+        return title, message
     
-    def _format_recommendations_message(self, recommendations: List[str]) -> str:
-        """Format recommendations message"""
-        if isinstance(recommendations, list) and recommendations:
-            return f"Health recommendation: {recommendations[0]}"
-        return "We have some health recommendations based on your current medical profile."
+    def _create_risk_alert_notifications(
+        self,
+        user_id: str,
+        risk_alerts: List[str],
+        trigger_type: str,
+        event_data: Optional[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Create notifications for risk alerts"""
+        notifications = []
+        
+        for alert in risk_alerts[:2]:  # Top 2 risk alerts
+            notification = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "type": "risk_alert",
+                "severity": "high",
+                "title": "High Risk Medical Alert",
+                "message": alert,
+                "metadata": {
+                    "alert_type": "risk_alert",
+                    "trigger_type": trigger_type,
+                    "requires_immediate_attention": True
+                },
+                # Entity relationships
+                "related_medication_id": event_data.get("medication_id") if event_data else None,
+                "related_document_id": event_data.get("document_id") if event_data else None,
+                "related_health_reading_id": event_data.get("health_reading_id") if event_data else None,
+                "related_extracted_data_id": event_data.get("extracted_data_id") if event_data else None
+            }
+            notifications.append(notification)
+        
+        return notifications
+    
+    def _create_summary_notification(
+        self,
+        user_id: str,
+        analysis_result: Dict[str, Any],
+        trigger_type: str,
+        event_data: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """Create summary notification for comprehensive analysis"""
+        insights = analysis_result.get("insights", {})
+        summary = insights.get("summary")
+        
+        if not summary:
+            return None
+        
+        correlation_count = len(analysis_result.get("correlations", []))
+        confidence = analysis_result.get("overall_confidence", 0.5)
+        
+        return {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": "comprehensive_analysis",
+            "severity": "medium",
+            "title": "Medical Analysis Summary",
+            "message": f"{summary} Found {correlation_count} correlations with {confidence:.1%} confidence.",
+            "metadata": {
+                "analysis_type": "comprehensive",
+                "trigger_type": trigger_type,
+                "correlation_count": correlation_count,
+                "confidence": confidence,
+                "analysis_sources": analysis_result.get("analysis_sources", [])
+            },
+            # Entity relationships
+            "related_medication_id": event_data.get("medication_id") if event_data else None,
+            "related_document_id": event_data.get("document_id") if event_data else None,
+            "related_health_reading_id": event_data.get("health_reading_id") if event_data else None,
+            "related_extracted_data_id": event_data.get("extracted_data_id") if event_data else None
+        }
+    
+    def _create_monitoring_notification(
+        self,
+        user_id: str,
+        monitoring_suggestions: List[str],
+        trigger_type: str,
+        event_data: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """Create notification for monitoring suggestions"""
+        if not monitoring_suggestions:
+            return None
+        
+        # Combine multiple monitoring suggestions
+        message = "Recommended monitoring: " + "; ".join(monitoring_suggestions[:3])
+        
+        return {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": "monitoring_recommendation",
+            "severity": "low",
+            "title": "Monitoring Recommendations",
+            "message": message,
+            "metadata": {
+                "monitoring_suggestions": monitoring_suggestions,
+                "trigger_type": trigger_type,
+                "suggestion_count": len(monitoring_suggestions)
+            },
+            # Entity relationships
+            "related_medication_id": event_data.get("medication_id") if event_data else None,
+            "related_document_id": event_data.get("document_id") if event_data else None,
+            "related_health_reading_id": event_data.get("health_reading_id") if event_data else None,
+            "related_extracted_data_id": event_data.get("extracted_data_id") if event_data else None
+        }
     
     async def _log_analysis(
         self,

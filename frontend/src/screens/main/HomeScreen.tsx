@@ -12,6 +12,7 @@ import Card from '../../components/common/Card';
 import { useTheme } from '../../theme';
 import ListItem from '../../components/common/ListItem';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { documentServices, medicationServices, healthReadingsServices } from '../../api/services';
 import { DocumentRead, MedicationResponse, HealthReadingResponse } from '../../types/api';
 
@@ -249,26 +250,41 @@ const HomeScreen = () => {
     { id: 'assistant', label: 'Ask Assistant', iconNameLeft: 'chatbubbles-outline', screen: 'AssistantTab' as any, variant: 'filledSecondary' as const, fullWidth: true },
   ];
 
-  // Mock data for Health Insights
-  const healthInsights = [
-    {
+  // Mock data for Health Insights - now using real notification data
+  const { stats: notificationStats } = useNotifications();
+  
+  const healthInsights = React.useMemo(() => {
+    const insights = [];
+    
+    // Add notification-based insights
+    if (notificationStats && notificationStats.unread_count > 0) {
+      insights.push({
+        id: 'notifications',
+        iconName: 'notifications-outline',
+        iconColor: notificationStats.by_severity?.critical > 0 ? colors.error : 
+                   notificationStats.by_severity?.high > 0 ? colors.warning : colors.info,
+        title: `${notificationStats.unread_count} New Alert${notificationStats.unread_count > 1 ? 's' : ''}`,
+        description: notificationStats.by_severity?.critical > 0 
+          ? 'You have critical health alerts that need attention.'
+          : notificationStats.by_severity?.high > 0
+          ? 'You have important health notifications to review.'
+          : 'New health insights and reminders are available.',
+        onPress: () => navigation.navigate('NotificationsTab' as any),
+      });
+    }
+
+    // Add other insights
+    insights.push({
       id: 'insight1',
       iconName: 'trending-up-outline',
       iconColor: colors.dataColor2, // Green for positive trends
       title: 'Sleep Quality Up!',
       description: 'Your average sleep quality has improved by 15% this week. Keep it up!',
       onPress: () => console.log('Navigate to sleep details'), // Placeholder action
-    },
-    {
-      id: 'insight2',
-      iconName: 'notifications-outline',
-      iconColor: colors.info, // Blue for informational reminders
-      title: 'Blood Pressure Reminder',
-      description: 'Friendly reminder to check your blood pressure today as scheduled.',
-      onPress: () => console.log('Navigate to BP tracking'), // Placeholder action
-    },
-    // Add more insights as needed
-  ];
+    });
+
+    return insights;
+  }, [notificationStats, colors, navigation]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);

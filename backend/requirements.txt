@@ -1,8 +1,8 @@
 # Core
 fastapi==0.104.1
-uvicorn[standard]==0.23.2
+uvicorn[standard]==0.24.0
 python-dotenv==1.0.0
-pydantic==2.4.2
+pydantic==2.5.0
 pydantic-settings==2.0.3
 
 # Database
@@ -14,24 +14,24 @@ alembic==1.12.1
 greenlet>=1.0.0
 
 # Authentication & Authorization
-supabase==2.0.3
+supabase==2.0.5
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 pyjwt==2.8.0
 
 # Security
-slowapi==0.1.8
+slowapi==0.1.9
 
 # Logging
 google-cloud-logging==3.8.0
 
 # Testing
 pytest==7.4.3
-httpx>=0.24.0,<0.25.0
+httpx>=0.25.0,<0.26.0
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
-pytest-mock==3.11.1
+pytest-mock==3.12.0
 
 # AI/ML (Python 3.11 compatible)
 scikit-learn==1.7.0
@@ -72,4 +72,48 @@ sendgrid==6.10.0
 pytz==2023.3
 
 # JSON Processing
-orjson==3.9.10 
+orjson==3.9.10
+
+# Additional utilities
+python-dateutil==2.8.2
+
+# Vector database support
+pgvector==0.2.4
+
+# File type detection
+filetype==1.2.0
+
+# Configuration validation
+dynaconf==3.2.4
+
+# Rate limiting and security
+bcrypt==4.1.1
+
+# Monitoring and debugging (optional)
+prometheus-client==0.19.0
+
+# For structured logging
+structlog==23.2.0
+
+# For validation of URLs and other types
+pydantic[email]==2.5.0
+
+# CSV handling
+pandas>=1.4.0
+
+# File handling dependencies
+python-magic==0.4.27
+pypdf2==3.0.1
+pillow==10.1.0
+
+# Email
+sendgrid==6.10.0
+
+# HTTP status codes
+httpx==0.25.2
+
+# aiohttp dependency for OpenFDA API calls
+aiohttp==3.9.1
+
+# Email
+sendgrid==6.10.0 

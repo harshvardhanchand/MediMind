@@ -18,6 +18,12 @@ import {
   DocumentMetadataUpdate,
   ExtractionDetailsResponse, // Added new response type
   DocumentType, // Make sure DocumentType is imported if used in params, it was missing here
+  NotificationResponse,
+  NotificationCreate,
+  NotificationStatsResponse,
+  NotificationMarkReadRequest,
+  NotificationType,
+  NotificationSeverity,
   // UUID, // No longer directly needed here if types handle it
 } from '../types/api';
 
@@ -132,4 +138,31 @@ export const queryServices = {
 export const userServices = {
   getMe: (): Promise<AxiosResponse<UserResponse>> => 
     apiClient.get('/api/users/me'),
+};
+
+// Notification services
+export const notificationServices = {
+  getNotifications: (params?: { 
+    skip?: number; 
+    limit?: number; 
+    unread_only?: boolean;
+    notification_type?: NotificationType;
+    severity?: NotificationSeverity;
+  }): Promise<AxiosResponse<NotificationResponse[]>> => 
+    apiClient.get('/api/notifications', { params }),
+    
+  getNotificationStats: (): Promise<AxiosResponse<NotificationStatsResponse>> => 
+    apiClient.get('/api/notifications/stats'),
+    
+  markNotificationsAsRead: (request: NotificationMarkReadRequest): Promise<AxiosResponse<void>> => 
+    apiClient.post('/api/notifications/mark-read', request),
+    
+  markAllNotificationsAsRead: (): Promise<AxiosResponse<void>> => 
+    apiClient.post('/api/notifications/mark-all-read'),
+    
+  deleteNotification: (notificationId: string): Promise<AxiosResponse<void>> => 
+    apiClient.delete(`/api/notifications/${notificationId}`),
+    
+  createNotification: (notificationData: NotificationCreate): Promise<AxiosResponse<NotificationResponse>> => 
+    apiClient.post('/api/notifications', notificationData),
 }; 

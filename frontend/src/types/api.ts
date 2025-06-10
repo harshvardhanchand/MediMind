@@ -278,6 +278,65 @@ export interface QueryResponse {
   // Add other fields as per actual backend response
 }
 
+// --- Notification ---
+export enum NotificationType {
+  INTERACTION_ALERT = 'interaction_alert',
+  RISK_ALERT = 'risk_alert',
+  MEDICATION_REMINDER = 'medication_reminder',
+  LAB_FOLLOWUP = 'lab_followup',
+  SYMPTOM_MONITORING = 'symptom_monitoring',
+  GENERAL_INFO = 'general_info',
+}
+
+export enum NotificationSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical',
+}
+
+export interface NotificationMetadata {
+  correlation_type?: string;
+  confidence_score?: number;
+  entity_type?: string;
+  entity_id?: string;
+  recommendations?: string[];
+  related_entities?: Array<{
+    type: string;
+    id: string;
+    name: string;
+  }>;
+}
+
+export interface NotificationBase {
+  title: string;
+  message: string;
+  notification_type: NotificationType;
+  severity: NotificationSeverity;
+  metadata?: NotificationMetadata | null;
+}
+
+export interface NotificationCreate extends NotificationBase {}
+
+export interface NotificationResponse extends NotificationBase {
+  notification_id: string;
+  user_id: string;
+  is_read: boolean;
+  created_at: string; // ISO DateTime string
+  read_at?: string | null; // ISO DateTime string
+}
+
+export interface NotificationStatsResponse {
+  total_count: number;
+  unread_count: number;
+  by_severity: Record<NotificationSeverity, number>;
+  by_type: Record<NotificationType, number>;
+}
+
+export interface NotificationMarkReadRequest {
+  notification_ids: string[];
+}
+
 // Generic error response from API (example)
 export interface ApiErrorResponse {
   detail: string | { message: string; [key: string]: any }; // Backend often sends `detail`
