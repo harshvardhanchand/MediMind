@@ -79,6 +79,33 @@ const DocumentDetailScreen = () => {
     }
   };
 
+  const handleDeleteDocument = async () => {
+    Alert.alert(
+      'Delete Document',
+      'Are you sure you want to delete this document? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await documentServices.deleteDocument(documentId);
+              Alert.alert('Success', 'Document deleted successfully.');
+              navigation.goBack();
+            } catch (err: any) {
+              console.error('Error deleting document:', err);
+              Alert.alert('Error', err.response?.data?.detail || err.message || 'Failed to delete document.');
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        },
+      ]
+    );
+  };
+
   // Get document URL for viewing
   const getDocumentViewUrl = (doc: DocumentRead): string => {
     // Construct the URL to view the document from your backend
@@ -102,12 +129,20 @@ const DocumentDetailScreen = () => {
       navigation.setOptions({
         headerTitle: document.original_filename || 'Document Details', 
         headerRight: () => (
-          <StyledTouchableOpacity 
-            onPress={() => alert(`TODO: Edit ${document.original_filename}`)}
-            tw="p-1.5"
-          >
-            <StyledText style={{ color: colors.accentPrimary, fontSize: 17 }}>Edit</StyledText>
-          </StyledTouchableOpacity>
+          <StyledView tw="flex-row">
+            <StyledTouchableOpacity 
+              onPress={() => alert(`TODO: Edit ${document.original_filename}`)}
+              tw="p-1.5"
+            >
+              <StyledText style={{ color: colors.accentPrimary, fontSize: 17 }}>Edit</StyledText>
+            </StyledTouchableOpacity>
+            <StyledTouchableOpacity 
+              onPress={handleDeleteDocument}
+              tw="p-1.5"
+            >
+              <StyledText style={{ color: colors.error, fontSize: 17 }}>Delete</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
         ),
         headerStyle: { backgroundColor: colors.backgroundSecondary },
         headerTitleStyle: { color: colors.textPrimary },
@@ -208,7 +243,12 @@ const DocumentDetailScreen = () => {
         <StyledText variant="h3" tw="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
           {document.original_filename || 'Document Details'}
         </StyledText>
-        <StyledView className="w-8" /> {/* Spacer to balance back button */}
+        <StyledTouchableOpacity 
+          onPress={handleDeleteDocument}
+          className="p-1 ml-2"
+        >
+          <MaterialIcons name="delete" size={24} color={colors.error} />
+        </StyledTouchableOpacity>
       </StyledView>
 
       <StyledScrollView className="flex-1" refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadDocumentData} />}>

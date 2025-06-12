@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { notificationServices } from '../api/services';
 import { NotificationStatsResponse } from '../types/api';
 import PushNotificationService from '../services/pushNotificationService';
@@ -26,43 +26,25 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [stats, setStats] = useState<NotificationStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [pushToken, setPushToken] = useState<string | null>(null);
-
+  
   const pushService = PushNotificationService.getInstance();
   const deepLinkService = DeepLinkingService.getInstance();
 
-  const refreshStats = async () => {
+  const refreshStats = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('📊 Fetching notification stats...');
+      
       const response = await notificationServices.getNotificationStats();
       setStats(response.data);
-      
-      // Update badge count
-      await pushService.setBadgeCount(response.data.unread_count);
+      console.log('📊 Notification stats updated:', response.data);
     } catch (error) {
-      console.error('Failed to fetch notification stats:', error);
-      // Use dummy stats for fallback
-      setStats({
-        total_count: 5,
-        unread_count: 3,
-        by_severity: {
-          critical: 1,
-          high: 1,
-          medium: 2,
-          low: 1,
-        },
-        by_type: {
-          interaction_alert: 2,
-          risk_alert: 1,
-          medication_reminder: 1,
-          lab_followup: 1,
-          symptom_monitoring: 0,
-          general_info: 0,
-        },
-      });
+      console.error('📊 Failed to fetch notification stats:', error);
+      setStats(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const initializePushNotifications = async () => {
     try {
@@ -133,6 +115,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   };
 
   useEffect(() => {
+    // Initialize notification services
+    console.log('✅ Initializing notification services');
     refreshStats();
     
     // Initialize push notifications
@@ -146,7 +130,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // Clean up notification listeners
       pushService.removeNotificationListeners();
     };
-  }, []);
+  }, [refreshStats]);
 
   const unreadCount = stats?.unread_count || 0;
 

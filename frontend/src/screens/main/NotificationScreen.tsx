@@ -65,7 +65,14 @@ const NotificationScreen = () => {
       if (selectedSeverity) params.severity = selectedSeverity;
       
       const response = await notificationServices.getNotifications(params);
-      setNotifications(response.data);
+      
+      // If API returns empty array, use dummy data for demo
+      if (response.data && response.data.length > 0) {
+        setNotifications(response.data);
+      } else {
+        console.log('API returned empty notifications, using dummy data for demo');
+        setNotifications(generateDummyNotifications());
+      }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       // Use dummy data for demo

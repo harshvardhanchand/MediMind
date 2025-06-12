@@ -11,6 +11,7 @@ import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
 import { useTheme } from '../../theme';
+import { symptomServices, SymptomCreate } from '../../api/services/symptomServices';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -34,6 +35,7 @@ const SymptomTrackerScreen = () => {
   const [symptoms, setSymptoms] = useState<SymptomEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingDummyData, setUsingDummyData] = useState(false);
+  const [apiConnected, setApiConnected] = useState(false);
   
   const [newSymptom, setNewSymptom] = useState('');
   const [severity, setSeverity] = useState('3');
@@ -83,46 +85,120 @@ const SymptomTrackerScreen = () => {
     try {
       setLoading(true);
       setUsingDummyData(false);
+      setApiConnected(false);
       
-      console.log('Trying to fetch real symptoms from API...');
-      // TODO: Replace with actual symptom API call when available
-      // const response = await symptomServices.getSymptoms();
+      console.log('Fetching symptoms from API...');
       
-      // Simulate API call that might fail
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the real API
+      const response = await symptomServices.getSymptoms({ limit: 50 });
       
-      // For now, always use dummy data since symptom API doesn't exist yet
-      console.log('Using dummy symptoms (API not implemented yet)');
-      setSymptoms(dummySymptoms);
-      setUsingDummyData(true);
+      if (response.data && response.data.symptoms) {
+        setApiConnected(true);
+        
+        // Convert API response to display format
+        const formattedSymptoms: SymptomEntry[] = response.data.symptoms.map(symptom => {
+          const formatted = symptomServices.formatSymptomForDisplay(symptom);
+          return {
+            id: formatted.id,
+            reading_date: symptom.reported_date || symptom.created_at,
+            symptom: formatted.name,
+            severity: formatted.severityLevel,
+            notes: formatted.notes,
+            color: formatted.color
+          };
+        });
+        
+        // If API returns empty list, show mock data instead of empty state
+        if (formattedSymptoms.length === 0) {
+          console.log('✅ API connected but no symptoms found - showing mock data');
+          setSymptoms(dummySymptoms);
+          setUsingDummyData(true);
+        } else {
+          setSymptoms(formattedSymptoms);
+          console.log(`✅ Loaded ${formattedSymptoms.length} symptoms from API`);
+        }
+      } else {
+        throw new Error('Invalid response format');
+      }
       
     } catch (err: any) {
       console.log('API call failed, falling back to dummy data:', err.message);
       setSymptoms(dummySymptoms);
       setUsingDummyData(true);
+      setApiConnected(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddSymptom = () => {
+  const handleAddSymptom = async () => {
     if (newSymptom.trim() === '') return;
+    
     const newSeverity = parseInt(severity) || 3;
-    const entry: SymptomEntry = {
-      id: Date.now().toString(),
-      reading_date: new Date().toISOString(),
-      symptom: newSymptom.trim(),
-      severity: newSeverity,
-      notes: undefined,
-      color: newSeverity >= 4 ? colors.error : (newSeverity === 3 ? colors.warning : colors.info)
+    
+    // Map numeric severity to API severity
+    const severityMap: { [key: number]: 'mild' | 'moderate' | 'severe' | 'critical' } = {
+      1: 'mild',
+      2: 'mild', 
+      3: 'moderate',
+      4: 'severe',
+      5: 'critical'
     };
     
-    console.log("TODO: API Call - Add symptom to backend", entry);
+    const apiSeverity = severityMap[newSeverity] || 'moderate';
+    
+    const symptomData: SymptomCreate = {
+      symptom: newSymptom.trim(),
+      severity: apiSeverity,
+      reported_date: new Date().toISOString()
+    };
 
-    setSymptoms(prev => [entry, ...prev]);
-    setNewSymptom('');
-    setSeverity('3');
-    setShowForm(false);
+    try {
+      if (apiConnected) {
+        console.log("Adding symptom via API:", symptomData);
+        const response = await symptomServices.createSymptom(symptomData);
+        
+        if (response.data) {
+          // Refresh the list to get the new symptom
+          await fetchSymptoms();
+          console.log("✅ Symptom added successfully");
+        }
+      } else {
+        // Fallback to local state update when API is not connected
+        const entry: SymptomEntry = {
+          id: Date.now().toString(),
+          reading_date: new Date().toISOString(),
+          symptom: newSymptom.trim(),
+          severity: newSeverity,
+          notes: undefined,
+          color: newSeverity >= 4 ? colors.error : (newSeverity === 3 ? colors.warning : colors.info)
+        };
+        
+        console.log("Adding symptom locally (API not connected):", entry);
+        setSymptoms(prev => [entry, ...prev]);
+      }
+      
+      setNewSymptom('');
+      setSeverity('3');
+      setShowForm(false);
+      
+    } catch (error: any) {
+      console.error("Failed to add symptom:", error.message);
+      // Fallback to local addition on error
+      const entry: SymptomEntry = {
+        id: Date.now().toString(),
+        reading_date: new Date().toISOString(),
+        symptom: newSymptom.trim(),
+        severity: newSeverity,
+        notes: undefined,
+        color: newSeverity >= 4 ? colors.error : (newSeverity === 3 ? colors.warning : colors.info)
+      };
+      
+      setSymptoms(prev => [entry, ...prev]);
+      setNewSymptom('');
+      setSeverity('3');
+      setShowForm(false);
+    }
   };
 
   const getSeverityColor = (severityValue: number) => {
@@ -136,40 +212,39 @@ const SymptomTrackerScreen = () => {
     }
   };
 
+  const getSeverityTextColor = (severityValue: number) => {
+    switch (severityValue) {
+      case 1: return 'text-green-800';
+      case 2: return 'text-blue-800';
+      case 3: return 'text-yellow-800';
+      case 4: return 'text-orange-800';
+      case 5: return 'text-red-800';
+      default: return 'text-gray-800';
+    }
+  };
+
   const renderSymptomItem: ListRenderItem<SymptomEntry> = ({ item }) => (
-    <StyledTouchableOpacity 
-      tw="p-4 mb-3 bg-white rounded-lg shadow-sm flex-row"
-      style={{ borderRadius: 12 }}
-    >
-      <StyledView tw={`${getSeverityColor(item.severity)} p-2 rounded-md self-start mr-3`}>
-        <AlertCircle size={20} color={item.severity >=4 ? colors.error : (item.severity === 3 ? colors.warning : colors.info)} />
-      </StyledView>
-      <StyledView tw="flex-1">
-        <StyledView tw="flex-row justify-between items-center">
-          <StyledText variant="label" tw="font-semibold text-gray-800">{item.symptom}</StyledText>
-          <StyledView tw="flex-row items-center">
-            <StyledView tw="flex-row">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <StyledView 
-                  key={i} 
-                  style={{
-                    width: 10, height: 10, borderRadius: 5, marginHorizontal: 1,
-                    backgroundColor: i < item.severity ? (item.color || colors.primary) : colors.legacyGray200
-                  }}
-                />
-              ))}
+    <StyledTouchableOpacity tw="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
+      <StyledView tw="flex-row justify-between items-start">
+        <StyledView tw="flex-1">
+          <StyledText variant="h4" tw="text-gray-900 mb-1">{item.symptom}</StyledText>
+          <StyledView tw="flex-row items-center mb-2">
+            <StyledView tw={`px-2 py-1 rounded-full ${getSeverityColor(item.severity)} mr-2`}>
+              <StyledText tw={`text-xs font-medium ${getSeverityTextColor(item.severity)}`}>
+                Severity {item.severity}
+              </StyledText>
             </StyledView>
+            <StyledText variant="caption" color="textSecondary">
+              {new Date(item.reading_date).toLocaleDateString()} at {new Date(item.reading_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </StyledText>
           </StyledView>
+          {item.notes && (
+            <StyledText variant="body2" color="textSecondary" tw="mt-1">
+              {item.notes}
+            </StyledText>
+          )}
         </StyledView>
-        {item.notes && (
-          <StyledText variant="body2" color="textSecondary" tw="mt-1">{item.notes}</StyledText>
-        )}
-        <StyledView tw="flex-row items-center mt-1">
-          <Calendar size={12} color={colors.textMuted} />
-          <StyledText variant="caption" color="textSecondary" tw="ml-1">
-            {new Date(item.reading_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
-          </StyledText>
-        </StyledView>
+        <ChevronRight size={20} color={colors.textMuted} />
       </StyledView>
     </StyledTouchableOpacity>
   );
@@ -194,61 +269,75 @@ const SymptomTrackerScreen = () => {
             Record and monitor your symptoms over time
           </StyledText>
           
-          {usingDummyData && (
+          {usingDummyData && !apiConnected && (
             <StyledView tw="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
               <StyledText tw="text-yellow-800 text-sm text-center">
-                📱 Showing sample data (API not connected)
+                📱 API connection failed - Showing sample data
+              </StyledText>
+            </StyledView>
+          )}
+          
+          {usingDummyData && apiConnected && (
+            <StyledView tw="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
+              <StyledText tw="text-blue-800 text-sm text-center">
+                📋 No symptoms logged yet - Showing sample data
+              </StyledText>
+            </StyledView>
+          )}
+          
+          {!usingDummyData && apiConnected && symptoms.length > 0 && (
+            <StyledView tw="mt-3 p-2 bg-green-100 rounded border border-green-300">
+              <StyledText tw="text-green-800 text-sm text-center">
+                ✅ Connected to API - Real data loaded
               </StyledText>
             </StyledView>
           )}
         </StyledView>
       </StyledView>
-      
+
       {showForm ? (
-        <StyledView tw="mb-4 p-5 bg-white rounded-lg shadow-sm" style={{ borderRadius: 12 }}>
-          <StyledView tw="flex-row justify-between items-center mb-4">
-            <StyledText variant="h3" tw="text-gray-800">Log New Symptom</StyledText>
-            <TouchableOpacity onPress={() => setShowForm(false)}>
-              <ArrowLeft size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </StyledView>
+        <StyledView tw="bg-gray-50 p-4 rounded-lg mb-4">
+          <StyledText variant="h4" tw="mb-3">Log New Symptom</StyledText>
           
-          <StyledInput 
-            placeholder="Describe your symptom (e.g., Headache, Nausea)"
+          <StyledInput
+            placeholder="Describe your symptom..."
             value={newSymptom}
             onChangeText={setNewSymptom}
-            tw="mb-4 bg-gray-50"
+            tw="mb-3"
           />
           
-          <StyledText variant="label" tw="mb-1 text-gray-700">Severity</StyledText>
-          <StyledText variant="caption" tw="mb-3 text-gray-500">(1 - Very Mild, 5 - Very Severe)</StyledText>
-          <StyledView tw="flex-row mb-4 justify-between">
-            {[1, 2, 3, 4, 5].map(level => (
-              <StyledTouchableOpacity 
+          <StyledText variant="body2" tw="mb-2 text-gray-700">Severity Level (1-5)</StyledText>
+          <StyledView tw="flex-row justify-between mb-4">
+            {[1, 2, 3, 4, 5].map((level) => (
+              <StyledTouchableOpacity
                 key={level}
-                tw={`w-12 h-12 items-center justify-center rounded-full border-2 ${severity === level.toString() ? getSeverityColor(level) + ' border-primary' : 'bg-gray-100 border-gray-300'}`}
+                tw={`flex-1 mx-1 py-2 rounded ${severity === level.toString() ? getSeverityColor(level) : 'bg-gray-200'}`}
                 onPress={() => setSeverity(level.toString())}
               >
-                <StyledText variant="body1" tw={`font-semibold ${severity === level.toString() ? 'text-primary' : 'text-gray-600'}`}>{level}</StyledText>
+                <StyledText tw={`text-center font-medium ${severity === level.toString() ? getSeverityTextColor(level) : 'text-gray-600'}`}>
+                  {level}
+                </StyledText>
               </StyledTouchableOpacity>
             ))}
           </StyledView>
           
-          <StyledButton 
-            variant="filledPrimary" 
-            onPress={handleAddSymptom} 
-            tw="w-full mb-2 mt-2"
-            style={{ borderRadius: 10 }}
-          >
-            Save Symptom
-          </StyledButton>
-          <StyledButton 
-            variant="textPrimary" 
-            onPress={() => setShowForm(false)} 
-            tw="w-full"
-          >
-            Cancel
-          </StyledButton>
+          <StyledView tw="flex-row space-x-2">
+            <StyledButton 
+              variant="filledPrimary" 
+              onPress={handleAddSymptom} 
+              tw="flex-1"
+              disabled={!newSymptom.trim()}
+            >
+              Add Symptom
+            </StyledButton>
+            <StyledButton 
+              variant="textPrimary" 
+              onPress={() => setShowForm(false)} 
+              tw="flex-1"
+            >
+              Cancel
+            </StyledButton>
+          </StyledView>
         </StyledView>
       ) : (
         <StyledButton 

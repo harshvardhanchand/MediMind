@@ -10,12 +10,13 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import logging
 
-from ..db.session import get_db
-from ..services.notification_service import get_notification_service, get_medical_triggers
-from ..core.auth import get_current_user
+from app.db.session import get_db
+from app.services.notification_service import get_notification_service, get_medical_triggers
+from app.core.auth import get_current_user
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/notifications", tags=["notifications"])
+router = APIRouter(tags=["notifications"])
 security = HTTPBearer()
 
 # Pydantic models
@@ -45,10 +46,10 @@ class NotificationResponse(BaseModel):
     related_entities: RelatedEntities
 
 class NotificationStats(BaseModel):
-    total_notifications: int
+    total_count: int
     unread_count: int
-    high_priority_unread: int
-    recent_notifications: int
+    by_severity: Dict[str, int]
+    by_type: Dict[str, int]
 
 class MedicalEventRequest(BaseModel):
     trigger_type: str
@@ -58,37 +59,40 @@ class NotificationActionRequest(BaseModel):
     notification_id: str
 
 # Notification endpoints
-@router.get("/", response_model=List[NotificationResponse])
+@router.get("", response_model=List[NotificationResponse])
 async def get_notifications(
     include_read: bool = Query(True, description="Include read notifications"),
     include_dismissed: bool = Query(False, description="Include dismissed notifications"),
     limit: int = Query(50, le=100, description="Maximum number of notifications"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get notifications for the current user
     """
     try:
+        logger.info(f"🔍 get_notifications called - user_id: {current_user.user_id}")
         notification_service = get_notification_service(db)
         
+        logger.info(f"🔍 About to call get_user_notifications with user_id: {str(current_user.user_id)}")
         notifications = notification_service.get_user_notifications(
-            user_id=str(current_user.id),
+            user_id=str(current_user.user_id),
             include_read=include_read,
             include_dismissed=include_dismissed,
             limit=limit
         )
         
+        logger.info(f"🔍 get_user_notifications returned {len(notifications)} notifications")
         return notifications
         
     except Exception as e:
-        logger.error(f"Failed to get notifications: {str(e)}")
+        logger.error(f"Failed to get notifications: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve notifications")
 
 @router.get("/stats", response_model=NotificationStats)
 async def get_notification_stats(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get notification statistics for the current user
@@ -96,7 +100,7 @@ async def get_notification_stats(
     try:
         notification_service = get_notification_service(db)
         
-        stats = notification_service.get_notification_stats(str(current_user.id))
+        stats = notification_service.get_notification_stats(str(current_user.user_id))
         
         return NotificationStats(**stats)
         
@@ -108,7 +112,7 @@ async def get_notification_stats(
 async def mark_notification_read(
     notification_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Mark a notification as read
@@ -118,7 +122,7 @@ async def mark_notification_read(
         
         success = notification_service.mark_notification_read(
             notification_id=notification_id,
-            user_id=str(current_user.id)
+            user_id=str(current_user.user_id)
         )
         
         if not success:
@@ -136,7 +140,7 @@ async def mark_notification_read(
 async def dismiss_notification(
     notification_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Dismiss a notification
@@ -146,7 +150,7 @@ async def dismiss_notification(
         
         success = notification_service.dismiss_notification(
             notification_id=notification_id,
-            user_id=str(current_user.id)
+            user_id=str(current_user.user_id)
         )
         
         if not success:
@@ -166,7 +170,7 @@ async def trigger_medication_analysis(
     medication_data: Dict[str, Any],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Trigger medical analysis for new medication
@@ -178,7 +182,7 @@ async def trigger_medication_analysis(
         # Run analysis in background
         background_tasks.add_task(
             medical_triggers.on_medication_added,
-            str(current_user.id),
+            str(current_user.user_id),
             medication_data
         )
         
@@ -193,7 +197,7 @@ async def trigger_symptom_analysis(
     symptom_data: Dict[str, Any],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Trigger medical analysis for reported symptom
@@ -205,7 +209,7 @@ async def trigger_symptom_analysis(
         # Run analysis in background
         background_tasks.add_task(
             medical_triggers.on_symptom_reported,
-            str(current_user.id),
+            str(current_user.user_id),
             symptom_data
         )
         
@@ -220,7 +224,7 @@ async def trigger_lab_analysis(
     lab_data: Dict[str, Any],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Trigger medical analysis for lab result
@@ -232,7 +236,7 @@ async def trigger_lab_analysis(
         # Run analysis in background
         background_tasks.add_task(
             medical_triggers.on_lab_result_added,
-            str(current_user.id),
+            str(current_user.user_id),
             lab_data
         )
         
@@ -247,7 +251,7 @@ async def trigger_health_reading_analysis(
     reading_data: Dict[str, Any],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Trigger medical analysis for health reading
@@ -259,7 +263,7 @@ async def trigger_health_reading_analysis(
         # Run analysis in background
         background_tasks.add_task(
             medical_triggers.on_health_reading_added,
-            str(current_user.id),
+            str(current_user.user_id),
             reading_data
         )
         
@@ -269,29 +273,23 @@ async def trigger_health_reading_analysis(
         logger.error(f"Failed to trigger health reading analysis: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to trigger medical analysis")
 
-# Manual analysis trigger
 @router.post("/analyze")
 async def trigger_manual_analysis(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Manually trigger comprehensive medical analysis
+    Trigger comprehensive medical analysis for the current user
     """
     try:
         notification_service = get_notification_service(db)
+        medical_triggers = get_medical_triggers(notification_service)
         
         # Run comprehensive analysis in background
         background_tasks.add_task(
-            notification_service.trigger_medical_analysis,
-            str(current_user.id),
-            "manual_analysis",
-            {
-                "type": "manual_analysis",
-                "triggered_by": "user_request",
-                "timestamp": None
-            }
+            medical_triggers.run_comprehensive_analysis,
+            str(current_user.user_id)
         )
         
         return {"message": "Comprehensive medical analysis triggered"}
@@ -304,7 +302,7 @@ async def trigger_manual_analysis(
 @router.get("/admin/stats")
 async def get_system_notification_stats(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get system-wide notification statistics (admin only)
@@ -340,7 +338,7 @@ async def get_system_notification_stats(
 async def cleanup_expired_notifications(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Clean up expired notifications (admin only)
@@ -357,5 +355,5 @@ async def cleanup_expired_notifications(
         return {"message": "Notification cleanup initiated"}
         
     except Exception as e:
-        logger.error(f"Failed to trigger cleanup: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to trigger cleanup") 
+        logger.error(f"Failed to initiate cleanup: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to initiate notification cleanup") 

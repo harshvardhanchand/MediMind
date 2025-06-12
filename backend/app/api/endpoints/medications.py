@@ -86,7 +86,7 @@ async def create_medication(
             }
             
             await medical_triggers.on_medication_added(
-                str(current_user.id), 
+                str(current_user.user_id), 
                 medication_data,
                 medication_id=str(db_medication.id)  # Pass the medication ID
             )

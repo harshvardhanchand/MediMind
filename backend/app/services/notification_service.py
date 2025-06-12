@@ -190,12 +190,12 @@ class NotificationService:
                         n.related_medication_id, n.related_document_id, 
                         n.related_health_reading_id, n.related_extracted_data_id,
                         m.name as medication_name,
-                        d.filename as document_filename,
-                        hr.test_name as health_reading_test
+                        d.original_filename as document_filename,
+                        hr.reading_type as health_reading_test
                     FROM notifications n
-                    LEFT JOIN medications m ON n.related_medication_id = m.id
-                    LEFT JOIN documents d ON n.related_document_id = d.id
-                    LEFT JOIN health_readings hr ON n.related_health_reading_id = hr.id
+                    LEFT JOIN medications m ON n.related_medication_id = m.medication_id
+                    LEFT JOIN documents d ON n.related_document_id = d.document_id
+                    LEFT JOIN health_readings hr ON n.related_health_reading_id = hr.health_reading_id
                     WHERE {where_clause}
                     ORDER BY n.created_at DESC 
                     LIMIT :limit
@@ -313,13 +313,12 @@ class NotificationService:
         Get notification statistics for a user
         """
         try:
-            result = self.db.execute(
+            # Get basic stats
+            basic_result = self.db.execute(
                 text("""
                     SELECT 
-                        COUNT(*) as total_notifications,
-                        COUNT(CASE WHEN is_read = false THEN 1 END) as unread_count,
-                        COUNT(CASE WHEN severity = 'high' AND is_read = false THEN 1 END) as high_priority_unread,
-                        COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as recent_notifications
+                        COUNT(*) as total_count,
+                        COUNT(CASE WHEN is_read = false THEN 1 END) as unread_count
                     FROM notifications 
                     WHERE user_id = :user_id 
                     AND expires_at > NOW() 
@@ -328,19 +327,121 @@ class NotificationService:
                 {"user_id": user_id}
             ).fetchone()
             
-            if result:
+            # Get severity breakdown
+            severity_result = self.db.execute(
+                text("""
+                    SELECT 
+                        severity,
+                        COUNT(*) as count
+                    FROM notifications 
+                    WHERE user_id = :user_id 
+                    AND expires_at > NOW() 
+                    AND is_dismissed = false
+                    GROUP BY severity
+                """),
+                {"user_id": user_id}
+            ).fetchall()
+            
+            # Get type breakdown
+            type_result = self.db.execute(
+                text("""
+                    SELECT 
+                        type,
+                        COUNT(*) as count
+                    FROM notifications 
+                    WHERE user_id = :user_id 
+                    AND expires_at > NOW() 
+                    AND is_dismissed = false
+                    GROUP BY type
+                """),
+                {"user_id": user_id}
+            ).fetchall()
+            
+            # Build severity breakdown
+            by_severity = {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            }
+            
+            for row in severity_result:
+                severity = row[0].lower() if row[0] else "low"
+                count = row[1]
+                if severity in by_severity:
+                    by_severity[severity] = count
+                else:
+                    # Map any other severity levels
+                    if severity in ["urgent", "emergency"]:
+                        by_severity["critical"] += count
+                    else:
+                        by_severity["low"] += count
+            
+            # Build type breakdown
+            by_type = {
+                "interaction_alert": 0,
+                "risk_alert": 0,
+                "medication_reminder": 0,
+                "lab_followup": 0,
+                "symptom_monitoring": 0,
+                "general_info": 0
+            }
+            
+            for row in type_result:
+                notification_type = row[0].lower() if row[0] else "general_info"
+                count = row[1]
+                
+                # Map notification types to expected categories
+                if notification_type in ["drug_interaction", "interaction_alert", "medication_interaction"]:
+                    by_type["interaction_alert"] += count
+                elif notification_type in ["risk_alert", "health_risk", "medical_risk"]:
+                    by_type["risk_alert"] += count
+                elif notification_type in ["medication_reminder", "dose_reminder", "refill_reminder"]:
+                    by_type["medication_reminder"] += count
+                elif notification_type in ["lab_followup", "lab_result", "test_followup"]:
+                    by_type["lab_followup"] += count
+                elif notification_type in ["symptom_monitoring", "symptom_alert", "symptom_tracking"]:
+                    by_type["symptom_monitoring"] += count
+                else:
+                    by_type["general_info"] += count
+            
+            if basic_result:
                 return {
-                    "total_notifications": result[0],
-                    "unread_count": result[1],
-                    "high_priority_unread": result[2],
-                    "recent_notifications": result[3]
+                    "total_count": basic_result[0] or 0,
+                    "unread_count": basic_result[1] or 0,
+                    "by_severity": by_severity,
+                    "by_type": by_type
                 }
             
-            return {}
+            # Return empty stats if no data
+            return {
+                "total_count": 0,
+                "unread_count": 0,
+                "by_severity": by_severity,
+                "by_type": by_type
+            }
             
         except Exception as e:
             logger.error(f"Failed to get notification stats: {str(e)}")
-            return {}
+            # Return empty stats structure on error
+            return {
+                "total_count": 0,
+                "unread_count": 0,
+                "by_severity": {
+                    "critical": 0,
+                    "high": 0,
+                    "medium": 0,
+                    "low": 0
+                },
+                "by_type": {
+                    "interaction_alert": 0,
+                    "risk_alert": 0,
+                    "medication_reminder": 0,
+                    "lab_followup": 0,
+                    "symptom_monitoring": 0,
+                    "general_info": 0
+                }
+            }
     
     async def cleanup_expired_notifications(self) -> int:
         """

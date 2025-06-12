@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
-import { ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import Card from '../../components/common/Card';
-import { useTheme } from '../../theme';
 import ListItem from '../../components/common/ListItem';
-import { useAuth } from '../../context/AuthContext';
-import { useNotifications } from '../../context/NotificationContext';
+import { useTheme } from '../../theme';
 import { documentServices, medicationServices, healthReadingsServices } from '../../api/services';
 import { DocumentRead, MedicationResponse, HealthReadingResponse } from '../../types/api';
+import { useNotifications } from '../../context/NotificationContext';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
@@ -22,8 +20,6 @@ const StyledScrollView = styled(ScrollView);
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { signOut, isLoading: authLoading } = useAuth();
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   
   // Data states
   const [documents, setDocuments] = useState<DocumentRead[]>([]);
@@ -286,19 +282,6 @@ const HomeScreen = () => {
     return insights;
   }, [notificationStats, colors, navigation]);
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await signOut();
-      // Navigation to Auth/Onboarding will be handled by AppNavigator due to auth state change
-    } catch (error) {
-      console.error("Error during sign out:", error);
-      // Optionally, show an alert to the user
-    } finally {
-      setIsLoggingOut(false);
-    }
-  };
-
   if (loading) {
     return (
       <ScreenContainer scrollable={false} withPadding={false}>
@@ -460,15 +443,6 @@ const HomeScreen = () => {
                 ))}
             </StyledView>
         </Card>
-
-        <StyledButton 
-          variant="textDestructive" 
-          onPress={handleLogout}
-          tw="mt-4 mb-6 self-center"
-          disabled={isLoggingOut || authLoading}
-        >
-          {isLoggingOut ? <ActivityIndicator size="small" color={colors.error} /> : 'Log Out'}
-        </StyledButton>
 
       </StyledScrollView>
     </ScreenContainer>
