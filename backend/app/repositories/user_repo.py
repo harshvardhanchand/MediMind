@@ -2,13 +2,14 @@
 UserRepository module - Full implementation of the user repository
 
 """
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
 from app.models.user import User
+from app.schemas.user import UserProfileUpdate
 from .base import CRUDBase 
 
 class UserRepository(CRUDBase[User, Any, Any]): 
@@ -37,6 +38,24 @@ class UserRepository(CRUDBase[User, Any, Any]):
         stmt = select(self.model).where(self.model.email == email)
         result = db.execute(stmt)
         return result.scalar_one_or_none()
+    
+    async def update_profile(self, db: AsyncSession, *, user_id: str, profile_data: UserProfileUpdate) -> Optional[User]:
+        """Update user profile fields."""
+        stmt = select(self.model).where(self.model.user_id == user_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return None
+        
+        # Update only provided fields
+        update_data = profile_data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(user, field, value)
+        
+        await db.commit()
+        await db.refresh(user)
+        return user
 
-# Create a singleton instance
+# Create instance
 user_repo = UserRepository(User) 

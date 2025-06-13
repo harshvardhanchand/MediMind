@@ -198,8 +198,8 @@ const VitalsScreen = () => {
 
   return (
     <ScreenContainer scrollable={false} withPadding>
-      <StyledView tw="pt-2 pb-4 flex-row justify-between items-center">
-        <View>
+      <StyledView tw="pt-2 pb-4 flex-row justify-between items-start">
+        <StyledView tw="flex-1 pr-2">
           <StyledText variant="h1" color="primary">Vitals</StyledText>
           <StyledText variant="body2" color="textSecondary" tw="mt-1">
             Track your health measurements
@@ -212,9 +212,11 @@ const VitalsScreen = () => {
               </StyledText>
             </StyledView>
           )}
-        </View>
-        <StyledButton variant="textPrimary" onPress={loadHealthReadingsFromApi} tw="px-2 py-1">
-            {usingDummyData ? "Show API" : "Show Mock"}
+        </StyledView>
+        <StyledButton variant="textPrimary" onPress={loadHealthReadingsFromApi} tw="px-2 py-1 min-w-0">
+            <StyledText variant="caption" color="primary" tw="text-xs">
+              Show All
+            </StyledText>
         </StyledButton>
       </StyledView>
       

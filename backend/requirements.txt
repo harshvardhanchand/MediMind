@@ -72,7 +72,7 @@ sendgrid==6.10.0
 pytz==2023.3
 
 # JSON Processing
-orjson==3.9.10
+orjson==3.9.10 
 
 # Additional utilities
 python-dateutil==2.8.2

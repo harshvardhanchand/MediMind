@@ -9,6 +9,7 @@ import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
+import HeaderNotifications from '../../components/common/HeaderNotifications';
 import { useTheme } from '../../theme';
 import { documentServices, medicationServices, healthReadingsServices } from '../../api/services';
 import { DocumentRead, MedicationResponse, HealthReadingResponse } from '../../types/api';
@@ -265,7 +266,7 @@ const HomeScreen = () => {
           : notificationStats.by_severity?.high > 0
           ? 'You have important health notifications to review.'
           : 'New health insights and reminders are available.',
-        onPress: () => navigation.navigate('NotificationsTab' as any),
+        onPress: () => navigation.navigate('NotificationScreen'),
       });
     }
 
@@ -297,10 +298,15 @@ const HomeScreen = () => {
     <ScreenContainer scrollable={false} withPadding={false}>
       <StyledScrollView className="flex-1 px-4 pt-6 pb-20" showsVerticalScrollIndicator={false}>
         <StyledView className="mb-8">
-          <StyledText variant="h1" tw="font-bold text-3xl">Dashboard</StyledText>
-          <StyledText variant="body1" color="textSecondary" tw="mt-1">
-            Welcome to your health insights.
-          </StyledText>
+          <StyledView className="flex-row justify-between items-center mb-2">
+            <StyledView className="flex-1">
+              <StyledText variant="h1" tw="font-bold text-3xl">Dashboard</StyledText>
+              <StyledText variant="body1" color="textSecondary" tw="mt-1">
+                Welcome to your health insights.
+              </StyledText>
+            </StyledView>
+            <HeaderNotifications />
+          </StyledView>
           
           {usingDummyData && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">

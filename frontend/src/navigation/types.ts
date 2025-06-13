@@ -31,12 +31,14 @@ export type MainAppStackParamList = {
   Reports: undefined; // General reports, or could be where LabResultsList is mounted
   Assistant: undefined;
   Settings: undefined;
+  EditProfile: undefined;
   Vitals: undefined;
   SymptomTracker: undefined;
   AddSymptom: undefined;
   HealthReadings: undefined;
   Query: undefined;
   AddHealthReading: undefined;
+  NotificationScreen: undefined;
 
   // Tab navigator screen names (usually not navigated to directly like this unless part of a stack)
   DashboardTab: undefined;

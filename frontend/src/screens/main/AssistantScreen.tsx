@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, TextInput } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, TextInput, SafeAreaView } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,13 +7,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';
-import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
-import StyledInput from '../../components/common/StyledInput';
-import StyledButton from '../../components/common/StyledButton';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledTextInput = styled(TextInput);
+const StyledSafeAreaView = styled(SafeAreaView);
 
 interface Message {
   id: string;
@@ -53,6 +52,11 @@ const AssistantScreen = () => {
     setInputText('');
     setIsTyping(true);
     
+    // Scroll to bottom after sending message
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    
     setTimeout(() => {
       setIsTyping(false);
       const assistantResponse: Message = {
@@ -89,43 +93,41 @@ const AssistantScreen = () => {
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
     
-    // Base bubble style
-    let bubbleTw = 'my-1.5 mx-3 max-w-[80%] rounded-2xl p-3 shadow-sm'; // Added slightly more horizontal margin and subtle shadow
-    let specificCornerTw = '';
-
-    if (isUser) {
-      bubbleTw += ' bg-accentPrimary self-end';
-      specificCornerTw = 'rounded-br-lg'; // Sharper bottom-right corner for user
-    } else {
-      bubbleTw += ' bg-backgroundSecondary self-start'; // Changed assistant to white for better contrast, similar to iMessage
-      specificCornerTw = 'rounded-bl-lg'; // Sharper bottom-left corner for assistant
-    }
-
     return (
-      <StyledView tw={`${bubbleTw} ${specificCornerTw}`.trim()}>
-        {!isUser && (
-          <StyledView tw="flex-row items-center mb-1">
-            <Ionicons name="sparkles-outline" size={16} color={colors.accentPrimary} />
-            <StyledText variant="label" tw="ml-1.5 font-semibold" color="accentPrimary">
-              Health Assistant
-            </StyledText>
-          </StyledView>
-        )}
-        <StyledText 
-          variant="body1" 
-          style={{ lineHeight: 21 }} // Slightly increased line height
-          color={isUser ? 'textOnPrimaryColor' : 'textPrimary'}
-        >
-          {item.text}
-        </StyledText>
-        <StyledText 
-          variant="caption" 
-          // For assistant, use textMuted. For user, slightly lighter than main bubble text.
-          style={{color: isUser ? colors.textOnPrimaryColor : colors.textMuted, opacity: isUser ? 0.75 : 1}}
-          tw={`mt-1.5 text-xs ${isUser ? 'text-right' : 'text-left'}`}
-        >
-          {formatTime(item.timestamp)}
-        </StyledText>
+      <StyledView className={`mb-4 px-4 ${isUser ? 'items-end' : 'items-start'}`}>
+        <StyledView className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+          isUser 
+            ? 'bg-blue-500 rounded-br-md' 
+            : 'bg-gray-100 rounded-bl-md'
+        }`}>
+          {!isUser && (
+            <StyledView className="flex-row items-center mb-1">
+              <Ionicons name="sparkles-outline" size={14} color={colors.accentPrimary} />
+              <StyledText variant="caption" tw="ml-1 font-semibold text-blue-500">
+                Health Assistant
+              </StyledText>
+            </StyledView>
+          )}
+          <StyledText 
+            variant="body1" 
+            style={{ 
+              lineHeight: 20,
+              color: isUser ? 'white' : colors.textPrimary
+            }}
+          >
+            {item.text}
+          </StyledText>
+          <StyledText 
+            variant="caption" 
+            style={{
+              color: isUser ? 'rgba(255,255,255,0.7)' : colors.textSecondary,
+              marginTop: 4
+            }}
+            tw={isUser ? 'text-right' : 'text-left'}
+          >
+            {formatTime(item.timestamp)}
+          </StyledText>
+        </StyledView>
       </StyledView>
     );
   };
@@ -135,22 +137,20 @@ const AssistantScreen = () => {
   };
 
   return (
-    <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundPrimary}>
+    <StyledSafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <StyledView className="flex-row items-center px-4 py-3 border-b border-borderSubtle bg-backgroundSecondary">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1">
-          <Ionicons name="chevron-back-outline" size={28} color={colors.accentPrimary} />
+      <StyledView className="flex-row items-center px-4 py-3 border-b border-gray-200 bg-white">
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </StyledTouchableOpacity>
-        <StyledView className="flex-1 items-center">
-          <StyledText variant="body1" tw="font-semibold" color="textPrimary">Health Assistant</StyledText>
-        </StyledView>
-        <StyledView className="w-8" />
+        <StyledText variant="h3" tw="font-semibold">Health Assistant</StyledText>
       </StyledView>
 
+      {/* Chat Area */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        keyboardVerticalOffset={0}
       >
         <StyledView className="flex-1">
           <FlatList
@@ -158,43 +158,75 @@ const AssistantScreen = () => {
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={renderMessage}
-            contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 10 }} // Adjusted horizontal padding
+            contentContainerStyle={{ 
+              paddingTop: 16,
+              paddingBottom: 20,
+              flexGrow: 1
+            }}
             showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
           />
+          
+          {/* Typing Indicator */}
           {isTyping && (
-            <StyledView tw="self-start ml-3 mb-2">
-              <StyledView tw="bg-backgroundSecondary px-4 py-2.5 rounded-2xl rounded-bl-lg shadow-sm flex-row items-center">
-                <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
-                {/* <StyledText variant="body2" color="textSecondary">Assistant is typing...</StyledText> */}
+            <StyledView className="mb-4 px-4 items-start">
+              <StyledView className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+                <StyledView className="flex-row items-center">
+                  <StyledView className="flex-row space-x-1">
+                    <StyledView className="w-2 h-2 bg-gray-400 rounded-full" />
+                    <StyledView className="w-2 h-2 bg-gray-400 rounded-full" />
+                    <StyledView className="w-2 h-2 bg-gray-400 rounded-full" />
+                  </StyledView>
+                </StyledView>
               </StyledView>
             </StyledView>
           )}
         </StyledView>
 
-        {/* Message Input Area */}
-        <StyledView className="flex-row items-center px-4 py-3 border-t border-borderSubtle bg-backgroundSecondary">
-          <StyledInput
-            placeholder="Ask anything..."
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            inputStyle={{ maxHeight: 100, paddingTop: Platform.OS === 'ios' ? 8 : 0, paddingBottom: Platform.OS === 'ios' ? 8 : 0 }}
-            tw="flex-1 mr-3"
-            onSubmitEditing={handleSendMessage}
-          />
-          <StyledButton
-            variant={inputText.trim() === '' ? 'filledSecondary' : 'filledPrimary'}
+        {/* Input Area - Fixed at bottom */}
+        <StyledView 
+          className="flex-row items-end px-4 py-3 bg-white border-t border-gray-200"
+          style={{ 
+            paddingBottom: Platform.OS === 'ios' ? 34 : 16 // Safe area for iPhone home indicator
+          }}
+        >
+          <StyledView className="flex-1 flex-row items-end bg-gray-100 rounded-3xl px-4 py-2 mr-2">
+            <StyledTextInput
+              placeholder="Message..."
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              style={{
+                flex: 1,
+                maxHeight: 100,
+                fontSize: 16,
+                lineHeight: 20,
+                paddingTop: Platform.OS === 'ios' ? 8 : 4,
+                paddingBottom: Platform.OS === 'ios' ? 8 : 4,
+                color: colors.textPrimary
+              }}
+              placeholderTextColor={colors.textSecondary}
+              onSubmitEditing={handleSendMessage}
+              blurOnSubmit={false}
+            />
+          </StyledView>
+          
+          <StyledTouchableOpacity
             onPress={handleSendMessage}
-            disabled={inputText.trim() === '' && !isTyping}
-            tw="w-10 h-10 p-0 items-center justify-center rounded-full ml-1"
-            iconNameLeft={inputText.trim() === '' ? "mic-outline" : "arrow-up-outline"}
-            iconSize={22}
+            disabled={inputText.trim() === ''}
+            className={`w-10 h-10 rounded-full items-center justify-center ${
+              inputText.trim() === '' ? 'bg-gray-300' : 'bg-blue-500'
+            }`}
           >
-            {null}
-          </StyledButton>
+            <Ionicons 
+              name="arrow-up" 
+              size={20} 
+              color="white"
+            />
+          </StyledTouchableOpacity>
         </StyledView>
       </KeyboardAvoidingView>
-    </ScreenContainer>
+    </StyledSafeAreaView>
   );
 };
 

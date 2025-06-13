@@ -1,4 +1,4 @@
-from .user import UserRead
+from .user import UserRead, UserProfileUpdate
 from .document import DocumentBase, DocumentCreate, DocumentRead, DocumentUpdate, DocumentMetadataUpdate
 from .extracted_data import ExtractedDataBase, ExtractedDataCreate, ExtractedDataRead, ExtractedDataUpdate, ExtractedDataStatusUpdate, ExtractedDataContentUpdate
 from .medication import MedicationBase, MedicationCreate, MedicationUpdate, MedicationResponse
@@ -7,6 +7,7 @@ from .query import QueryRequest, NaturalLanguageQueryResponse
 
 __all__ = [
     "UserRead",
+    "UserProfileUpdate",
     "DocumentBase",
     "DocumentCreate",
     "DocumentRead",

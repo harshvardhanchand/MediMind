@@ -16,6 +16,8 @@ import AddHealthReadingScreen from '../screens/AddHealthReadingScreen'; // Corre
 import QueryScreen from '../screens/QueryScreen'; // Corrected path
 import DocumentDetailScreen from '../screens/main/DocumentDetailScreen';
 import DataReviewScreen from '../screens/main/DataReviewScreen';
+import NotificationScreen from '../screens/main/NotificationScreen';
+import EditProfileScreen from '../screens/main/EditProfileScreen';
 
 import { MainAppStackParamList } from './types';
 
@@ -45,6 +47,8 @@ const DashboardStackNavigator = () => {
       <Stack.Screen name="Query" component={QueryScreen} />
       <Stack.Screen name="DocumentDetail" component={DocumentDetailScreen} />
       <Stack.Screen name="DataReview" component={DataReviewScreen} />
+      <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
     </Stack.Navigator>
   );
 };

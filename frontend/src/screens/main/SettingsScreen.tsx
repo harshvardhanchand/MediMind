@@ -54,7 +54,7 @@ const SettingsScreen = () => {
       id: 'profile', 
       label: 'Edit Profile', 
       iconName: 'person-circle-outline', 
-      action: () => alert('Navigate to Edit Profile') 
+      navigateTo: 'EditProfile'
     },
     { 
       id: 'security', 
@@ -131,6 +131,14 @@ const SettingsScreen = () => {
       );
     }
 
+    const handlePress = () => {
+      if (item.navigateTo) {
+        navigation.navigate(item.navigateTo);
+      } else if (item.action) {
+        item.action();
+      }
+    };
+
     return (
       <ListItem
         key={item.id}
@@ -138,7 +146,7 @@ const SettingsScreen = () => {
         iconLeft={item.iconName}
         iconLeftColor={item.isDestructive ? colors.error : colors.textSecondary}
         labelStyle={item.isDestructive ? { color: colors.error } : {}}
-        onPress={item.action}
+        onPress={handlePress}
         showBottomBorder={!isLastInSection}
         iconRight="chevron-forward-outline"
       />
