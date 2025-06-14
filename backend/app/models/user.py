@@ -32,6 +32,9 @@ class User(Base):
     gender = Column(String(10), nullable=True)  # 'male', 'female', 'other'
     profile_photo_url = Column(String, nullable=True)
     
+    # Medical conditions field - stores list of conditions with details
+    medical_conditions = Column(JSON, nullable=True, default=list)
+    
     # Relationships
     notifications = relationship("Notification", back_populates="user")
     ai_analysis_logs = relationship("AIAnalysisLog", back_populates="user")

@@ -19,7 +19,7 @@ from app.schemas.symptom import (
     SymptomCorrelationResponse, SymptomBulkCreateRequest, SymptomBulkCreateResponse
 )
 from app.repositories.symptom_repo import symptom_repo
-from app.services.notification_service import get_notification_service, get_medical_triggers
+from app.services.notification_service import get_notification_service, get_medical_triggers, detect_changes
 
 import logging
 
@@ -199,6 +199,29 @@ async def update_symptom(
     Update a specific symptom by ID.
     """
     try:
+        # Get the existing symptom first for change detection
+        existing_symptom = symptom_repo.get_by_user(
+            db=db,
+            symptom_id=symptom_id,
+            user_id=current_user.user_id
+        )
+        
+        if not existing_symptom:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Symptom not found"
+            )
+        
+        # Capture old data for change detection
+        old_symptom_data = {
+            "symptom": existing_symptom.symptom,
+            "severity": existing_symptom.severity.value if existing_symptom.severity else None,
+            "duration": existing_symptom.duration,
+            "location": existing_symptom.location,
+            "notes": existing_symptom.notes,
+            "reported_date": existing_symptom.reported_date.isoformat() if existing_symptom.reported_date else None
+        }
+        
         updated_symptom = symptom_repo.update_by_user(
             db=db,
             symptom_id=symptom_id,
@@ -211,6 +234,38 @@ async def update_symptom(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Symptom not found"
             )
+        
+        # Trigger AI analysis for symptom update
+        try:
+            notification_service = get_notification_service(db)
+            medical_triggers = get_medical_triggers(notification_service)
+            
+            # Prepare new symptom data
+            new_symptom_data = {
+                "symptom": updated_symptom.symptom,
+                "severity": updated_symptom.severity.value if updated_symptom.severity else None,
+                "duration": updated_symptom.duration,
+                "location": updated_symptom.location,
+                "notes": updated_symptom.notes,
+                "reported_date": updated_symptom.reported_date.isoformat() if updated_symptom.reported_date else None
+            }
+            
+            # Detect changes
+            changes = detect_changes(old_symptom_data, new_symptom_data)
+            
+            # Only trigger analysis if there are meaningful changes
+            if changes:
+                await medical_triggers.on_symptom_updated(
+                    str(current_user.user_id),
+                    new_symptom_data,
+                    changes,
+                    symptom_id=str(updated_symptom.symptom_id)
+                )
+                logger.info(f"AI analysis triggered for symptom update: {symptom_id}")
+            
+        except Exception as e:
+            # Log error but don't fail the symptom update
+            logger.warning(f"Failed to trigger symptom update analysis: {str(e)}")
         
         return updated_symptom
         
@@ -234,6 +289,29 @@ async def delete_symptom(
     Delete a specific symptom by ID.
     """
     try:
+        # Get the symptom data before deletion for AI analysis
+        existing_symptom = symptom_repo.get_by_user(
+            db=db,
+            symptom_id=symptom_id,
+            user_id=current_user.user_id
+        )
+        
+        if not existing_symptom:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Symptom not found"
+            )
+        
+        # Capture symptom data before deletion
+        symptom_data = {
+            "symptom": existing_symptom.symptom,
+            "severity": existing_symptom.severity.value if existing_symptom.severity else None,
+            "duration": existing_symptom.duration,
+            "location": existing_symptom.location,
+            "notes": existing_symptom.notes,
+            "reported_date": existing_symptom.reported_date.isoformat() if existing_symptom.reported_date else None
+        }
+        
         success = symptom_repo.delete_by_user(
             db=db,
             symptom_id=symptom_id,
@@ -245,6 +323,22 @@ async def delete_symptom(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Symptom not found"
             )
+        
+        # Trigger AI analysis for symptom deletion
+        try:
+            notification_service = get_notification_service(db)
+            medical_triggers = get_medical_triggers(notification_service)
+            
+            await medical_triggers.on_symptom_deleted(
+                str(current_user.user_id),
+                symptom_data,
+                symptom_id=str(symptom_id)
+            )
+            logger.info(f"AI analysis triggered for symptom deletion: {symptom_id}")
+            
+        except Exception as e:
+            # Log error but don't fail the symptom deletion
+            logger.warning(f"Failed to trigger symptom deletion analysis: {str(e)}")
             
     except HTTPException:
         raise

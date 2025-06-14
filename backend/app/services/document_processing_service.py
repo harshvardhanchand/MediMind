@@ -12,10 +12,12 @@ from app.repositories.document_repo import DocumentRepository
 from app.repositories.extracted_data_repo import ExtractedDataRepository
 from app.utils.ai_processors import process_document_with_docai, structure_text_with_gemini
 from app.utils.storage import get_gcs_uri
+from app.services.auto_population_service import get_auto_population_service
+from app.services.notification_service import get_notification_service, get_medical_triggers
 
 logger = logging.getLogger(__name__)
 
-def run_document_processing_pipeline(document_id: uuid.UUID):
+async def run_document_processing_pipeline(document_id: uuid.UUID):
     """
     Background task to process a document through OCR and LLM structuring.
     """
@@ -169,7 +171,64 @@ def run_document_processing_pipeline(document_id: uuid.UUID):
                                 # or just log the warning and continue (as metadata update might be non-critical)
                                 # For now, log error and continue with setting status to REVIEW_REQUIRED
 
-                    # 3. Update Document status to REVIEW_REQUIRED (requires human review)
+                    # 3. Auto-populate structured tables from extracted medical events
+                    try:
+                        logger.info(f"Starting auto-population for document {document_id}")
+                        auto_population_service = get_auto_population_service(db)
+                        
+                        # Get the updated extracted data
+                        updated_extracted_data = extracted_data_repo.get_by_document_id(db, document_id=document_id)
+                        
+                        if updated_extracted_data and updated_extracted_data.content:
+                            # Auto-populate structured tables
+                            population_result = await auto_population_service.populate_from_extracted_data(
+                                user_id=str(document.user_id),
+                                extracted_data=updated_extracted_data,
+                                document_id=str(document_id)
+                            )
+                            
+                            logger.info(f"Auto-population completed for document {document_id}: {population_result}")
+                            
+                            # If any entries were created, trigger AI analysis
+                            total_created = (
+                                population_result.get("medications_created", 0) +
+                                population_result.get("symptoms_created", 0) +
+                                population_result.get("health_readings_created", 0)
+                            )
+                            
+                            if total_created > 0:
+                                try:
+                                    logger.info(f"Triggering AI analysis for {total_created} auto-populated entries")
+                                    notification_service = get_notification_service(db)
+                                    medical_triggers = get_medical_triggers(notification_service)
+                                    
+                                    # Trigger AI analysis for the document processing event
+                                    await medical_triggers.on_document_processed(
+                                        user_id=str(document.user_id),
+                                        document_data={
+                                            "document_id": str(document_id),
+                                            "medical_events": medical_events,
+                                            "auto_population_result": population_result
+                                        },
+                                        document_id=str(document_id),
+                                        extracted_data_id=str(updated_extracted_data.extracted_data_id)
+                                    )
+                                    
+                                    logger.info(f"AI analysis triggered successfully for document {document_id}")
+                                    
+                                except Exception as ai_error:
+                                    logger.error(f"Failed to trigger AI analysis for document {document_id}: {str(ai_error)}")
+                                    # Don't fail the entire pipeline for AI analysis errors
+                            
+                        else:
+                            logger.warning(f"No extracted data found for auto-population for document {document_id}")
+                            
+                    except Exception as auto_pop_error:
+                        logger.error(f"Auto-population failed for document {document_id}: {str(auto_pop_error)}")
+                        # Don't fail the entire pipeline for auto-population errors
+                        # Continue with setting status to REVIEW_REQUIRED
+
+                    # 4. Update Document status to REVIEW_REQUIRED (requires human review)
                     doc_repo.update_status(db, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
                     
                 except (json.JSONDecodeError, ValueError, KeyError) as e:

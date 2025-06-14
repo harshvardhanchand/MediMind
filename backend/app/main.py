@@ -6,6 +6,7 @@ load_dotenv()
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from slowapi import  _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -40,16 +41,22 @@ limiter.key_func = get_client_ip
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Add security headers middleware
+# Add performance middleware (order matters!)
+# 1. GZip compression for responses > 2KB (reduces bandwidth by 60-80%)
+app.add_middleware(GZipMiddleware, minimum_size=2000)
+
+# 2. Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
-# CORS middleware configuration
+# 3. CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Performance optimizations
+    max_age=86400,  # Cache preflight requests for 24 hours
 )
 
 # Include the main API router

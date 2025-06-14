@@ -2,6 +2,7 @@ import { AxiosResponse } from 'axios'; // To type the full response
 
 import {
   UserResponse, // Assuming you might have a /me endpoint returning this
+  UserProfileUpdate, // Added for profile updates
   DocumentRead,
   // DocumentCreate, // FormData handled directly
   ExtractedDataResponse,
@@ -138,6 +139,9 @@ export const queryServices = {
 export const userServices = {
   getMe: (): Promise<AxiosResponse<UserResponse>> => 
     apiClient.get('/api/users/me'),
+    
+  updateProfile: (profileData: UserProfileUpdate): Promise<AxiosResponse<UserResponse>> => 
+    apiClient.put('/api/users/me', profileData),
 };
 
 // Notification services

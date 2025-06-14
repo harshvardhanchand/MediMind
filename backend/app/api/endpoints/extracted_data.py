@@ -10,7 +10,7 @@ from app.core.auth import verify_token # For token verification
 from app.models.document import Document
 from app.models.extracted_data import ExtractedData, ReviewStatus
 from app.models.user import User
-from app.repositories.document_repo import document_repo # Singleton repository
+from app.repositories.document_repo import DocumentRepository
 from app.repositories.extracted_data_repo import ExtractedDataRepository # Needs instantiation
 from app.repositories.user_repo import user_repo # Singleton repository
 from app.schemas.document import DocumentRead # For combined details response
@@ -21,9 +21,14 @@ from app.schemas.extracted_data import (
     ExtractionDetailsResponse # Added import for the new schema
 )
 from app.services.selective_reprocessing_service import SelectiveReprocessingService
+from app.services.auto_population_service import get_auto_population_service
+from app.services.notification_service import get_notification_service, get_medical_triggers, detect_changes
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Initialize repository instances
+document_repo = DocumentRepository(Document)
 
 # Helper function to get user_id from token
 # Based on unit tests and architecture document example
@@ -81,6 +86,7 @@ async def get_extracted_data(
 async def update_extracted_data_status(
     document_id: uuid.UUID,
     status_update: ExtractedDataStatusUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user_id: uuid.UUID = Depends(get_current_user_id_from_token),
 ):
@@ -100,6 +106,18 @@ async def update_extracted_data_status(
     )
     if not updated_extracted_data:
         raise HTTPException(status_code=404, detail="Failed to update extracted data status or data not found")
+    
+    # If status is approved, trigger auto-population and AI analysis
+    if status_update.review_status == ReviewStatus.REVIEWED_APPROVED:
+        background_tasks.add_task(
+            trigger_auto_population_and_analysis,
+            db=db,
+            user_id=str(current_user_id),
+            document_id=str(document_id),
+            extracted_data=updated_extracted_data
+        )
+        logger.info(f"Triggered auto-population for approved document {document_id}")
+    
     return updated_extracted_data
 
 @router.put(
@@ -122,6 +140,10 @@ async def update_extracted_data_content(
         raise HTTPException(status_code=403, detail="Not authorized to update this document's extracted data")
 
     extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
+    
+    # Get the existing content for change detection
+    existing_data = extracted_data_repo.get_by_document_id(db=db, document_id=document_id)
+    old_content = existing_data.content if existing_data else {}
     
     # Update content
     updated_data = extracted_data_repo.update_structured_content(
@@ -155,8 +177,101 @@ async def update_extracted_data_content(
             current_content=content_update.content,
             raw_text=final_updated_data.raw_text
         )
+    
+    # Trigger document re-processing AI analysis
+    try:
+        notification_service = get_notification_service(db)
+        medical_triggers = get_medical_triggers(notification_service)
+        
+        # Detect changes between old and new content
+        changes = detect_changes(old_content, content_update.content)
+        
+        # Only trigger re-processing analysis if there are meaningful changes
+        if changes:
+            await medical_triggers.on_document_reprocessed(
+                str(current_user_id),
+                {
+                    "document_id": str(document_id),
+                    "medical_events": content_update.content,
+                    "trigger_source": "user_correction"
+                },
+                changes,
+                document_id=str(document_id),
+                extracted_data_id=str(final_updated_data.extracted_data_id)
+            )
+            logger.info(f"AI analysis triggered for document re-processing: {document_id}")
+        
+    except Exception as e:
+        # Log error but don't fail the content update
+        logger.warning(f"Failed to trigger document re-processing analysis: {str(e)}")
+    
+    # Always trigger auto-population for corrected content
+    background_tasks.add_task(
+        trigger_auto_population_and_analysis,
+        db=db,
+        user_id=str(current_user_id),
+        document_id=str(document_id),
+        extracted_data=final_updated_data
+    )
+    logger.info(f"Triggered auto-population for corrected document {document_id}")
 
     return final_updated_data
+
+async def trigger_auto_population_and_analysis(
+    db: Session,
+    user_id: str,
+    document_id: str,
+    extracted_data: ExtractedData
+):
+    """Background task to trigger auto-population and AI analysis"""
+    try:
+        logger.info(f"Starting auto-population and analysis for document {document_id}")
+        
+        # Auto-populate structured tables
+        auto_population_service = get_auto_population_service(db)
+        population_result = await auto_population_service.populate_from_extracted_data(
+            user_id=user_id,
+            extracted_data=extracted_data,
+            document_id=document_id
+        )
+        
+        logger.info(f"Auto-population completed for document {document_id}: {population_result}")
+        
+        # If any entries were created, trigger AI analysis
+        total_created = (
+            population_result.get("medications_created", 0) +
+            population_result.get("symptoms_created", 0) +
+            population_result.get("health_readings_created", 0)
+        )
+        
+        if total_created > 0:
+            try:
+                logger.info(f"Triggering AI analysis for {total_created} auto-populated entries")
+                notification_service = get_notification_service(db)
+                medical_triggers = get_medical_triggers(notification_service)
+                
+                # Trigger AI analysis for the document processing event
+                await medical_triggers.on_document_processed(
+                    user_id=user_id,
+                    document_data={
+                        "document_id": document_id,
+                        "medical_events": extracted_data.content,
+                        "auto_population_result": population_result,
+                        "trigger_source": "user_approval"
+                    },
+                    document_id=document_id,
+                    extracted_data_id=str(extracted_data.extracted_data_id)
+                )
+                
+                logger.info(f"AI analysis triggered successfully for document {document_id}")
+                
+            except Exception as ai_error:
+                logger.error(f"Failed to trigger AI analysis for document {document_id}: {str(ai_error)}")
+        else:
+            logger.info(f"No new entries created for document {document_id}, skipping AI analysis")
+            
+    except Exception as e:
+        logger.error(f"Auto-population and analysis failed for document {document_id}: {str(e)}")
 
 async def run_selective_reprocessing(
     db: Session,

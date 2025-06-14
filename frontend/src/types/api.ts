@@ -63,6 +63,15 @@ export enum HealthReadingType {
 }
 
 // --- User ---
+export interface MedicalCondition {
+  condition_name: string;
+  diagnosed_date?: string | null; // Date string YYYY-MM-DD
+  status?: 'active' | 'resolved' | 'chronic' | 'managed' | 'suspected';
+  severity?: 'mild' | 'moderate' | 'severe' | 'critical';
+  diagnosing_doctor?: string | null;
+  notes?: string | null;
+}
+
 export interface UserResponse {
   user_id: string;
   supabase_id?: string | null;
@@ -70,8 +79,29 @@ export interface UserResponse {
   created_at: string; // ISO DateTime string
   updated_at: string; // ISO DateTime string
   last_login?: string | null; // ISO DateTime string
+  
+  // Profile fields
+  name?: string | null;
+  date_of_birth?: string | null; // Date string YYYY-MM-DD
+  weight?: number | null; // kg
+  height?: number | null; // cm
+  gender?: 'male' | 'female' | 'other' | null;
+  profile_photo_url?: string | null;
+  medical_conditions?: MedicalCondition[];
+  
+  // Metadata fields
   user_metadata?: any | null;
   app_metadata?: any | null;
+}
+
+export interface UserProfileUpdate {
+  name?: string | null;
+  date_of_birth?: string | null; // Date string YYYY-MM-DD
+  weight?: number | null; // kg
+  height?: number | null; // cm
+  gender?: 'male' | 'female' | 'other' | null;
+  profile_photo_url?: string | null;
+  medical_conditions?: MedicalCondition[];
 }
 
 // --- Document ---

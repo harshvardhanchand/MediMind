@@ -1,8 +1,29 @@
 import uuid
 from datetime import datetime, date
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from decimal import Decimal
+
+# Medical condition schema for user profile
+class MedicalCondition(BaseModel):
+    condition_name: str = Field(..., description="Name of the medical condition", max_length=200)
+    diagnosed_date: Optional[date] = Field(None, description="Date when condition was diagnosed")
+    status: Optional[str] = Field("active", description="Status of condition: active, resolved, chronic, managed, suspected")
+    severity: Optional[str] = Field(None, description="Severity: mild, moderate, severe, critical")
+    diagnosing_doctor: Optional[str] = Field(None, description="Doctor who diagnosed the condition", max_length=200)
+    notes: Optional[str] = Field(None, description="Additional notes about the condition", max_length=1000)
+    
+    @validator('status')
+    def validate_status(cls, v):
+        if v is not None and v not in ['active', 'resolved', 'chronic', 'managed', 'suspected']:
+            raise ValueError('Status must be one of: active, resolved, chronic, managed, suspected')
+        return v
+    
+    @validator('severity')
+    def validate_severity(cls, v):
+        if v is not None and v not in ['mild', 'moderate', 'severe', 'critical']:
+            raise ValueError('Severity must be one of: mild, moderate, severe, critical')
+        return v
 
 # Pydantic schema for reading user information from the database
 class UserRead(BaseModel):
@@ -20,6 +41,7 @@ class UserRead(BaseModel):
     height: Optional[int] = Field(None, description="Height in cm")
     gender: Optional[str] = Field(None, description="Biological gender")
     profile_photo_url: Optional[str] = Field(None, description="URL to profile photo")
+    medical_conditions: Optional[List[MedicalCondition]] = Field(default_factory=list, description="List of user's medical conditions")
     
     # Keep metadata fields for backward compatibility
     user_metadata: Optional[Dict[str, Any]] = Field(None, description="User metadata from Supabase")
@@ -43,6 +65,7 @@ class UserProfileUpdate(BaseModel):
     height: Optional[int] = Field(None, description="Height in cm", gt=0, le=300)
     gender: Optional[str] = Field(None, description="Biological gender")
     profile_photo_url: Optional[str] = Field(None, description="URL to profile photo", max_length=500)
+    medical_conditions: Optional[List[MedicalCondition]] = Field(None, description="List of user's medical conditions")
     
     @validator('gender')
     def validate_gender(cls, v):
@@ -60,4 +83,15 @@ class UserProfileUpdate(BaseModel):
             age = today.year - v.year - ((today.month, today.day) < (v.month, v.day))
             if age > 150:
                 raise ValueError('Date of birth indicates unrealistic age')
+        return v
+    
+    @validator('medical_conditions')
+    def validate_medical_conditions(cls, v):
+        if v is not None:
+            if len(v) > 50:  # Reasonable limit
+                raise ValueError('Maximum 50 medical conditions allowed')
+            # Check for duplicate condition names
+            condition_names = [condition.condition_name.lower().strip() for condition in v]
+            if len(condition_names) != len(set(condition_names)):
+                raise ValueError('Duplicate medical conditions are not allowed')
         return v 

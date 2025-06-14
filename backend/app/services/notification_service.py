@@ -473,6 +473,7 @@ class MedicalEventTriggers:
     def __init__(self, notification_service: NotificationService):
         self.notification_service = notification_service
     
+    # CREATE TRIGGERS (existing)
     async def on_medication_added(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
         """
         Trigger analysis when new medication is added
@@ -562,6 +563,144 @@ class MedicalEventTriggers:
                 "timestamp": datetime.now().isoformat()
             }
         )
+    
+    # NEW UPDATE TRIGGERS
+    async def on_medication_updated(self, user_id: str, medication_data: Dict[str, Any], changes: Dict[str, Any], medication_id: Optional[str] = None):
+        """
+        Trigger analysis when medication is updated (dosage changes, frequency changes, etc.)
+        """
+        return await self.notification_service.trigger_medical_analysis(
+            user_id=user_id,
+            trigger_type="medication_updated",
+            event_data={
+                "type": "medication_updated",
+                "medication": medication_data,
+                "changes": changes,  # What specifically changed
+                "medication_id": medication_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+    
+    async def on_symptom_updated(self, user_id: str, symptom_data: Dict[str, Any], changes: Dict[str, Any], symptom_id: Optional[str] = None):
+        """
+        Trigger analysis when symptom is updated (severity changes, duration changes, etc.)
+        """
+        return await self.notification_service.trigger_medical_analysis(
+            user_id=user_id,
+            trigger_type="symptom_updated",
+            event_data={
+                "type": "symptom_updated",
+                "symptom": symptom_data,
+                "changes": changes,  # What specifically changed
+                "symptom_id": symptom_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+    
+    async def on_health_reading_updated(self, user_id: str, reading_data: Dict[str, Any], changes: Dict[str, Any], health_reading_id: Optional[str] = None):
+        """
+        Trigger analysis when health reading is updated/corrected
+        """
+        return await self.notification_service.trigger_medical_analysis(
+            user_id=user_id,
+            trigger_type="health_reading_updated",
+            event_data={
+                "type": "health_reading_updated",
+                "reading": reading_data,
+                "changes": changes,  # What specifically changed
+                "health_reading_id": health_reading_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+    
+    async def on_document_reprocessed(self, user_id: str, document_data: Dict[str, Any], changes: Dict[str, Any], document_id: str, extracted_data_id: Optional[str] = None):
+        """
+        Trigger analysis when document is re-processed after corrections
+        """
+        return await self.notification_service.trigger_medical_analysis(
+            user_id=user_id,
+            trigger_type="document_reprocessed",
+            event_data={
+                "type": "document_reprocessed",
+                "document": document_data,
+                "changes": changes,  # What was corrected/changed
+                "document_id": document_id,
+                "extracted_data_id": extracted_data_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+    
+    # NEW DELETE TRIGGERS
+    async def on_medication_deleted(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
+        """
+        Trigger analysis when medication is deleted (may affect drug interactions, etc.)
+        """
+        return await self.notification_service.trigger_medical_analysis(
+            user_id=user_id,
+            trigger_type="medication_deleted",
+            event_data={
+                "type": "medication_deleted",
+                "medication": medication_data,
+                "medication_id": medication_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+    
+    async def on_symptom_deleted(self, user_id: str, symptom_data: Dict[str, Any], symptom_id: Optional[str] = None):
+        """
+        Trigger analysis when symptom is deleted (may affect symptom patterns, etc.)
+        """
+        return await self.notification_service.trigger_medical_analysis(
+            user_id=user_id,
+            trigger_type="symptom_deleted",
+            event_data={
+                "type": "symptom_deleted",
+                "symptom": symptom_data,
+                "symptom_id": symptom_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+    
+    async def on_health_reading_deleted(self, user_id: str, reading_data: Dict[str, Any], health_reading_id: Optional[str] = None):
+        """
+        Trigger analysis when health reading is deleted (may affect health trends, etc.)
+        """
+        return await self.notification_service.trigger_medical_analysis(
+            user_id=user_id,
+            trigger_type="health_reading_deleted",
+            event_data={
+                "type": "health_reading_deleted",
+                "reading": reading_data,
+                "health_reading_id": health_reading_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+
+def detect_changes(old_data: Dict[str, Any], new_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Detect changes between old and new data dictionaries
+    Returns a dictionary with changed fields and their old/new values
+    """
+    changes = {}
+    
+    # Check for changed fields
+    for key, new_value in new_data.items():
+        old_value = old_data.get(key)
+        if old_value != new_value:
+            changes[key] = {
+                "old": old_value,
+                "new": new_value
+            }
+    
+    # Check for removed fields (present in old but not in new)
+    for key, old_value in old_data.items():
+        if key not in new_data:
+            changes[key] = {
+                "old": old_value,
+                "new": None
+            }
+    
+    return changes
 
 # Factory function
 def get_notification_service(db: Session) -> NotificationService:

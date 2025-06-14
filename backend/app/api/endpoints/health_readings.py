@@ -14,6 +14,7 @@ from app.schemas.health_reading import (
     HealthReadingUpdate,
 )
 from app.repositories.health_reading_repo import HealthReadingRepository
+from app.services.notification_service import get_notification_service, get_medical_triggers, detect_changes
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -34,6 +35,32 @@ async def create_health_reading(
         health_reading = health_reading_repo.create_with_owner(
             db=db, obj_in=health_reading_in, user_id=current_user.user_id
         )
+        
+        # Trigger AI analysis for new health reading
+        try:
+            notification_service = get_notification_service(db)
+            medical_triggers = get_medical_triggers(notification_service)
+            
+            # Prepare health reading data
+            reading_data = {
+                "type": health_reading.type.value if health_reading.type else None,
+                "value": health_reading.value,
+                "unit": health_reading.unit,
+                "recorded_date": health_reading.recorded_date.isoformat() if health_reading.recorded_date else None,
+                "notes": health_reading.notes
+            }
+            
+            await medical_triggers.on_health_reading_added(
+                str(current_user.user_id),
+                reading_data,
+                health_reading_id=str(health_reading.health_reading_id)
+            )
+            logger.info(f"AI analysis triggered for new health reading: {health_reading.health_reading_id}")
+            
+        except Exception as e:
+            # Log error but don't fail the health reading creation
+            logger.warning(f"Failed to trigger health reading analysis: {str(e)}")
+        
         return health_reading
     except Exception as e:
         logger.error(f"Error creating health reading: {str(e)}", exc_info=True)
@@ -108,9 +135,50 @@ async def update_health_reading(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this health reading")
     
     try:
+        # Capture old data for change detection
+        old_reading_data = {
+            "type": db_reading.type.value if db_reading.type else None,
+            "value": db_reading.value,
+            "unit": db_reading.unit,
+            "recorded_date": db_reading.recorded_date.isoformat() if db_reading.recorded_date else None,
+            "notes": db_reading.notes
+        }
+        
         updated_reading = health_reading_repo.update(
             db=db, db_obj=db_reading, obj_in=health_reading_in
         )
+        
+        # Trigger AI analysis for health reading update
+        try:
+            notification_service = get_notification_service(db)
+            medical_triggers = get_medical_triggers(notification_service)
+            
+            # Prepare new health reading data
+            new_reading_data = {
+                "type": updated_reading.type.value if updated_reading.type else None,
+                "value": updated_reading.value,
+                "unit": updated_reading.unit,
+                "recorded_date": updated_reading.recorded_date.isoformat() if updated_reading.recorded_date else None,
+                "notes": updated_reading.notes
+            }
+            
+            # Detect changes
+            changes = detect_changes(old_reading_data, new_reading_data)
+            
+            # Only trigger analysis if there are meaningful changes
+            if changes:
+                await medical_triggers.on_health_reading_updated(
+                    str(current_user.user_id),
+                    new_reading_data,
+                    changes,
+                    health_reading_id=str(updated_reading.health_reading_id)
+                )
+                logger.info(f"AI analysis triggered for health reading update: {health_reading_id}")
+            
+        except Exception as e:
+            # Log error but don't fail the health reading update
+            logger.warning(f"Failed to trigger health reading update analysis: {str(e)}")
+        
         return updated_reading
     except Exception as e:
         logger.error(f"Error updating health reading {health_reading_id}: {str(e)}", exc_info=True)
@@ -134,7 +202,33 @@ async def delete_health_reading(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this health reading")
     
     try:
+        # Capture health reading data before deletion
+        reading_data = {
+            "type": db_reading.type.value if db_reading.type else None,
+            "value": db_reading.value,
+            "unit": db_reading.unit,
+            "recorded_date": db_reading.recorded_date.isoformat() if db_reading.recorded_date else None,
+            "notes": db_reading.notes
+        }
+        
         health_reading_repo.remove(db=db, id=health_reading_id)
+        
+        # Trigger AI analysis for health reading deletion
+        try:
+            notification_service = get_notification_service(db)
+            medical_triggers = get_medical_triggers(notification_service)
+            
+            await medical_triggers.on_health_reading_deleted(
+                str(current_user.user_id),
+                reading_data,
+                health_reading_id=str(health_reading_id)
+            )
+            logger.info(f"AI analysis triggered for health reading deletion: {health_reading_id}")
+            
+        except Exception as e:
+            # Log error but don't fail the health reading deletion
+            logger.warning(f"Failed to trigger health reading deletion analysis: {str(e)}")
+        
         # No content is returned for 204, so just pass or return None explicitly if needed by framework version
     except Exception as e:
         logger.error(f"Error deleting health reading {health_reading_id}: {str(e)}", exc_info=True)
