@@ -5,6 +5,7 @@ import PushNotificationService from '../services/pushNotificationService';
 import DeepLinkingService from '../services/deepLinkingService';
 import * as Notifications from 'expo-notifications';
 
+
 interface NotificationContextType {
   stats: NotificationStatsResponse | null;
   unreadCount: number;
@@ -115,8 +116,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   };
 
   useEffect(() => {
-    // Initialize notification services
-    console.log('✅ Initializing notification services');
+    // Initialize notification services immediately since user is authenticated
+    console.log('✅ Initializing notification services for authenticated user');
+    
+    // Initial fetch
     refreshStats();
     
     // Initialize push notifications

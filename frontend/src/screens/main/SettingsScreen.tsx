@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, Switch, View } from 'react-native';
+import { ScrollView, Switch, View, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,7 +11,7 @@ import StyledText from '../../components/common/StyledText';
 import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
 import { useTheme } from '../../theme';
-import { useAuth } from '../../context/AuthContext';
+import { supabaseClient } from '../../services/supabase';
 
 const StyledScrollView = styled(ScrollView);
 const StyledView = styled(View);
@@ -32,15 +32,19 @@ interface SettingItem {
 const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { colors } = useTheme();
-  const { signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
 
   const handleLogout = async () => {
     console.log("Logging out...");
     try {
-      await signOut();
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        console.error("Error during sign out:", error);
+        Alert.alert('Error', 'Failed to sign out. Please try again.');
+      }
     } catch (error) {
       console.error("Error during sign out:", error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };
 

@@ -2,10 +2,8 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
-import OnboardingScreen from '../screens/OnboardingScreen';
-
-
-// Import actual OnboardingScreen
+import OnboardingNavigator from './OnboardingNavigator';
+import { NotificationProvider } from '../context/NotificationContext';
 
 // Import actual Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -25,11 +23,18 @@ const AuthNavigator = () => (
   </AuthStackNav.Navigator>
 );
 
+// Authenticated App Wrapper - wraps authenticated screens with NotificationProvider
+const AuthenticatedAppWrapper = ({ children }: { children: React.ReactNode }) => (
+  <NotificationProvider>
+    {children}
+  </NotificationProvider>
+);
+
 // Root Stack
 const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-  const { session, isLoading } = useAuth();
+  const { session, user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -42,12 +47,29 @@ const AppNavigator = () => {
   return (
     <RootStackNav.Navigator screenOptions={{ headerShown: false }}>
       {session ? (
-        <RootStackNav.Screen name="Main" component={MainTabNavigator} />
+        // User is authenticated
+        user?.name ? (
+          // User has completed profile - go to main app with notifications
+          <RootStackNav.Screen name="Main">
+            {() => (
+              <AuthenticatedAppWrapper>
+                <MainTabNavigator />
+              </AuthenticatedAppWrapper>
+            )}
+          </RootStackNav.Screen>
+        ) : (
+          // User is authenticated but hasn't completed profile - show onboarding with notifications
+          <RootStackNav.Screen name="Onboarding">
+            {() => (
+              <AuthenticatedAppWrapper>
+                <OnboardingNavigator />
+              </AuthenticatedAppWrapper>
+            )}
+          </RootStackNav.Screen>
+        )
       ) : (
-        <>
-          <RootStackNav.Screen name="Onboarding" component={OnboardingScreen} />
-          <RootStackNav.Screen name="Auth" component={AuthNavigator} />
-        </>
+        // User is not authenticated - show auth screens (no NotificationProvider)
+        <RootStackNav.Screen name="Auth" component={AuthNavigator} />
       )}
     </RootStackNav.Navigator>
   );

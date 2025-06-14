@@ -13,6 +13,12 @@ export type AuthStackParamList = {
   // Add other auth screens here if needed
 };
 
+export type OnboardingStackParamList = {
+  Welcome: undefined;
+  Features: undefined;
+  CreateProfile: undefined;
+};
+
 export type MainAppStackParamList = {
   Home: undefined;
   Upload: undefined;
@@ -51,8 +57,8 @@ export type MainAppStackParamList = {
 // The actual navigation structure in the app seems to be flattened
 export type RootStackParamList = {
   Auth: undefined; // This will nest the AuthStack
+  Onboarding: NavigatorScreenParams<OnboardingStackParamList>; // Updated to use OnboardingStack
   Main: NavigatorScreenParams<MainBottomTabParamList>;
-  Onboarding: undefined;
   
   // Screens that can be pushed on top of the tab navigator or accessed globally
   DocumentDetail: { documentId: string };

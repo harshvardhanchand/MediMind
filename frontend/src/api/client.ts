@@ -9,22 +9,43 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 });
+
+// Cache the current session to avoid repeated getSession() calls
+let cachedSession: any = null;
+let sessionCacheTime = 0;
+const SESSION_CACHE_DURATION = 5000; // 5 seconds
 
 // Add request interceptor to attach auth token
 apiClient.interceptors.request.use(
   async (config) => {
-    // Get token from Supabase session instead of manual storage
-    const session = await supabaseClient.auth.getSession();
-    const hasSession = !!session.data.session;
-    const token = session.data.session?.access_token;
-    const hasToken = !!token;
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.warn('⚠️ No token found in Supabase session');
+    try {
+      // Use cached session if it's recent
+      const now = Date.now();
+      if (cachedSession && (now - sessionCacheTime) < SESSION_CACHE_DURATION) {
+        const token = cachedSession?.access_token;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      }
+
+      // Get fresh session if cache is stale
+      const { data } = await supabaseClient.auth.getSession();
+      cachedSession = data.session;
+      sessionCacheTime = now;
+      
+      const token = data.session?.access_token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        console.warn('⚠️ No token found in Supabase session');
+      }
+    } catch (error) {
+      console.error('Error getting session for API request:', error);
     }
+    
     return config;
   },
   (error) => {
@@ -42,6 +63,10 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       
       console.error('API Error: 401 Unauthorized. Session might be expired.');
+      // Clear cached session on 401
+      cachedSession = null;
+      sessionCacheTime = 0;
+      
       // Let Supabase handle token refresh automatically
       // If refresh fails, the AuthContext will detect it and show login screen
     }

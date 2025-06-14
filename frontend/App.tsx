@@ -7,7 +7,6 @@ import { theme } from './src/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import "./src/global.css"; // Import global styles
 import { AuthProvider } from './src/context/AuthContext'; // Import AuthProvider
-import { NotificationProvider } from './src/context/NotificationContext'; // Import NotificationProvider
 import DeepLinkingService from './src/services/deepLinkingService';
 
 export default function App() {
@@ -23,17 +22,15 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NotificationProvider>
-          <PaperProvider theme={theme}>
-            <NavigationContainer 
-              ref={navigationRef}
-              onReady={handleNavigationReady}
-            >
-              <StatusBar style="auto" />
-              <AppNavigator />
-            </NavigationContainer>
-          </PaperProvider>
-        </NotificationProvider>
+        <PaperProvider theme={theme}>
+          <NavigationContainer 
+            ref={navigationRef}
+            onReady={handleNavigationReady}
+          >
+            <StatusBar style="auto" />
+            <AppNavigator />
+          </NavigationContainer>
+        </PaperProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
