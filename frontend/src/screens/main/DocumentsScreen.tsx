@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, FlatList, ListRenderItem, TouchableOpacity, Modal, Pressable, RefreshControl } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
@@ -12,10 +12,13 @@ import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
 import ListItem from '../../components/common/ListItem';
-import Card from '../../components/common/Card';
+
+import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { DocumentRead, DocumentType } from '../../types/api';
 import { documentServices } from '../../api/services';
+import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
 
 
 const StyledView = styled(View);
@@ -57,8 +60,7 @@ const DocumentsScreen = () => {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState<DocumentType | 'All'>('All');
 
-  // Dummy data fallback
-  const dummyDocuments: DocumentRead[] = [
+  const dummyDocuments = useMemo<DocumentRead[]>(() => [
     {
       document_id: 'dummy-doc1',
       user_id: 'dummy-user',
@@ -103,9 +105,9 @@ const DocumentsScreen = () => {
       document_date: '2024-05-03',
       source_name: 'Dr. Johnson',
     },
-  ];
+  ], []);
 
-  const loadDocumentsFromApi = async () => {
+  const loadDocumentsFromApi = useCallback(async () => {
     setIsLoadingApi(true);
     setErrorApi(null);
     setUsingDummyData(false);
@@ -131,11 +133,11 @@ const DocumentsScreen = () => {
     } finally {
       setIsLoadingApi(false);
     }
-  };
+  }, [dummyDocuments]);
 
   useEffect(() => {
     loadDocumentsFromApi();
-  }, []);
+  }, [loadDocumentsFromApi]);
 
   const filteredDocuments = useMemo(() => {
     let docsToFilter = [...apiDocuments];
@@ -156,7 +158,7 @@ const DocumentsScreen = () => {
     return docsToFilter;
   }, [searchQuery, selectedDocType, apiDocuments]);
 
-  const renderDocumentItem: ListRenderItem<DocumentRead> = ({ item }) => (
+  const renderDocumentItem: ListRenderItem<DocumentRead> = useCallback(({ item }) => (
     <ListItem
       key={item.document_id}
       label={item.original_filename || 'Untitled Document'}
@@ -165,12 +167,124 @@ const DocumentsScreen = () => {
       iconLeftColor={colors.accentPrimary}
       onPress={() => navigation.navigate('DocumentDetail', { documentId: item.document_id })}
     />
-  );
+  ), [colors.accentPrimary, navigation]);
 
   const applyDocTypeFilter = (type: DocumentType | 'All') => {
     setSelectedDocType(type);
     setFilterModalVisible(false);
   };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  const clearFilters = () => {
+    setSelectedDocType('All');
+    setSearchQuery('');
+  };
+
+  const handleUploadDocument = () => {
+    // Navigate to upload screen or show upload modal
+    console.log('Navigate to upload document');
+  };
+
+  // ✅ Render loading state
+  if (isLoadingApi) {
+    return (
+      <ScreenContainer>
+        <StyledView className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <StyledText 
+            variant="body1" 
+            tw="mt-4 text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            {LOADING_MESSAGES.LOADING_DOCUMENTS}
+          </StyledText>
+        </StyledView>
+      </ScreenContainer>
+    );
+  }
+
+  // ✅ Render error state (only if we have a real error and no fallback data)
+  if (errorApi && !usingDummyData) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          title="Unable to Load Documents"
+          message={ERROR_MESSAGES.DOCUMENTS_LOAD_ERROR}
+          onRetry={loadDocumentsFromApi}
+          retryLabel="Try Again"
+        />
+      </ScreenContainer>
+    );
+  }
+
+  // ✅ Render empty state for no documents
+  if (filteredDocuments.length === 0 && !searchQuery && selectedDocType === 'All') {
+    return (
+      <ScreenContainer>
+        <EmptyState
+          icon="document-text-outline"
+          title={EMPTY_STATE_MESSAGES.NO_DOCUMENTS.title}
+          description={EMPTY_STATE_MESSAGES.NO_DOCUMENTS.description}
+          actionLabel={EMPTY_STATE_MESSAGES.NO_DOCUMENTS.actionLabel}
+          onAction={handleUploadDocument}
+        />
+      </ScreenContainer>
+    );
+  }
+
+  // ✅ Render empty state for no search/filter results
+  if (filteredDocuments.length === 0 && (searchQuery || selectedDocType !== 'All')) {
+    const isSearching = searchQuery.trim() !== '';
+    const emptyStateConfig = isSearching 
+      ? EMPTY_STATE_MESSAGES.NO_SEARCH_RESULTS 
+      : EMPTY_STATE_MESSAGES.NO_FILTERED_RESULTS;
+
+    return (
+      <ScreenContainer>
+        {/* Search and Filter UI */}
+        <StyledView className="p-4 border-b border-gray-200">
+          <StyledInput
+            placeholder="Search documents..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            leftIconName="search-outline"
+            rightIconName={searchQuery ? "close-outline" : undefined}
+            onRightIconPress={searchQuery ? clearSearch : undefined}
+          />
+          
+          <StyledView className="flex-row justify-between items-center mt-3">
+            <StyledButton
+              variant="filledSecondary"
+              onPress={() => setFilterModalVisible(true)}
+              iconNameLeft="filter-outline"
+            >
+              {selectedDocType === 'All' ? 'Filter' : selectedDocType.replace('_', ' ')}
+            </StyledButton>
+            
+            {(searchQuery || selectedDocType !== 'All') && (
+              <StyledButton
+                variant="textPrimary"
+                onPress={clearFilters}
+              >
+                Clear All
+              </StyledButton>
+            )}
+          </StyledView>
+        </StyledView>
+
+        <EmptyState
+          icon="search-outline"
+          title={emptyStateConfig.title}
+          description={emptyStateConfig.description}
+          actionLabel={emptyStateConfig.actionLabel}
+          onAction={clearFilters}
+        />
+      </ScreenContainer>
+    );
+  }
 
   let mainContent;
   if (isLoadingApi) {
@@ -225,27 +339,6 @@ const DocumentsScreen = () => {
               </StyledText>
             </StyledView>
           )}
-        </StyledView>
-        
-        <StyledView className="px-4 mb-4 flex-row items-center">
-          <StyledView className="flex-1 mr-3">
-            <StyledInput
-              placeholder="Search documents..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              leftIconName="search-outline"
-            />
-          </StyledView>
-          <StyledButton 
-            variant="textPrimary" 
-            onPress={() => {
-              console.log("Filter button pressed!"); // Debug log
-              setFilterModalVisible(true);
-            }}
-            tw="p-2 min-w-12 min-h-12 justify-center items-center"
-          >
-            <Ionicons name="filter-outline" size={26} color={colors.accentPrimary} />
-          </StyledButton>
         </StyledView>
         
         {mainContent}

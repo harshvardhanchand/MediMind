@@ -6,6 +6,9 @@ import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
 import { API_URL } from '../config';
+import ErrorState from '../components/common/ErrorState';
+import { ERROR_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
+import { crashReporting } from '../services/crashReporting';
 
 // Example query suggestions
 const QUERY_SUGGESTIONS = [
@@ -21,6 +24,7 @@ const QueryScreen = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [criticalError, setCriticalError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
 
@@ -36,10 +40,12 @@ const QueryScreen = () => {
     setShowSuggestions(false);
 
     try {
+      crashReporting.addBreadcrumb('User submitted query', 'user-action', 'info');
+      
       const token = await SecureStore.getItemAsync('auth_token');
       
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error('Authentication required. Please log in again.');
       }
       
       const response = await axios.post(
@@ -49,13 +55,38 @@ const QueryScreen = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          timeout: 30000, // 30 second timeout
         }
       );
       
       setResult(response.data);
+      crashReporting.addBreadcrumb('Query completed successfully', 'api-response', 'info');
+      
     } catch (err: any) {
       console.error('Error processing query:', err);
-      setError(err.message || 'Failed to process your query. Please try again.');
+      
+      let errorMessage = 'Failed to process your query. Please try again.';
+      
+      if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+        errorMessage = 'The request took too long to complete. Please try again.';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Your session has expired. Please log in again.';
+      } else if (err.response?.status === 429) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message.includes('Authentication required')) {
+        errorMessage = 'Your session has expired. Please log in again.';
+      }
+      
+      setError(errorMessage);
+      
+      crashReporting.captureException(err, {
+        context: 'query_submission',
+        query: query,
+        errorType: 'query_api_error',
+        statusCode: err.response?.status,
+      });
     } finally {
       setLoading(false);
     }
@@ -64,6 +95,20 @@ const QueryScreen = () => {
   const selectSuggestion = (suggestion: string) => {
     setQuery(suggestion);
     setShowSuggestions(false);
+    setError(''); // Clear any previous errors
+  };
+
+  const retryOperation = () => {
+    setCriticalError(null);
+    setError('');
+    setShowSuggestions(true);
+  };
+
+  const clearQuery = () => {
+    setQuery('');
+    setResult(null);
+    setError('');
+    setShowSuggestions(true);
   };
 
   const renderFilters = () => {
@@ -177,6 +222,24 @@ const QueryScreen = () => {
       </Card>
     );
   };
+
+  // Show critical error state if needed
+  if (criticalError) {
+    return (
+      <View style={styles.container}>
+        <Appbar.Header>
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+          <Appbar.Content title="Query Your Data" />
+        </Appbar.Header>
+        <ErrorState
+          title="Query Service Error"
+          message={criticalError}
+          onRetry={retryOperation}
+          retryLabel="Try Again"
+        />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 

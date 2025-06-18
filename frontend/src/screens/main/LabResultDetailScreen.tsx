@@ -1,17 +1,20 @@
 import React, { useLayoutEffect, useState, useEffect } from 'react';
-import { View, FlatList, ListRenderItem, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { View, FlatList, ListRenderItem, TouchableOpacity, Dimensions, Platform, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import ListItem from '../../components/common/ListItem';
 import Card from '../../components/common/Card';
+import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import { MainAppStackParamList } from '../../navigation/types'; 
 import { useTheme } from '../../theme';
+import { ERROR_MESSAGES, LOADING_MESSAGES, EMPTY_STATE_MESSAGES } from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -45,20 +48,38 @@ const getMockLabHistory = (testTypeId: string, testTypeName: string): LabResultE
   return [];
 };
 
-type LabResultDetailNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'LabResultDetail'>;
-type LabResultDetailRouteProp = RouteProp<MainAppStackParamList, 'LabResultDetail'>;
+type LabResultDetailNavigationProp = NativeStackNavigationProp<any, any>;
+type LabResultDetailRouteProp = RouteProp<any, any>;
 
 const LabResultDetailScreen = () => {
   const navigation = useNavigation<LabResultDetailNavigationProp>();
   const route = useRoute<LabResultDetailRouteProp>();
   const { colors } = useTheme();
-  const { testTypeId, testTypeName } = route.params;
+  const { testTypeId, testTypeName } = route.params as { testTypeId: string; testTypeName: string };
 
   const [labHistory, setLabHistory] = useState<LabResultEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching data
-    setLabHistory(getMockLabHistory(testTypeId, testTypeName));
+    // Simulate fetching data with proper async handling
+    const fetchLabHistory = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const data = getMockLabHistory(testTypeId, testTypeName);
+        setLabHistory(data);
+      } catch (e: any) {
+        console.error('Error fetching lab history:', e);
+        setError('Failed to load lab results. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLabHistory();
   }, [testTypeId, testTypeName]);
 
   useLayoutEffect(() => {
@@ -106,53 +127,78 @@ const LabResultDetailScreen = () => {
 
   return (
     <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundPrimary}>
-      <FlatList<LabResultEntry>
-        data={labHistory}
-        keyExtractor={(item) => item.id}
-        renderItem={renderResultItem}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-4" />}
-        ListHeaderComponent={() => (
-          <StyledView className="pt-4">
-            <StyledText variant="body1" color="textSecondary" tw="text-center mb-4 px-4">Historical Trend</StyledText>
-            <Card tw="mx-4 mb-6 items-center justify-center h-60 bg-backgroundSecondary p-0 overflow-hidden rounded-xl">
-              {labHistory.length > 1 ? (
-                <LineChart
-                  data={chartData}
-                  width={screenWidth - 32}
-                  height={230}
-                  chartConfig={{
-                    backgroundColor: colors.backgroundSecondary,
-                    backgroundGradientFrom: colors.backgroundSecondary,
-                    backgroundGradientTo: colors.backgroundSecondary,
-                    decimalPlaces: 1,
-                    color: (opacity = 1) => colors.accentPrimary || `rgba(0, 122, 255, ${opacity})`,
-                    labelColor: (opacity = 1) => colors.textSecondary || `rgba(0, 0, 0, ${opacity})`,
-                    style: { borderRadius: 16 },
-                    propsForDots: { r: "5", strokeWidth: "2", stroke: colors.accentPrimary },
-                    propsForBackgroundLines: { stroke: colors.borderSubtle, strokeDasharray: "" },
-                  }}
-                  bezier
-                  style={{ borderRadius: 16 }}
-                  yAxisLabel={labHistory[0]?.unit ? '' : ''}
-                  yAxisSuffix={labHistory[0]?.unit ? ` ${labHistory[0].unit}` : ''}
-                  yAxisInterval={1} 
-                  segments={Platform.OS === 'android' && chartDatasetData.length > 0 && Math.max(...chartDatasetData) - Math.min(...chartDatasetData) < 4 ? Math.max(...chartDatasetData) - Math.min(...chartDatasetData) +1 : undefined}
-                />
-              ) : (
-                <StyledView className="flex-1 items-center justify-center p-4">
-                    <Ionicons name="analytics-outline" size={48} color={colors.textMuted} />
-                    <StyledText color="textMuted" tw="mt-2 text-center">
-                        {labHistory.length === 1 ? 'Not enough data to plot a trend. At least two data points are needed.' : 'No data available for chart.'}
-                    </StyledText>
-                </StyledView>
-              )}
-            </Card>
-            {labHistory.length > 0 && <StyledText variant="h4" tw="mb-2 font-semibold px-4">History</StyledText>}
-          </StyledView>
-        )}
-      />
+      {isLoading ? (
+        <StyledView className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <StyledText 
+            variant="body1" 
+            tw="mt-4 text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            {LOADING_MESSAGES.GENERIC_LOADING}
+          </StyledText>
+        </StyledView>
+      ) : error ? (
+        <ErrorState
+          title="Unable to Load Lab Results"
+          message={error}
+          icon="flask-outline"
+        />
+      ) : labHistory.length === 0 ? (
+        <EmptyState
+          icon="flask-outline"
+          title="No Lab Results"
+          description="No lab results are available for this test type."
+        />
+      ) : (
+        <FlatList<LabResultEntry>
+          data={labHistory}
+          keyExtractor={(item) => item.id}
+          renderItem={renderResultItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-4" />}
+          ListHeaderComponent={() => (
+            <StyledView className="pt-4">
+              <StyledText variant="body1" color="textSecondary" tw="text-center mb-4 px-4">Historical Trend</StyledText>
+              <Card tw="mx-4 mb-6 items-center justify-center h-60 bg-backgroundSecondary p-0 overflow-hidden rounded-xl">
+                {labHistory.length > 1 ? (
+                  <LineChart
+                    data={chartData}
+                    width={screenWidth - 32}
+                    height={230}
+                    chartConfig={{
+                      backgroundColor: colors.backgroundSecondary,
+                      backgroundGradientFrom: colors.backgroundSecondary,
+                      backgroundGradientTo: colors.backgroundSecondary,
+                      decimalPlaces: 1,
+                      color: (opacity = 1) => colors.accentPrimary || `rgba(0, 122, 255, ${opacity})`,
+                      labelColor: (opacity = 1) => colors.textSecondary || `rgba(0, 0, 0, ${opacity})`,
+                      style: { borderRadius: 16 },
+                      propsForDots: { r: "5", strokeWidth: "2", stroke: colors.accentPrimary },
+                      propsForBackgroundLines: { stroke: colors.borderSubtle, strokeDasharray: "" },
+                    }}
+                    bezier
+                    style={{ borderRadius: 16 }}
+                    yAxisLabel={labHistory[0]?.unit ? '' : ''}
+                    yAxisSuffix={labHistory[0]?.unit ? ` ${labHistory[0].unit}` : ''}
+                    yAxisInterval={1} 
+                    segments={Platform.OS === 'android' && chartDatasetData.length > 0 && Math.max(...chartDatasetData) - Math.min(...chartDatasetData) < 4 ? Math.max(...chartDatasetData) - Math.min(...chartDatasetData) +1 : undefined}
+                  />
+                ) : (
+                  <StyledView className="flex-1 items-center justify-center p-4">
+                      <Ionicons name="analytics-outline" size={48} color={colors.textMuted} />
+                      <StyledText color="textMuted" tw="mt-2 text-center">
+                          {labHistory.length === 1 ? 'Not enough data to plot a trend. At least two data points are needed.' : 'No data available for chart.'}
+                      </StyledText>
+                  </StyledView>
+                )}
+              </Card>
+              {labHistory.length > 0 && <StyledText variant="h4" tw="mb-2 font-semibold px-4">History</StyledText>}
+            </StyledView>
+          )}
+        />
+      )}
     </ScreenContainer>
   );
 };

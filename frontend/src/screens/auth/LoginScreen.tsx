@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native'; // Added View for centering ActivityIndicator if needed
+import * as Linking from 'expo-linking';
 
 import { AuthStackParamList } from '../../navigation/types'; // Corrected path
 import { supabaseClient } from '../../services/supabase'; // Import Supabase client
@@ -80,6 +81,35 @@ const LoginScreen = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Please enter your email address first.");
+      return;
+    }
+
+    try {
+      
+      const resetPasswordURL = 'medimind://ResetPassword';
+      
+      
+      const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: resetPasswordURL,
+      });
+
+      if (resetError) {
+        console.error('Reset password error:', resetError);
+        setError(resetError.message);
+      } else {
+        setError(null);
+        console.log('Password reset email sent successfully');
+        alert("Password reset email sent! Please check your inbox and click the link to reset your password.");
+      }
+    } catch (catchError: any) {
+      console.error('Catch error in forgot password:', catchError);
+      setError(catchError.message || "An unexpected error occurred.");
+    }
+  };
+
   const isLoading = loadingLogin || loadingDevLogin;
 
   return (
@@ -128,6 +158,16 @@ const LoginScreen = () => {
       >
         Log In
       </StyledButton>
+      
+      <StyledButton 
+        variant="textPrimary"
+        onPress={handleForgotPassword} 
+        tw="w-full mb-4"
+        disabled={isLoading}
+      >
+        Forgot Password?
+      </StyledButton>
+      
       <StyledButton 
         variant="textPrimary"
         onPress={() => navigation.navigate('SignUp')} 

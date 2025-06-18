@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import {
   Appbar, Button, TextInput, Title, Paragraph, HelperText, 
-  Card, Divider, Switch, Text, ActivityIndicator
+  Card, Divider, Switch, Text, ActivityIndicator as PaperActivityIndicator
 } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,6 +10,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainAppStackParamList } from '../navigation/types';
 import { medicationServices } from '../api/services';
 import { MedicationCreate, MedicationUpdate, MedicationResponse, MedicationFrequency, MedicationStatus } from '../types/api';
+import ErrorState from '../components/common/ErrorState';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
 
 import { MedicationDetailData } from './main/MedicationDetailScreen';
 
@@ -47,6 +49,7 @@ const AddMedicationScreen = () => {
   
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [criticalError, setCriticalError] = useState<string | null>(null);
   
   // Validation states
   const [nameError, setNameError] = useState('');
@@ -73,19 +76,20 @@ const AddMedicationScreen = () => {
   const validateForm = () => {
     let isValid = true;
     setFormError(null);
-    if (!name.trim()) { setNameError('Medication name is required'); isValid = false; } else { setNameError(''); }
-    if (!dosage.trim()) { setDosageError('Dosage is required'); isValid = false; } else { setDosageError(''); }
+    if (!name.trim()) { setNameError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; } else { setNameError(''); }
+    if (!dosage.trim()) { setDosageError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; } else { setDosageError(''); }
     // TODO: Add validation for other fields like frequency enum, dates etc.
     return isValid;
   };
   
   const handleSubmit = async () => {
     if (!validateForm()) {
-      setFormError("Please correct the errors in the form.");
+      setFormError(ERROR_MESSAGES.FORM_VALIDATION_ERROR);
       return;
     }
     setLoading(true);
     setFormError(null);
+    setCriticalError(null);
 
     const commonPayload = {
       name: name.trim(),
@@ -106,24 +110,52 @@ const AddMedicationScreen = () => {
       if (isEditMode && medicationIdToEdit) {
         const payload: MedicationUpdate = commonPayload;
         await medicationServices.updateMedication(medicationIdToEdit, payload);
-        Alert.alert('Success', 'Medication updated successfully!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+        Alert.alert('Success', SUCCESS_MESSAGES.MEDICATION_UPDATED, [{ text: 'OK', onPress: () => navigation.goBack() }]);
       } else {
         const payload: MedicationCreate = commonPayload;
         await medicationServices.addMedication(payload);
-        Alert.alert('Success', 'Medication added successfully!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+        Alert.alert('Success', SUCCESS_MESSAGES.MEDICATION_ADDED, [{ text: 'OK', onPress: () => navigation.goBack() }]);
       }
     } catch (err: any) {
       console.error("Failed to save medication:", err);
-      setFormError(err.message || 'Failed to save medication.');
-      Alert.alert("Error", err.message || 'Failed to save medication.');
+      const errorMessage = err.response?.data?.detail || err.message || ERROR_MESSAGES.MEDICATION_SAVE_ERROR;
+      setFormError(errorMessage);
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
+  const retryOperation = () => {
+    setCriticalError(null);
+    setFormError(null);
+    // Reset form to initial state if needed
+  };
+
   // Helper to format enum for display (can be moved to utils)
   const formatFrequencyEnum = (freq: MedicationFrequency) => {
     return freq.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  // ✅ Render critical error state using standardized ErrorState component
+  if (criticalError) {
+    return (
+      <View style={styles.container}>
+        <Appbar.Header>
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+          <Appbar.Content title={isEditMode ? 'Edit Medication' : 'Add New Medication'} />
+        </Appbar.Header>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+          <ErrorState
+            title="Unable to Load Medication Form"
+            message={criticalError}
+            onRetry={retryOperation}
+            retryLabel="Try Again"
+            icon="medical-outline"
+          />
+        </View>
+      </View>
+    );
   }
   
   // TODO: Replace Frequency TextInput with a Picker/Menu for MedicationFrequency enum

@@ -3,6 +3,8 @@ import { Session, User } from '@supabase/supabase-js';
 
 import { supabaseClient } from '../services/supabase';
 import { userServices } from '../api/services';
+import { analytics } from '../services/analytics';
+import { crashReporting } from '../services/crashReporting';
 
 
 // Extended user type that includes both Supabase User and our API user data
@@ -117,12 +119,43 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         
         setSession(newSession);
         
-        // Only fetch user profile for sign-in events or when we have a new session
-        // Avoid redundant API calls on token refresh
-        if (newSession && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-          await fetchUserProfile(newSession);
-        } else {
-          setUser(newSession?.user ?? null);
+        // Track authentication events
+        if (event === 'SIGNED_IN' && newSession) {
+          analytics.setUserId(newSession.user.id);
+          analytics.trackUserAction('user_login', {
+            user_id: newSession.user.id,
+            email: newSession.user.email,
+          });
+
+          // Set user context for crash reporting
+          crashReporting.setUser(newSession.user.id, newSession.user.email);
+          crashReporting.addBreadcrumb('User signed in', 'auth', 'info');
+          
+          // Fetch user profile
+          try {
+            const userProfile = await userServices.getMe();
+            // UserResponse contains the user data directly
+            const extendedUser = {
+              ...newSession.user,
+              ...userProfile.data,
+            };
+            setUser(extendedUser);
+          } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+            crashReporting.captureException(error as Error, {
+              context: 'auth_user_profile_fetch',
+              userId: newSession.user.id,
+            });
+            // Fallback to session user data
+            setUser(newSession.user);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          analytics.trackUserAction('user_logout');
+          crashReporting.addBreadcrumb('User signed out', 'auth', 'info');
+          crashReporting.clearUser();
+          setUser(null);
+        } else if (event === 'TOKEN_REFRESHED') {
+          crashReporting.addBreadcrumb('Token refreshed', 'auth', 'info');
         }
       }
     );
@@ -135,9 +168,11 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const signOut = async () => {
     setIsLoading(true);
+    analytics.trackUserAction('user_logout_initiated');
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
         console.error('Error signing out:', error.message);
+        analytics.trackUserAction('user_logout_error', { error: error.message });
     }
     setIsLoading(false);
   };

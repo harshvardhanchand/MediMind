@@ -9,6 +9,7 @@ import { MainBottomTabParamList } from './MainTabNavigator';
 export type AuthStackParamList = {
   Login: undefined;
   SignUp: undefined;
+  ResetPassword: undefined;
   // Register: undefined; // Removed as SignUpScreen is the primary
   // Add other auth screens here if needed
 };

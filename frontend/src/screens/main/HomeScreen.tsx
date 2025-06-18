@@ -14,6 +14,9 @@ import { useTheme } from '../../theme';
 import { documentServices, medicationServices, healthReadingsServices } from '../../api/services';
 import { DocumentRead, MedicationResponse, HealthReadingResponse } from '../../types/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
+import { analytics } from '../../services/analytics';
+import CrashTestButton from '../../components/debug/CrashTestButton';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
@@ -313,6 +316,13 @@ const HomeScreen = () => {
               <StyledText tw="text-yellow-800 text-sm text-center">
                 📱 Showing sample data (API not connected)
               </StyledText>
+            </StyledView>
+          )}
+
+          {/* Development crash test button */}
+          {__DEV__ && (
+            <StyledView className="mt-3">
+              <CrashTestButton variant="textPrimary" />
             </StyledView>
           )}
         </StyledView>

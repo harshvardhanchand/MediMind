@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
@@ -10,8 +10,11 @@ import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
+import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { symptomServices, SymptomCreate } from '../../api/services/symptomServices';
+import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -34,6 +37,7 @@ const SymptomTrackerScreen = () => {
   // Data states
   const [symptoms, setSymptoms] = useState<SymptomEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [usingDummyData, setUsingDummyData] = useState(false);
   const [apiConnected, setApiConnected] = useState(false);
   
@@ -41,41 +45,33 @@ const SymptomTrackerScreen = () => {
   const [severity, setSeverity] = useState('3');
   const [showForm, setShowForm] = useState(false);
 
-  // Dummy data fallback
-  const dummySymptoms: SymptomEntry[] = [
-    { 
-      id: '1', 
-      reading_date: new Date(Date.now() - 3600000 * 1).toISOString(),
-      symptom: 'Headache', 
-      severity: 3, 
-      notes: 'Mild, in the morning.', 
-      color: colors.info
-    },
-    { 
-      id: '2', 
-      reading_date: new Date(Date.now() - 3600000 * 24).toISOString(),
-      symptom: 'Fatigue', 
-      severity: 4, 
-      notes: 'All day long.', 
+  // ✅ Memoized dummy data - only created once
+  const dummySymptoms = useMemo<SymptomEntry[]>(() => [
+    {
+      id: 'dummy-1',
+      reading_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      symptom: 'Headache',
+      severity: 3,
+      notes: 'Mild tension headache after work',
       color: colors.warning
     },
-    { 
-      id: '3', 
-      reading_date: new Date(Date.now() - 3600000 * 25).toISOString(),
-      symptom: 'Sore Throat', 
-      severity: 2, 
-      notes: 'Mild irritation when swallowing.', 
-      color: '#4ADE80'
+    {
+      id: 'dummy-2',
+      reading_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      symptom: 'Fatigue',
+      severity: 2,
+      notes: 'Feeling tired after lunch',
+      color: colors.info
     },
-    { 
-      id: '4', 
-      reading_date: new Date(Date.now() - 3600000 * 26).toISOString(),
-      symptom: 'Muscle Pain', 
-      severity: 3, 
-      notes: 'After exercise, right shoulder.', 
-      color: '#ea384c'
+    {
+      id: 'dummy-3',
+      reading_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      symptom: 'Nausea',
+      severity: 4,
+      notes: 'Feeling sick after medication',
+      color: colors.error
     }
-  ];
+  ], [colors]);
 
   useEffect(() => {
     fetchSymptoms();
@@ -84,6 +80,7 @@ const SymptomTrackerScreen = () => {
   const fetchSymptoms = async () => {
     try {
       setLoading(true);
+      setError(null);
       setUsingDummyData(false);
       setApiConnected(false);
       
@@ -126,6 +123,7 @@ const SymptomTrackerScreen = () => {
       setSymptoms(dummySymptoms);
       setUsingDummyData(true);
       setApiConnected(false);
+      setError(null); // Clear error since we're showing dummy data
     } finally {
       setLoading(false);
     }
@@ -201,7 +199,8 @@ const SymptomTrackerScreen = () => {
     }
   };
 
-  const getSeverityColor = (severityValue: number) => {
+  // ✅ Memoized utility functions
+  const getSeverityColor = useCallback((severityValue: number) => {
     switch (severityValue) {
       case 1: return 'bg-green-100';
       case 2: return 'bg-blue-100';
@@ -210,9 +209,9 @@ const SymptomTrackerScreen = () => {
       case 5: return 'bg-red-100';
       default: return 'bg-gray-100';
     }
-  };
+  }, []);
 
-  const getSeverityTextColor = (severityValue: number) => {
+  const getSeverityTextColor = useCallback((severityValue: number) => {
     switch (severityValue) {
       case 1: return 'text-green-800';
       case 2: return 'text-blue-800';
@@ -221,7 +220,7 @@ const SymptomTrackerScreen = () => {
       case 5: return 'text-red-800';
       default: return 'text-gray-800';
     }
-  };
+  }, []);
 
   const renderSymptomItem: ListRenderItem<SymptomEntry> = ({ item }) => (
     <StyledTouchableOpacity tw="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
@@ -249,13 +248,49 @@ const SymptomTrackerScreen = () => {
     </StyledTouchableOpacity>
   );
 
+  // ✅ Render loading state
   if (loading) {
     return (
-      <ScreenContainer scrollable={false} withPadding>
-        <StyledView tw="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" />
-          <StyledText tw="mt-2 text-gray-600">Loading symptoms...</StyledText>
+      <ScreenContainer>
+        <StyledView className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <StyledText 
+            variant="body1" 
+            tw="mt-4 text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            {LOADING_MESSAGES.GENERIC_LOADING}
+          </StyledText>
         </StyledView>
+      </ScreenContainer>
+    );
+  }
+
+  // ✅ Render error state (only if we have a real error and no fallback data)
+  if (error && !usingDummyData) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          title="Unable to Load Symptoms"
+          message={ERROR_MESSAGES.API_ERROR}
+          onRetry={fetchSymptoms}
+          retryLabel="Try Again"
+        />
+      </ScreenContainer>
+    );
+  }
+
+  // ✅ Render empty state for no symptoms
+  if (symptoms.length === 0 && !usingDummyData) {
+    return (
+      <ScreenContainer>
+        <EmptyState
+          icon="medical-outline"
+          title="No Symptoms Logged Yet"
+          description="Start tracking your symptoms to monitor your health patterns and share insights with your healthcare provider."
+          actionLabel="Log First Symptom"
+          onAction={() => setShowForm(true)}
+        />
       </ScreenContainer>
     );
   }

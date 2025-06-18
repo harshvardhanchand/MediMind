@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,8 +6,8 @@ import { styled } from 'nativewind';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
-import StyledButton from '../../components/common/StyledButton';
 import NotificationCard from '../../components/common/NotificationCard';
+import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { notificationServices } from '../../api/services';
 import { 
@@ -16,6 +16,8 @@ import {
   NotificationType, 
   NotificationSeverity 
 } from '../../types/api';
+import { ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
+import { crashReporting } from '../../services/crashReporting';
 
 const StyledView = styled(View);
 
@@ -32,8 +34,11 @@ const NotificationScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
   const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [criticalError, setCriticalError] = useState<string | null>(null);
   
-  const typeFilters: FilterOption[] = [
+  // ✅ Memoized filter options - only created once
+  const typeFilters = useMemo<FilterOption[]>(() => [
     { label: 'All', value: null },
     { label: 'Interactions', value: NotificationType.INTERACTION_ALERT },
     { label: 'Risk Alerts', value: NotificationType.RISK_ALERT },
@@ -41,15 +46,15 @@ const NotificationScreen = () => {
     { label: 'Lab Follow-up', value: NotificationType.LAB_FOLLOWUP },
     { label: 'Symptoms', value: NotificationType.SYMPTOM_MONITORING },
     { label: 'General', value: NotificationType.GENERAL_INFO },
-  ];
+  ], []);
 
-  const severityFilters: FilterOption[] = [
+  const severityFilters = useMemo<FilterOption[]>(() => [
     { label: 'All', value: null },
     { label: 'Critical', value: NotificationSeverity.CRITICAL },
     { label: 'High', value: NotificationSeverity.HIGH },
     { label: 'Medium', value: NotificationSeverity.MEDIUM },
     { label: 'Low', value: NotificationSeverity.LOW },
-  ];
+  ], []);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,6 +65,9 @@ const NotificationScreen = () => {
 
   const fetchNotifications = async () => {
     try {
+      setError(null);
+      crashReporting.addBreadcrumb('Fetching notifications', 'api-request', 'info');
+      
       const params: any = { limit: 50 };
       if (selectedFilter) params.notification_type = selectedFilter;
       if (selectedSeverity) params.severity = selectedSeverity;
@@ -69,12 +77,24 @@ const NotificationScreen = () => {
       // If API returns empty array, use dummy data for demo
       if (response.data && response.data.length > 0) {
         setNotifications(response.data);
+        crashReporting.addBreadcrumb('Notifications loaded successfully', 'api-response', 'info');
       } else {
         console.log('API returned empty notifications, using dummy data for demo');
         setNotifications(generateDummyNotifications());
       }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+    } catch (apiError: any) {
+      console.error('Failed to fetch notifications:', apiError);
+      
+      const errorMessage = apiError.response?.data?.detail || 'Failed to load notifications. Please try again.';
+      setError(errorMessage);
+      
+      crashReporting.captureException(apiError, {
+        context: 'notification_fetch',
+        errorType: 'notification_api_error',
+        statusCode: apiError.response?.status,
+        filters: { selectedFilter, selectedSeverity },
+      });
+      
       // Use dummy data for demo
       setNotifications(generateDummyNotifications());
     } finally {
@@ -86,8 +106,15 @@ const NotificationScreen = () => {
     try {
       const response = await notificationServices.getNotificationStats();
       setStats(response.data);
-    } catch (error) {
-      console.error('Failed to fetch notification stats:', error);
+    } catch (statsError: any) {
+      console.error('Failed to fetch notification stats:', statsError);
+      
+      crashReporting.captureException(statsError, {
+        context: 'notification_stats_fetch',
+        errorType: 'notification_stats_error',
+        statusCode: statsError.response?.status,
+      });
+      
       // Use dummy stats
       setStats({
         total_count: 12,
@@ -110,7 +137,8 @@ const NotificationScreen = () => {
     }
   };
 
-  const generateDummyNotifications = (): NotificationResponse[] => [
+  // ✅ Memoized dummy notifications - only created once
+  const generateDummyNotifications = useMemo(() => (): NotificationResponse[] => [
     {
       notification_id: '1',
       user_id: 'user1',
@@ -169,16 +197,27 @@ const NotificationScreen = () => {
         ]
       }
     }
-  ];
+  ], []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setError(null);
     await Promise.all([fetchNotifications(), fetchStats()]);
     setRefreshing(false);
   };
 
+  const retryOperation = () => {
+    setCriticalError(null);
+    setError(null);
+    setLoading(true);
+    fetchNotifications();
+    fetchStats();
+  };
+
   const handleMarkAsRead = async (notificationId: string) => {
     try {
+      crashReporting.addBreadcrumb('Marking notification as read', 'user-action', 'info');
+      
       await notificationServices.markNotificationsAsRead({ 
         notification_ids: [notificationId] 
       });
@@ -195,9 +234,17 @@ const NotificationScreen = () => {
       if (stats) {
         setStats(prev => prev ? { ...prev, unread_count: prev.unread_count - 1 } : null);
       }
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-      Alert.alert('Error', 'Failed to mark notification as read');
+    } catch (markReadError: any) {
+      console.error('Failed to mark notification as read:', markReadError);
+      
+      const errorMessage = markReadError.response?.data?.detail || 'Failed to mark notification as read. Please try again.';
+      Alert.alert('Error', errorMessage);
+      
+      crashReporting.captureException(markReadError, {
+        context: 'notification_mark_read',
+        notificationId: notificationId,
+        errorType: 'notification_update_error',
+      });
     }
   };
 
@@ -290,6 +337,20 @@ const NotificationScreen = () => {
       </StyledText>
     </TouchableOpacity>
   );
+
+  // Show critical error state if needed
+  if (criticalError) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          title="Unable to Load Notifications"
+          message={criticalError}
+          onRetry={retryOperation}
+          retryLabel="Try Again"
+        />
+      </ScreenContainer>
+    );
+  }
 
   if (loading) {
     return (

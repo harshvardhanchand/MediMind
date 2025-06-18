@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, TouchableOpacity, Alert, Platform, RefreshControl } from 'react-native';
+import { ScrollView, View, TouchableOpacity, Alert, Platform, RefreshControl, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,9 +11,12 @@ import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
 import Card from '../../components/common/Card';
+import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { DocumentRead, ExtractedDataResponse, ReviewStatus } from '../../types/api';
 import { documentServices, extractedDataServices } from '../../api/services';
+import { ERROR_MESSAGES, LOADING_MESSAGES, EMPTY_STATE_MESSAGES } from '../../constants/messages';
 
 // Interface for form field structure
 interface ExtractedField {
@@ -327,7 +330,14 @@ const DataReviewScreen = () => {
     return (
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
-          <StyledText>Loading review data...</StyledText>
+          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <StyledText 
+            variant="body1" 
+            tw="mt-4 text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            {LOADING_MESSAGES.LOADING_DOCUMENTS}
+          </StyledText>
         </StyledView>
       </ScreenContainer>
     );
@@ -336,14 +346,13 @@ const DataReviewScreen = () => {
   if (error) {
     return (
       <ScreenContainer>
-        <StyledView className="flex-1 justify-center items-center p-4">
-          <MaterialIcons name="error-outline" size={64} color={colors.error} />
-          <StyledText color="error" tw="mt-4 mb-2 text-center">Error Loading Data</StyledText>
-          <StyledText color="textSecondary" tw="text-center mb-4">{error}</StyledText>
-          <StyledButton variant="filledPrimary" onPress={loadDocumentData}>
-            <StyledText>Retry</StyledText>
-          </StyledButton>
-        </StyledView>
+        <ErrorState
+          title="Unable to Load Review Data"
+          message={error}
+          onRetry={loadDocumentData}
+          retryLabel="Try Again"
+          icon="document-text-outline"
+        />
       </ScreenContainer>
     );
   }
@@ -351,12 +360,13 @@ const DataReviewScreen = () => {
   if (!document || !editedData) {
     return (
       <ScreenContainer>
-        <StyledView className="flex-1 justify-center items-center">
-          <StyledText>No extracted data available for review.</StyledText>
-          <StyledButton variant="textPrimary" tw="mt-4" onPress={() => navigation.goBack()}>
-            <StyledText>Go Back</StyledText>
-          </StyledButton>
-        </StyledView>
+        <EmptyState
+          icon="document-text-outline"
+          title="No Data to Review"
+          description="No extracted data is available for review. The document may not have been processed yet."
+          actionLabel="Go Back"
+          onAction={() => navigation.goBack()}
+        />
       </ScreenContainer>
     );
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
@@ -40,8 +40,8 @@ const MedicationsScreen = () => {
   const [usingDummyData, setUsingDummyData] = useState(false);
   const [apiConnected, setApiConnected] = useState(false);
 
-  // Dummy data fallback
-  const dummyMedications: MedicationEntry[] = [
+  // ✅ Memoized dummy data - only created once
+  const dummyMedications = useMemo<MedicationEntry[]>(() => [
     {
       id: 'dummy-1',
       name: 'Amoxicillin',
@@ -75,7 +75,7 @@ const MedicationsScreen = () => {
       prescribing_doctor: 'Dr. Williams',
       created_at: '2023-03-15T00:00:00Z'
     }
-  ];
+  ], []);
 
   useEffect(() => {
     fetchMedications();
@@ -131,7 +131,8 @@ const MedicationsScreen = () => {
     }
   };
 
-  const formatFrequency = (frequency: MedicationFrequency, frequencyDetails?: string | null) => {
+  // ✅ Memoized frequency formatting function
+  const formatFrequency = useCallback((frequency: MedicationFrequency, frequencyDetails?: string | null) => {
     const frequencyMap: Record<MedicationFrequency, string> = {
       [MedicationFrequency.ONCE_DAILY]: 'Once daily',
       [MedicationFrequency.TWICE_DAILY]: 'Twice daily',
@@ -147,9 +148,10 @@ const MedicationsScreen = () => {
 
     const baseText = frequencyMap[frequency] || frequency;
     return frequencyDetails ? `${baseText} (${frequencyDetails})` : baseText;
-  };
+  }, []);
 
-  const getStatusColor = (status: MedicationStatus) => {
+  // ✅ Memoized status color functions
+  const getStatusColor = useCallback((status: MedicationStatus) => {
     switch (status) {
       case MedicationStatus.ACTIVE: return 'bg-green-100';
       case MedicationStatus.COMPLETED: return 'bg-blue-100';
@@ -157,9 +159,9 @@ const MedicationsScreen = () => {
       case MedicationStatus.ON_HOLD: return 'bg-yellow-100';
       default: return 'bg-gray-100';
     }
-  };
+  }, []);
 
-  const getStatusTextColor = (status: MedicationStatus) => {
+  const getStatusTextColor = useCallback((status: MedicationStatus) => {
     switch (status) {
       case MedicationStatus.ACTIVE: return 'text-green-800';
       case MedicationStatus.COMPLETED: return 'text-blue-800';
@@ -167,7 +169,7 @@ const MedicationsScreen = () => {
       case MedicationStatus.ON_HOLD: return 'text-yellow-800';
       default: return 'text-gray-800';
     }
-  };
+  }, []);
 
   const renderMedicationItem: ListRenderItem<MedicationEntry> = ({ item }) => (
     <StyledTouchableOpacity tw="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">

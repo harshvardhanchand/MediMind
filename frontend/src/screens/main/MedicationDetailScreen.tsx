@@ -3,15 +3,17 @@ import { ScrollView, View, TouchableOpacity, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton'; // For potential Delete button
 import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
+import ErrorState from '../../components/common/ErrorState';
 import { MainAppStackParamList } from '../../navigation/types'; 
 import { useTheme } from '../../theme';
+import { ERROR_MESSAGES } from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
@@ -78,12 +80,14 @@ const MedicationDetailScreen = () => {
   }, [navigation, colors, medication]);
 
   if (!medication) {
-    // Handle case where medication data isn't found (e.g., after API call)
+    // ✅ Handle case where medication data isn't found using standardized ErrorState
     return (
       <ScreenContainer>
-        <StyledView className="flex-1 justify-center items-center">
-          <StyledText>Medication not found.</StyledText>
-        </StyledView>
+        <ErrorState
+          title="Medication Not Found"
+          message="The requested medication could not be found. It may have been deleted or moved."
+          icon="medical-outline"
+        />
       </ScreenContainer>
     );
   }

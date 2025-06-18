@@ -12,9 +12,11 @@ import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
+import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { DocumentRead, ExtractedDataResponse, ProcessingStatus } from '../../types/api';
 import { documentServices, extractedDataServices } from '../../api/services';
+import { ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
@@ -156,7 +158,13 @@ const DocumentDetailScreen = () => {
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText variant="body1" color="textSecondary" tw="mt-4">Loading document...</StyledText>
+          <StyledText 
+            variant="body1" 
+            tw="mt-4 text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            {LOADING_MESSAGES.LOADING_DOCUMENTS}
+          </StyledText>
         </StyledView>
       </ScreenContainer>
     );
@@ -165,14 +173,13 @@ const DocumentDetailScreen = () => {
   if (error || !document) {
     return (
       <ScreenContainer>
-        <StyledView className="flex-1 justify-center items-center p-4">
-          <MaterialIcons name="error-outline" size={64} color={colors.error} />
-          <StyledText variant="h4" color="error" tw="mt-4 mb-2 text-center">Error Loading Document</StyledText>
-          <StyledText color="textSecondary" tw="text-center mb-4">{error || 'Document not found'}</StyledText>
-          <StyledButton variant="filledPrimary" onPress={loadDocumentData}>
-            <StyledText>Retry</StyledText>
-          </StyledButton>
-        </StyledView>
+        <ErrorState
+          title="Unable to Load Document"
+          message={error || ERROR_MESSAGES.DOCUMENTS_LOAD_ERROR}
+          onRetry={loadDocumentData}
+          retryLabel="Try Again"
+          icon="document-text-outline"
+        />
       </ScreenContainer>
     );
   }

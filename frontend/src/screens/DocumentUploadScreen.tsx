@@ -12,6 +12,8 @@ import { RootStackParamList } from '../navigation/types';
 import { MAX_FILE_SIZE, SUPPORTED_FILE_TYPES, DOCUMENT_TYPES } from '../config';
 import { documentServices } from '../api/services';
 import { DocumentType as DocumentTypeEnum } from '../types/api';
+import ErrorState from '../components/common/ErrorState';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
 
 type DocumentUploadNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Upload'>;
 
@@ -25,10 +27,12 @@ const DocumentUploadScreen = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [criticalError, setCriticalError] = useState<string | null>(null);
 
   const pickDocument = async () => {
     setError('');
     setSuccessMessage('');
+    setCriticalError(null);
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: SUPPORTED_FILE_TYPES,
@@ -48,7 +52,7 @@ const DocumentUploadScreen = () => {
         );
         
         if (invalidFiles.length > 0) {
-          setError(`Some files are too large. Max size is ${MAX_FILE_SIZE / (1024 * 1024)} MB per file.`);
+          setError(ERROR_MESSAGES.FILE_TOO_LARGE);
           setShowSnackbar(true);
           return;
         }
@@ -59,7 +63,7 @@ const DocumentUploadScreen = () => {
       }
     } catch (err) {
       console.error('Error picking documents:', err);
-      setError('Failed to select documents. Please try again.');
+      setError(ERROR_MESSAGES.GENERIC_ERROR);
       setShowSnackbar(true);
       setSelectedFileAssets([]);
     }
@@ -82,6 +86,7 @@ const DocumentUploadScreen = () => {
     setUploadProgress(0);
     setError('');
     setSuccessMessage('');
+    setCriticalError(null);
     
     const formData = new FormData();
     
@@ -104,7 +109,7 @@ const DocumentUploadScreen = () => {
       const totalCount = selectedFileAssets.length;
       
       if (uploadedCount === totalCount) {
-        setSuccessMessage(`All ${uploadedCount} documents uploaded successfully! Processing...`);
+        setSuccessMessage(SUCCESS_MESSAGES.DOCUMENT_UPLOADED);
       } else {
         setSuccessMessage(`${uploadedCount} of ${totalCount} documents uploaded successfully! Check logs for failed uploads.`);
       }
@@ -119,7 +124,7 @@ const DocumentUploadScreen = () => {
 
     } catch (err: any) {
       console.error('Error uploading documents:', err);
-      let errorMessage = 'Failed to upload documents. Please try again.';
+      let errorMessage = ERROR_MESSAGES.UPLOAD_ERROR;
       if (err.response?.data?.detail) {
         if (typeof err.response.data.detail === 'string') {
           errorMessage = err.response.data.detail;
@@ -146,6 +151,34 @@ const DocumentUploadScreen = () => {
       navigation.goBack();
     }
   };
+
+  const retryOperation = () => {
+    setCriticalError(null);
+    setError('');
+    setSuccessMessage('');
+    // Reset form to initial state if needed
+  };
+
+  // ✅ Render critical error state using standardized ErrorState component
+  if (criticalError) {
+    return (
+      <View style={styles.container}>
+        <Appbar.Header>
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+          <Appbar.Content title="Upload Document" />
+        </Appbar.Header>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+          <ErrorState
+            title="Unable to Load Upload Form"
+            message={criticalError}
+            onRetry={retryOperation}
+            retryLabel="Try Again"
+            icon="cloud-upload-outline"
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -215,7 +248,7 @@ const DocumentUploadScreen = () => {
           <Card style={styles.progressCard}>
             <Card.Content>
               <Text style={styles.progressText}>
-                Uploading documents...
+                {LOADING_MESSAGES.UPLOADING_DOCUMENT}
               </Text>
               <ProgressBar indeterminate={true} color="#2A6BAC" style={styles.progressBar} />
             </Card.Content>

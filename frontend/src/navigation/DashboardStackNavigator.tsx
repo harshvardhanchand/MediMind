@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Screen imports
 import HomeScreen from '../screens/main/HomeScreen';
@@ -29,12 +29,43 @@ const PlaceholderScreen = () => null; // Or a simple View with Text
 // MedicationsScreen could be MedicationsListScreen.tsx or MedicationsScreen.tsx itself
 // QueryScreen might be in ../screens/QueryScreen.tsx or ../screens/main/QueryScreen.tsx
 
+// Wrap key screens with error boundaries
+const HomeScreenWithErrorBoundary = () => (
+  <ErrorBoundary level="screen" context="HomeScreen">
+    <HomeScreen />
+  </ErrorBoundary>
+);
+
+const QueryScreenWithErrorBoundary = () => (
+  <ErrorBoundary level="screen" context="QueryScreen">
+    <QueryScreen />
+  </ErrorBoundary>
+);
+
+const DocumentDetailScreenWithErrorBoundary = () => (
+  <ErrorBoundary level="screen" context="DocumentDetailScreen">
+    <DocumentDetailScreen />
+  </ErrorBoundary>
+);
+
+const NotificationScreenWithErrorBoundary = () => (
+  <ErrorBoundary level="screen" context="NotificationScreen">
+    <NotificationScreen />
+  </ErrorBoundary>
+);
+
+const EditProfileScreenWithErrorBoundary = () => (
+  <ErrorBoundary level="screen" context="EditProfileScreen">
+    <EditProfileScreen />
+  </ErrorBoundary>
+);
+
 const Stack = createNativeStackNavigator<MainAppStackParamList>();
 
 const DashboardStackNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Home" component={HomeScreenWithErrorBoundary} />
       <Stack.Screen name="Upload" component={DocumentUploadScreen} /> 
       <Stack.Screen name="Vitals" component={VitalsScreen} />
       <Stack.Screen name="SymptomTracker" component={SymptomTrackerScreen} />
@@ -44,11 +75,11 @@ const DashboardStackNavigator = () => {
       <Stack.Screen name="AddSymptom" component={AddSymptomScreen} />
       <Stack.Screen name="HealthReadings" component={HealthReadingsScreen} />
       <Stack.Screen name="AddHealthReading" component={AddHealthReadingScreen} />
-      <Stack.Screen name="Query" component={QueryScreen} />
-      <Stack.Screen name="DocumentDetail" component={DocumentDetailScreen} />
+      <Stack.Screen name="Query" component={QueryScreenWithErrorBoundary} />
+      <Stack.Screen name="DocumentDetail" component={DocumentDetailScreenWithErrorBoundary} />
       <Stack.Screen name="DataReview" component={DataReviewScreen} />
-      <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
-      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="NotificationScreen" component={NotificationScreenWithErrorBoundary} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreenWithErrorBoundary} />
     </Stack.Navigator>
   );
 };

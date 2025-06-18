@@ -4,22 +4,62 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 import OnboardingNavigator from './OnboardingNavigator';
 import { NotificationProvider } from '../context/NotificationContext';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Import actual Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme'; // Assuming theme is correctly exported from ../theme
 
 import MainTabNavigator from './MainTabNavigator';
 import { RootStackParamList, AuthStackParamList } from './types';
 
+// Wrap screens with error boundaries
+const LoginScreenWithErrorBoundary = () => (
+  <ErrorBoundary 
+    level="screen" 
+    context="LoginScreen"
+    onError={(error, errorInfo) => {
+      console.error('🚨 LoginScreen Error Boundary triggered:', error);
+    }}
+  >
+    <LoginScreen />
+  </ErrorBoundary>
+);
+
+const SignUpScreenWithErrorBoundary = () => (
+  <ErrorBoundary 
+    level="screen" 
+    context="SignUpScreen"
+    onError={(error, errorInfo) => {
+      console.error('🚨 SignUpScreen Error Boundary triggered:', error);
+    }}
+  >
+    <SignUpScreen />
+  </ErrorBoundary>
+);
+
+const ResetPasswordScreenWithErrorBoundary = () => (
+  <ErrorBoundary 
+    level="screen" 
+    context="ResetPasswordScreen"
+    onError={(error, errorInfo) => {
+      console.error('🚨 ResetPasswordScreen Error Boundary triggered:', error);
+    }}
+  >
+    <ResetPasswordScreen />
+  </ErrorBoundary>
+);
+
 // Auth Stack
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
 const AuthNavigator = () => (
   <AuthStackNav.Navigator screenOptions={{ headerShown: false }}>
-    <AuthStackNav.Screen name="Login" component={LoginScreen} />
-    <AuthStackNav.Screen name="SignUp" component={SignUpScreen} />
+    <AuthStackNav.Screen name="Login" component={LoginScreenWithErrorBoundary} />
+    <AuthStackNav.Screen name="SignUp" component={SignUpScreenWithErrorBoundary} />
+    <AuthStackNav.Screen name="ResetPassword" component={ResetPasswordScreenWithErrorBoundary} />
   </AuthStackNav.Navigator>
 );
 

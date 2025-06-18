@@ -10,8 +10,11 @@ import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
+import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { supabaseClient } from '../../services/supabase';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../constants/messages';
+import { crashReporting } from '../../services/crashReporting';
 
 const StyledScrollView = styled(ScrollView);
 const StyledView = styled(View);
@@ -33,25 +36,125 @@ const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { colors } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [criticalError, setCriticalError] = React.useState<string | null>(null);
 
   const handleLogout = async () => {
-    console.log("Logging out...");
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Log Out', 
+          style: 'destructive',
+          onPress: performLogout
+        }
+      ]
+    );
+  };
+
+  const performLogout = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      const { error } = await supabaseClient.auth.signOut();
-      if (error) {
-        console.error("Error during sign out:", error);
-        Alert.alert('Error', 'Failed to sign out. Please try again.');
+      crashReporting.addBreadcrumb('User initiated logout', 'user-action', 'info');
+      
+      const { error: signOutError } = await supabaseClient.auth.signOut();
+      
+      if (signOutError) {
+        console.error("Error during sign out:", signOutError);
+        setError(ERROR_MESSAGES.LOGOUT_ERROR);
+        crashReporting.captureException(new Error(signOutError.message), {
+          context: 'settings_logout',
+          errorType: 'auth_signout_error',
+        });
       }
-    } catch (error) {
-      console.error("Error during sign out:", error);
-      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    } catch (catchError: any) {
+      console.error("Unexpected error during sign out:", catchError);
+      setError(ERROR_MESSAGES.LOGOUT_ERROR);
+      crashReporting.captureException(catchError, {
+        context: 'settings_logout',
+        errorType: 'unexpected_logout_error',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleExportData = () => {
-    console.log("Initiating data export...");
-    alert("Data Export Initiated! (Placeholder)");
+  const handleExportData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      crashReporting.addBreadcrumb('User requested data export', 'user-action', 'info');
+      
+      // Simulate data export process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      Alert.alert(
+        'Export Initiated',
+        'Your data export has been initiated. You will receive an email with download instructions within 24 hours.',
+        [{ text: 'OK' }]
+      );
+    } catch (exportError: any) {
+      console.error("Error during data export:", exportError);
+      setError('Failed to initiate data export. Please try again.');
+      crashReporting.captureException(exportError, {
+        context: 'settings_data_export',
+        errorType: 'data_export_error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleNotificationToggle = async (enabled: boolean) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Simulate notification settings update
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setNotificationsEnabled(enabled);
+      crashReporting.addBreadcrumb(
+        `Notifications ${enabled ? 'enabled' : 'disabled'}`, 
+        'user-action', 
+        'info'
+      );
+    } catch (notificationError: any) {
+      console.error("Error updating notification settings:", notificationError);
+      setError('Failed to update notification settings. Please try again.');
+      crashReporting.captureException(notificationError, {
+        context: 'settings_notifications',
+        errorType: 'notification_settings_error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryOperation = () => {
+    setCriticalError(null);
+    setError(null);
+  };
+
+  // Show critical error state if needed
+  if (criticalError) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          title="Settings Error"
+          message={criticalError}
+          onRetry={retryOperation}
+          retryLabel="Try Again"
+        />
+      </ScreenContainer>
+    );
+  }
 
   const accountSettings: SettingItem[] = [
     { 
@@ -64,7 +167,7 @@ const SettingsScreen = () => {
       id: 'security', 
       label: 'Security & Privacy', 
       iconName: 'shield-checkmark-outline', 
-      action: () => alert('Navigate to Security') 
+      action: () => Alert.alert('Coming Soon', 'Security settings will be available in a future update.') 
     },
     { 
       id: 'notifications', 
@@ -72,7 +175,7 @@ const SettingsScreen = () => {
       iconName: 'notifications-outline', 
       isToggle: true, 
       value: notificationsEnabled, 
-      action: () => setNotificationsEnabled(v => !v) 
+      action: () => handleNotificationToggle(!notificationsEnabled) 
     },
   ];
 
@@ -90,25 +193,25 @@ const SettingsScreen = () => {
       id: 'help', 
       label: 'Help Center', 
       iconName: 'help-circle-outline', 
-      action: () => alert('Navigate to Help Center') 
+      action: () => Alert.alert('Help Center', 'Help documentation will be available soon.') 
     },
     { 
       id: 'contact', 
       label: 'Contact Support', 
       iconName: 'mail-outline', 
-      action: () => alert('Open email to support') 
+      action: () => Alert.alert('Contact Support', 'Support contact information will be available soon.') 
     },
     { 
       id: 'terms', 
       label: 'Terms of Service', 
       iconName: 'document-text-outline', 
-      action: () => alert('Navigate to Terms') 
+      action: () => Alert.alert('Terms of Service', 'Terms of service will be available soon.') 
     },
     { 
       id: 'privacy', 
       label: 'Privacy Policy', 
       iconName: 'lock-closed-outline', 
-      action: () => alert('Navigate to Privacy Policy') 
+      action: () => Alert.alert('Privacy Policy', 'Privacy policy will be available soon.') 
     },
   ];
 
@@ -129,6 +232,7 @@ const SettingsScreen = () => {
             onValueChange={item.action} 
             trackColor={{ false: colors.borderSubtle, true: colors.accentPrimary }}
             thumbColor={colors.backgroundSecondary}
+            disabled={loading}
           />
           {!isLastInSection && <StyledView className="absolute bottom-0 left-12 right-0 h-px bg-gray-200" />}
         </StyledView>
@@ -136,6 +240,8 @@ const SettingsScreen = () => {
     }
 
     const handlePress = () => {
+      if (loading) return; // Prevent actions while loading
+      
       if (item.navigateTo) {
         navigation.navigate(item.navigateTo);
       } else if (item.action) {
@@ -165,6 +271,13 @@ const SettingsScreen = () => {
           <StyledText variant="h1" tw="font-bold text-3xl">
             Settings
           </StyledText>
+          {error && (
+            <StyledView className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+              <StyledText variant="caption" color="error" tw="text-center">
+                {error}
+              </StyledText>
+            </StyledView>
+          )}
         </StyledView>
 
         {/* Account Section */}

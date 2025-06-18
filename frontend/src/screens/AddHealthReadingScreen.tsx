@@ -10,6 +10,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { HealthReadingCreate, HealthReadingType } from '../types/api';
 import { healthReadingsServices } from '../api/services';
+import ErrorState from '../components/common/ErrorState';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
 
 type AddHealthReadingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddHealthReading'>;
 
@@ -35,6 +37,7 @@ const AddHealthReadingScreen = () => {
   
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null); // For general form errors
+  const [criticalError, setCriticalError] = useState<string | null>(null);
 
   // Specific field errors
   const [systolicError, setSystolicError] = useState('');
@@ -56,20 +59,20 @@ const AddHealthReadingScreen = () => {
     setSystolicError(''); setDiastolicError(''); setGlucoseError(''); setHeartRateError(''); setDateTimeError(''); setFormError(null);
 
     if (readingType === HealthReadingType.BLOOD_PRESSURE) {
-      if (!systolic.trim()) { setSystolicError('Systolic value is required'); isValid = false; }
+      if (!systolic.trim()) { setSystolicError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; }
       else { const val = parseInt(systolic); if (isNaN(val) || val < 50 || val > 300) { setSystolicError('Range: 50-300'); isValid = false; }}
-      if (!diastolic.trim()) { setDiastolicError('Diastolic value is required'); isValid = false; }
+      if (!diastolic.trim()) { setDiastolicError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; }
       else { const val = parseInt(diastolic); if (isNaN(val) || val < 30 || val > 200) { setDiastolicError('Range: 30-200'); isValid = false; }}
     } else if (readingType === HealthReadingType.GLUCOSE) {
-      if (!glucose.trim()) { setGlucoseError('Glucose value is required'); isValid = false; }
+      if (!glucose.trim()) { setGlucoseError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; }
       else { const val = parseInt(glucose); if (isNaN(val) || val < 20 || val > 600) { setGlucoseError('Range: 20-600'); isValid = false; }}
     } else if (readingType === HealthReadingType.HEART_RATE) {
-      if (!heartRate.trim()) { setHeartRateError('Heart rate is required'); isValid = false; }
+      if (!heartRate.trim()) { setHeartRateError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; }
       else { const val = parseInt(heartRate); if (isNaN(val) || val < 30 || val > 250) { setHeartRateError('Range: 30-250'); isValid = false; }}
     }
     // Validate date and time format (basic check)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
-        setDateTimeError('Invalid date or time format.');
+        setDateTimeError(ERROR_MESSAGES.INVALID_DATE);
         isValid = false;
     }
     return isValid;
@@ -77,18 +80,19 @@ const AddHealthReadingScreen = () => {
   
   const handleSubmit = async () => {
     if (!validateForm()) {
-        setFormError('Please check the form for errors.');
+        setFormError(ERROR_MESSAGES.FORM_VALIDATION_ERROR);
         return;
     }
     setLoading(true);
     setFormError(null);
+    setCriticalError(null);
 
     // Combine date and time into an ISO string for reading_date
     let reading_date_iso = '';
     try {
         reading_date_iso = new Date(`${date}T${time}:00`).toISOString();
     } catch (e) {
-        setDateTimeError('Invalid date/time combination.');
+        setDateTimeError(ERROR_MESSAGES.INVALID_DATE);
         setLoading(false);
         return;
     }
@@ -116,15 +120,43 @@ const AddHealthReadingScreen = () => {
 
     try {
       await healthReadingsServices.addHealthReading(payload);
-      Alert.alert('Success', 'Health reading saved successfully!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      Alert.alert('Success', SUCCESS_MESSAGES.READING_ADDED, [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (err: any) {
       console.error("Failed to save health reading:", err);
-      setFormError(err.response?.data?.detail || err.message || 'Failed to save reading.');
-      Alert.alert("Error", err.response?.data?.detail || err.message || 'Failed to save reading.');
+      const errorMessage = err.response?.data?.detail || err.message || ERROR_MESSAGES.HEALTH_READING_SAVE_ERROR;
+      setFormError(errorMessage);
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  const retryOperation = () => {
+    setCriticalError(null);
+    setFormError(null);
+    // Reset form to initial state if needed
+  };
+
+  // ✅ Render critical error state using standardized ErrorState component
+  if (criticalError) {
+    return (
+      <View style={styles.container}>
+        <Appbar.Header>
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+          <Appbar.Content title="Add Health Reading" />
+        </Appbar.Header>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+          <ErrorState
+            title="Unable to Load Health Reading Form"
+            message={criticalError}
+            onRetry={retryOperation}
+            retryLabel="Try Again"
+            icon="pulse-outline"
+          />
+        </View>
+      </View>
+    );
+  }
   
   return (
     <View style={styles.container}>

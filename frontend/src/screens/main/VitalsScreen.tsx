@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,57 +11,15 @@ import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
+import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import { HealthReadingResponse, HealthReadingType } from '../../types/api';
 import { healthReadingsServices } from '../../api/services';
 import { useTheme } from '../../theme';
+import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-
-const initialMockHealthReadings: HealthReadingResponse[] = [
-  {
-    health_reading_id: '1',
-    user_id: 'mock-user-1',
-    reading_type: HealthReadingType.BLOOD_PRESSURE,
-    systolic_value: 120,
-    diastolic_value: 80,
-    unit: 'mmHg',
-    reading_date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    health_reading_id: '2',
-    user_id: 'mock-user-1',
-    reading_type: HealthReadingType.GLUCOSE,
-    numeric_value: 95,
-    unit: 'mg/dL',
-    reading_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    notes: 'Fasting',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    health_reading_id: '3',
-    user_id: 'mock-user-1',
-    reading_type: HealthReadingType.HEART_RATE,
-    numeric_value: 72,
-    unit: 'bpm',
-    reading_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    health_reading_id: '4',
-    user_id: 'mock-user-1',
-    reading_type: HealthReadingType.STEPS,
-    numeric_value: 3450,
-    unit: 'steps',
-    reading_date: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
 
 type VitalsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Vitals'>;
 
@@ -71,10 +29,58 @@ const VitalsScreen = () => {
 
   const [displayedReadings, setDisplayedReadings] = useState<HealthReadingResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [usingDummyData, setUsingDummyData] = useState(false);
 
-  const loadHealthReadingsFromApi = async () => {
+  // ✅ Memoized dummy data - only created once
+  const initialMockHealthReadings = useMemo<HealthReadingResponse[]>(() => [
+    {
+      health_reading_id: '1',
+      user_id: 'mock-user-1',
+      reading_type: HealthReadingType.BLOOD_PRESSURE,
+      systolic_value: 120,
+      diastolic_value: 80,
+      unit: 'mmHg',
+      reading_date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      health_reading_id: '2',
+      user_id: 'mock-user-1',
+      reading_type: HealthReadingType.GLUCOSE,
+      numeric_value: 95,
+      unit: 'mg/dL',
+      reading_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      notes: 'Fasting',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      health_reading_id: '3',
+      user_id: 'mock-user-1',
+      reading_type: HealthReadingType.HEART_RATE,
+      numeric_value: 72,
+      unit: 'bpm',
+      reading_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      health_reading_id: '4',
+      user_id: 'mock-user-1',
+      reading_type: HealthReadingType.STEPS,
+      numeric_value: 3450,
+      unit: 'steps',
+      reading_date: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ], []);
+
+  const loadHealthReadingsFromApi = useCallback(async () => {
     setLoading(true);
+    setError(null);
     setUsingDummyData(false);
     
     try {
@@ -94,16 +100,18 @@ const VitalsScreen = () => {
       console.log('API call failed, falling back to dummy data:', err.message);
       setDisplayedReadings(initialMockHealthReadings);
       setUsingDummyData(true);
+      setError(null); // Clear error since we're showing dummy data
     } finally {
       setLoading(false);
     }
-  };
+  }, [initialMockHealthReadings]);
 
   useEffect(() => {
     loadHealthReadingsFromApi();
-  }, []);
+  }, [loadHealthReadingsFromApi]);
 
-  const getVitalIcon = (type: HealthReadingType, color: string) => {
+  // ✅ Memoized utility functions
+  const getVitalIcon = useCallback((type: HealthReadingType, color: string) => {
     switch (type) {
       case HealthReadingType.BLOOD_PRESSURE: return <ActivitySquare size={20} color={color} />;
       case HealthReadingType.HEART_RATE: return <Heart size={20} color={color} />;
@@ -112,9 +120,9 @@ const VitalsScreen = () => {
       case HealthReadingType.TEMPERATURE: return <Thermometer size={20} color={color} />;
       default: return <Activity size={20} color={color} />;
     }
-  };
+  }, []);
 
-  const formatReadingValue = (reading: HealthReadingResponse): string => {
+  const formatReadingValue = useCallback((reading: HealthReadingResponse): string => {
     switch (reading.reading_type) {
       case HealthReadingType.BLOOD_PRESSURE:
         return `${reading.systolic_value || 'N/A'}/${reading.diastolic_value || 'N/A'} ${reading.unit || ''}`;
@@ -136,7 +144,7 @@ const VitalsScreen = () => {
       default:
         return 'N/A';
     }
-  };
+  }, []);
 
   const renderVitalItem: ListRenderItem<HealthReadingResponse> = ({ item }) => {
     const iconColor = colors.primary;
@@ -168,22 +176,43 @@ const VitalsScreen = () => {
   };
 
   let mainContent;
-  if (loading && usingDummyData) {
-    mainContent = (
-        <StyledView className="flex-1 items-center justify-center">
-            <PaperActivityIndicator animating={true} size="large" />
-            <StyledText variant="body1" color="textSecondary" tw="mt-2">Loading vitals...</StyledText>
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <StyledView className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <StyledText 
+            variant="body1" 
+            tw="mt-4 text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            {LOADING_MESSAGES.GENERIC_LOADING}
+          </StyledText>
         </StyledView>
+      </ScreenContainer>
     );
-  } else if (displayedReadings.length === 0) {
-    mainContent = (
-        <StyledView className="flex-1 items-center justify-center">
-            <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
-            <StyledText variant="h4" color="textMuted" tw="mt-4">No Vitals Recorded</StyledText>
-            <StyledText color="textMuted" tw="text-center mt-1 mx-8">
-                Tap 'Add New Vital Reading' to get started.
-            </StyledText>
-        </StyledView>
+  } else if (error && !usingDummyData) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          title="Unable to Load Vitals"
+          message={ERROR_MESSAGES.API_ERROR}
+          onRetry={loadHealthReadingsFromApi}
+          retryLabel="Try Again"
+        />
+      </ScreenContainer>
+    );
+  } else if (displayedReadings.length === 0 && !usingDummyData) {
+    return (
+      <ScreenContainer>
+        <EmptyState
+          icon="pulse-outline"
+          title={EMPTY_STATE_MESSAGES.NO_HEALTH_READINGS.title}
+          description={EMPTY_STATE_MESSAGES.NO_HEALTH_READINGS.description}
+          actionLabel={EMPTY_STATE_MESSAGES.NO_HEALTH_READINGS.actionLabel}
+          onAction={() => navigation.navigate('AddHealthReading')}
+        />
+      </ScreenContainer>
     );
   } else {
     mainContent = (

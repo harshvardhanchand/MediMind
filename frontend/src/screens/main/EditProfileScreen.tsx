@@ -10,9 +10,11 @@ import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import Card from '../../components/common/Card';
+import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { userServices } from '../../api/services';
 import { MedicalCondition, UserProfileUpdate, UserResponse } from '../../types/api';
+import { ERROR_MESSAGES, LOADING_MESSAGES, SUCCESS_MESSAGES } from '../../constants/messages';
 
 const StyledScrollView = styled(ScrollView);
 const StyledView = styled(View);
@@ -50,6 +52,7 @@ const EditProfileScreen = () => {
   
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showConditionModal, setShowConditionModal] = useState(false);
   const [editingConditionIndex, setEditingConditionIndex] = useState<number | null>(null);
@@ -66,6 +69,7 @@ const EditProfileScreen = () => {
     // Load user profile data directly from API
     const fetchUserProfile = async () => {
       try {
+        setError(null);
         const response = await userServices.getMe();
         const userData: UserResponse = response.data;
         
@@ -79,9 +83,9 @@ const EditProfileScreen = () => {
           medicalConditions: userData.medical_conditions || [],
           createdAt: userData.created_at || null,
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching user profile:', error);
-        Alert.alert('Error', 'Failed to load profile data. Please try again.');
+        setError(error.response?.data?.detail || error.message || ERROR_MESSAGES.PROFILE_LOAD_ERROR);
       } finally {
         setInitialLoading(false);
       }
@@ -105,15 +109,46 @@ const EditProfileScreen = () => {
 
       await userServices.updateProfile(updateData);
       
-      Alert.alert('Success', 'Profile updated successfully!', [
+      Alert.alert('Success', SUCCESS_MESSAGES.PROFILE_UPDATED, [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      Alert.alert('Error', error.response?.data?.detail || error.message || 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryLoadProfile = () => {
+    setInitialLoading(true);
+    setError(null);
+    // Re-trigger the useEffect by forcing a re-render
+    const fetchUserProfile = async () => {
+      try {
+        setError(null);
+        const response = await userServices.getMe();
+        const userData: UserResponse = response.data;
+        
+        setProfile({
+          name: userData.name || '',
+          email: userData.email || '',
+          dateOfBirth: userData.date_of_birth ? new Date(userData.date_of_birth) : null,
+          weight: userData.weight ? userData.weight.toString() : '',
+          height: userData.height ? userData.height.toString() : '',
+          gender: userData.gender || '',
+          medicalConditions: userData.medical_conditions || [],
+          createdAt: userData.created_at || null,
+        });
+      } catch (error: any) {
+        console.error('Error fetching user profile:', error);
+        setError(error.response?.data?.detail || error.message || ERROR_MESSAGES.PROFILE_LOAD_ERROR);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchUserProfile();
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -215,268 +250,294 @@ const EditProfileScreen = () => {
     }
   };
 
+  // ✅ Render loading state
+  if (initialLoading) {
+    return (
+      <ScreenContainer>
+        <StyledView className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <StyledText 
+            variant="body1" 
+            tw="mt-4 text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            {LOADING_MESSAGES.LOADING_PROFILE}
+          </StyledText>
+        </StyledView>
+      </ScreenContainer>
+    );
+  }
+
+  // ✅ Render error state using standardized ErrorState component
+  if (error) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          title="Unable to Load Profile"
+          message={error}
+          onRetry={retryLoadProfile}
+          retryLabel="Try Again"
+          icon="person-circle-outline"
+        />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer scrollable={false} withPadding={false}>
-      {initialLoading ? (
-        <StyledView className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={colors.primary} />
-          <StyledText tw="mt-4 text-gray-600">Loading profile...</StyledText>
+      <StyledScrollView className="flex-1 bg-gray-50">
+        {/* Header */}
+        <StyledView className="flex-row items-center px-4 pt-12 pb-6 bg-white">
+          <StyledTouchableOpacity 
+            onPress={() => navigation.goBack()}
+            className="mr-4"
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </StyledTouchableOpacity>
+          <StyledText variant="h1" tw="font-bold text-xl flex-1">
+            Edit Profile
+          </StyledText>
+          <StyledTouchableOpacity 
+            onPress={handleSave}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 rounded-lg"
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <StyledText tw="text-white font-semibold">Save</StyledText>
+            )}
+          </StyledTouchableOpacity>
         </StyledView>
-      ) : (
-        <StyledScrollView className="flex-1 bg-gray-50">
-          {/* Header */}
-          <StyledView className="flex-row items-center px-4 pt-12 pb-6 bg-white">
-            <StyledTouchableOpacity 
-              onPress={() => navigation.goBack()}
-              className="mr-4"
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-            </StyledTouchableOpacity>
-            <StyledText variant="h1" tw="font-bold text-xl flex-1">
-              Edit Profile
-            </StyledText>
-            <StyledTouchableOpacity 
-              onPress={handleSave}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-500 rounded-lg"
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <StyledText tw="text-white font-semibold">Save</StyledText>
-              )}
-            </StyledTouchableOpacity>
-          </StyledView>
 
-          {/* Profile Form */}
-          <StyledView className="mt-6 mx-4">
-            <Card>
-              <StyledView className="p-4 space-y-4">
-                {/* Name */}
-                <StyledView>
-                  <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
-                    Full Name
-                  </StyledText>
-                  <StyledTextInput
-                    value={profile.name}
-                    onChangeText={(text) => setProfile(prev => ({ ...prev, name: text }))}
-                    placeholder="Enter your full name"
-                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
-                    style={{ color: colors.textPrimary }}
-                  />
-                </StyledView>
-
-                {/* Email (Read-only) */}
-                <StyledView>
-                  <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
-                    Email
-                  </StyledText>
-                  <StyledTextInput
-                    value={profile.email}
-                    editable={false}
-                    className="border border-gray-300 rounded-lg px-3 py-3 bg-gray-100"
-                    style={{ color: colors.textSecondary }}
-                  />
-                  <StyledText variant="caption" tw="text-gray-500 mt-1">
-                    Email cannot be changed
-                  </StyledText>
-                </StyledView>
-
-                {/* Date of Birth */}
-                <StyledView>
-                  <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
-                    Date of Birth
-                  </StyledText>
-                  <StyledTouchableOpacity
-                    onPress={() => setShowDatePicker(true)}
-                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
-                  >
-                    <StyledText style={{ color: profile.dateOfBirth ? colors.textPrimary : colors.textSecondary }}>
-                      {formatDate(profile.dateOfBirth)}
-                    </StyledText>
-                    <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
-                  </StyledTouchableOpacity>
-                  {profile.dateOfBirth && (
-                    <StyledText variant="caption" tw="text-gray-500 mt-1">
-                      Age: {calculateAge(profile.dateOfBirth)} years
-                    </StyledText>
-                  )}
-                </StyledView>
-
-                {/* Weight */}
-                <StyledView>
-                  <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
-                    Weight (kg)
-                  </StyledText>
-                  <StyledTextInput
-                    value={profile.weight}
-                    onChangeText={(text) => setProfile(prev => ({ ...prev, weight: text }))}
-                    placeholder="Enter weight in kg"
-                    keyboardType="numeric"
-                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
-                    style={{ color: colors.textPrimary }}
-                  />
-                </StyledView>
-
-                {/* Height */}
-                <StyledView>
-                  <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
-                    Height (cm)
-                  </StyledText>
-                  <StyledTextInput
-                    value={profile.height}
-                    onChangeText={(text) => setProfile(prev => ({ ...prev, height: text }))}
-                    placeholder="Enter height in cm"
-                    keyboardType="numeric"
-                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
-                    style={{ color: colors.textPrimary }}
-                  />
-                </StyledView>
-
-                {/* Gender */}
-                <StyledView>
-                  <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
-                    Gender
-                  </StyledText>
-                  <StyledView className="flex-row space-x-2">
-                    {['male', 'female', 'other'].map((genderOption) => (
-                      <StyledTouchableOpacity
-                        key={genderOption}
-                        onPress={() => setProfile(prev => ({ ...prev, gender: genderOption as any }))}
-                        className={`flex-1 py-3 px-4 rounded-lg border ${
-                          profile.gender === genderOption 
-                            ? 'bg-blue-500 border-blue-500' 
-                            : 'bg-white border-gray-300'
-                        }`}
-                      >
-                        <StyledText 
-                          tw={`text-center font-medium capitalize ${
-                            profile.gender === genderOption ? 'text-white' : 'text-gray-700'
-                          }`}
-                        >
-                          {genderOption}
-                        </StyledText>
-                      </StyledTouchableOpacity>
-                    ))}
-                  </StyledView>
-                </StyledView>
+        {/* Profile Form */}
+        <StyledView className="mt-6 mx-4">
+          <Card>
+            <StyledView className="p-4 space-y-4">
+              {/* Name */}
+              <StyledView>
+                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                  Full Name
+                </StyledText>
+                <StyledTextInput
+                  value={profile.name}
+                  onChangeText={(text) => setProfile(prev => ({ ...prev, name: text }))}
+                  placeholder="Enter your full name"
+                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
+                  style={{ color: colors.textPrimary }}
+                />
               </StyledView>
-            </Card>
-          </StyledView>
 
-          {/* Medical Conditions */}
-          <StyledView className="mt-6 mx-4">
-            <Card>
-              <StyledView className="p-4">
-                <StyledView className="flex-row items-center justify-between mb-4">
-                  <StyledText variant="body2" tw="font-semibold text-gray-700">
-                    Medical Conditions
+              {/* Email (Read-only) */}
+              <StyledView>
+                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                  Email
+                </StyledText>
+                <StyledTextInput
+                  value={profile.email}
+                  editable={false}
+                  className="border border-gray-300 rounded-lg px-3 py-3 bg-gray-100"
+                  style={{ color: colors.textSecondary }}
+                />
+                <StyledText variant="caption" tw="text-gray-500 mt-1">
+                  Email cannot be changed
+                </StyledText>
+              </StyledView>
+
+              {/* Date of Birth */}
+              <StyledView>
+                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                  Date of Birth
+                </StyledText>
+                <StyledTouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
+                >
+                  <StyledText style={{ color: profile.dateOfBirth ? colors.textPrimary : colors.textSecondary }}>
+                    {formatDate(profile.dateOfBirth)}
                   </StyledText>
-                  <StyledTouchableOpacity
-                    onPress={handleAddCondition}
-                    className="bg-blue-500 px-3 py-2 rounded-lg flex-row items-center"
-                  >
-                    <Ionicons name="add" size={16} color="white" />
-                    <StyledText tw="text-white font-medium ml-1">Add</StyledText>
-                  </StyledTouchableOpacity>
-                </StyledView>
-
-                {profile.medicalConditions.length === 0 ? (
-                  <StyledView className="py-8 items-center">
-                    <Ionicons name="medical-outline" size={48} color={colors.textSecondary} />
-                    <StyledText tw="text-gray-500 mt-2 text-center">
-                      No medical conditions added yet
-                    </StyledText>
-                    <StyledText tw="text-gray-400 text-sm mt-1 text-center">
-                      Tap "Add" to include your medical conditions
-                    </StyledText>
-                  </StyledView>
-                ) : (
-                  <StyledView className="space-y-3">
-                    {profile.medicalConditions.map((condition, index) => (
-                      <StyledView key={index} className="bg-gray-50 rounded-lg p-3">
-                        <StyledView className="flex-row items-start justify-between">
-                          <StyledView className="flex-1">
-                            <StyledText tw="font-semibold text-gray-900 mb-1">
-                              {condition.condition_name}
-                            </StyledText>
-                            
-                            <StyledView className="flex-row items-center space-x-2 mb-2">
-                              <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
-                                <StyledText tw="text-xs font-medium capitalize">
-                                  {condition.status || 'active'}
-                                </StyledText>
-                              </StyledView>
-                              {condition.severity && (
-                                <StyledView className={`px-2 py-1 rounded-full ${getSeverityColor(condition.severity)}`}>
-                                  <StyledText tw="text-xs font-medium capitalize">
-                                    {condition.severity}
-                                  </StyledText>
-                                </StyledView>
-                              )}
-                            </StyledView>
-
-                            {condition.diagnosed_date && (
-                              <StyledText tw="text-sm text-gray-600 mb-1">
-                                Diagnosed: {new Date(condition.diagnosed_date).toLocaleDateString()}
-                              </StyledText>
-                            )}
-                            
-                            {condition.diagnosing_doctor && (
-                              <StyledText tw="text-sm text-gray-600 mb-1">
-                                Doctor: {condition.diagnosing_doctor}
-                              </StyledText>
-                            )}
-                            
-                            {condition.notes && (
-                              <StyledText tw="text-sm text-gray-600 italic">
-                                {condition.notes}
-                              </StyledText>
-                            )}
-                          </StyledView>
-
-                          <StyledView className="flex-row items-center space-x-2 ml-3">
-                            <StyledTouchableOpacity
-                              onPress={() => handleEditCondition(index)}
-                              className="p-2"
-                            >
-                              <Ionicons name="pencil" size={16} color={colors.textSecondary} />
-                            </StyledTouchableOpacity>
-                            <StyledTouchableOpacity
-                              onPress={() => handleDeleteCondition(index)}
-                              className="p-2"
-                            >
-                              <Ionicons name="trash" size={16} color="#ef4444" />
-                            </StyledTouchableOpacity>
-                          </StyledView>
-                        </StyledView>
-                      </StyledView>
-                    ))}
-                  </StyledView>
+                  <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+                </StyledTouchableOpacity>
+                {profile.dateOfBirth && (
+                  <StyledText variant="caption" tw="text-gray-500 mt-1">
+                    Age: {calculateAge(profile.dateOfBirth)} years
+                  </StyledText>
                 )}
               </StyledView>
-            </Card>
-          </StyledView>
 
-          {/* Member Since */}
-          <StyledView className="mt-6 mx-4 mb-6">
-            <Card>
-              <StyledView className="p-4">
+              {/* Weight */}
+              <StyledView>
                 <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
-                  Member Since
+                  Weight (kg)
                 </StyledText>
-                <StyledText variant="body1" tw="text-gray-600">
-                  {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'Unknown'}
-                </StyledText>
+                <StyledTextInput
+                  value={profile.weight}
+                  onChangeText={(text) => setProfile(prev => ({ ...prev, weight: text }))}
+                  placeholder="Enter weight in kg"
+                  keyboardType="numeric"
+                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
+                  style={{ color: colors.textPrimary }}
+                />
               </StyledView>
-            </Card>
-          </StyledView>
-        </StyledScrollView>
-      )}
+
+              {/* Height */}
+              <StyledView>
+                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                  Height (cm)
+                </StyledText>
+                <StyledTextInput
+                  value={profile.height}
+                  onChangeText={(text) => setProfile(prev => ({ ...prev, height: text }))}
+                  placeholder="Enter height in cm"
+                  keyboardType="numeric"
+                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
+                  style={{ color: colors.textPrimary }}
+                />
+              </StyledView>
+
+              {/* Gender */}
+              <StyledView>
+                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                  Gender
+                </StyledText>
+                <StyledView className="flex-row space-x-2">
+                  {['male', 'female', 'other'].map((genderOption) => (
+                    <StyledTouchableOpacity
+                      key={genderOption}
+                      onPress={() => setProfile(prev => ({ ...prev, gender: genderOption as any }))}
+                      className={`flex-1 py-3 px-4 rounded-lg border ${
+                        profile.gender === genderOption 
+                          ? 'bg-blue-500 border-blue-500' 
+                          : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      <StyledText 
+                        tw={`text-center font-medium capitalize ${
+                          profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                        }`}
+                      >
+                        {genderOption}
+                      </StyledText>
+                    </StyledTouchableOpacity>
+                  ))}
+                </StyledView>
+              </StyledView>
+            </StyledView>
+          </Card>
+        </StyledView>
+
+        {/* Medical Conditions */}
+        <StyledView className="mt-6 mx-4">
+          <Card>
+            <StyledView className="p-4">
+              <StyledView className="flex-row items-center justify-between mb-4">
+                <StyledText variant="body2" tw="font-semibold text-gray-700">
+                  Medical Conditions
+                </StyledText>
+                <StyledTouchableOpacity
+                  onPress={handleAddCondition}
+                  className="bg-blue-500 px-3 py-2 rounded-lg flex-row items-center"
+                >
+                  <Ionicons name="add" size={16} color="white" />
+                  <StyledText tw="text-white font-medium ml-1">Add</StyledText>
+                </StyledTouchableOpacity>
+              </StyledView>
+
+              {profile.medicalConditions.length === 0 ? (
+                <StyledView className="py-8 items-center">
+                  <Ionicons name="medical-outline" size={48} color={colors.textSecondary} />
+                  <StyledText tw="text-gray-500 mt-2 text-center">
+                    No medical conditions added yet
+                  </StyledText>
+                  <StyledText tw="text-gray-400 text-sm mt-1 text-center">
+                    Tap "Add" to include your medical conditions
+                  </StyledText>
+                </StyledView>
+              ) : (
+                <StyledView className="space-y-3">
+                  {profile.medicalConditions.map((condition, index) => (
+                    <StyledView key={index} className="bg-gray-50 rounded-lg p-3">
+                      <StyledView className="flex-row items-start justify-between">
+                        <StyledView className="flex-1">
+                          <StyledText tw="font-semibold text-gray-900 mb-1">
+                            {condition.condition_name}
+                          </StyledText>
+                          
+                          <StyledView className="flex-row items-center space-x-2 mb-2">
+                            <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
+                              <StyledText tw="text-xs font-medium capitalize">
+                                {condition.status || 'active'}
+                              </StyledText>
+                            </StyledView>
+                            {condition.severity && (
+                              <StyledView className={`px-2 py-1 rounded-full ${getSeverityColor(condition.severity)}`}>
+                                <StyledText tw="text-xs font-medium capitalize">
+                                  {condition.severity}
+                                </StyledText>
+                              </StyledView>
+                            )}
+                          </StyledView>
+
+                          {condition.diagnosed_date && (
+                            <StyledText tw="text-sm text-gray-600 mb-1">
+                              Diagnosed: {new Date(condition.diagnosed_date).toLocaleDateString()}
+                            </StyledText>
+                          )}
+                          
+                          {condition.diagnosing_doctor && (
+                            <StyledText tw="text-sm text-gray-600 mb-1">
+                              Doctor: {condition.diagnosing_doctor}
+                            </StyledText>
+                          )}
+                          
+                          {condition.notes && (
+                            <StyledText tw="text-sm text-gray-600 italic">
+                              {condition.notes}
+                            </StyledText>
+                          )}
+                        </StyledView>
+
+                        <StyledView className="flex-row items-center space-x-2 ml-3">
+                          <StyledTouchableOpacity
+                            onPress={() => handleEditCondition(index)}
+                            className="p-2"
+                          >
+                            <Ionicons name="pencil" size={16} color={colors.textSecondary} />
+                          </StyledTouchableOpacity>
+                          <StyledTouchableOpacity
+                            onPress={() => handleDeleteCondition(index)}
+                            className="p-2"
+                          >
+                            <Ionicons name="trash" size={16} color="#ef4444" />
+                          </StyledTouchableOpacity>
+                        </StyledView>
+                      </StyledView>
+                    </StyledView>
+                  ))}
+                </StyledView>
+              )}
+            </StyledView>
+          </Card>
+        </StyledView>
+
+        {/* Member Since */}
+        <StyledView className="mt-6 mx-4 mb-6">
+          <Card>
+            <StyledView className="p-4">
+              <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                Member Since
+              </StyledText>
+              <StyledText variant="body1" tw="text-gray-600">
+                {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : 'Unknown'}
+              </StyledText>
+            </StyledView>
+          </Card>
+        </StyledView>
+      </StyledScrollView>
 
       {/* Date Picker Modal */}
       {showDatePicker && (

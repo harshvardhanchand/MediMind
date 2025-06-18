@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +11,8 @@ import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
+import ErrorState from '../../components/common/ErrorState';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -28,19 +30,55 @@ const AddSymptomScreen = () => {
   const theme = useTheme();
   const [newSymptomText, setNewSymptomText] = useState('');
   const [severity, setSeverity] = useState('3'); // Default severity
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [criticalError, setCriticalError] = useState<string | null>(null);
 
-  const handleSaveSymptom = () => {
-    if (newSymptomText.trim() === '') return;
-    // In a real app, you'd save this to your state management/API
-    // and then navigate back, possibly passing the new symptom or a flag to refresh.
-    console.log('Symptom to save:', { 
-      symptom: newSymptomText, 
-      severity: parseInt(severity)
-    });
-    // For now, just navigate back
-    if (navigation.canGoBack()) {
-        navigation.goBack();
+  const validateForm = () => {
+    setFormError(null);
+    if (!newSymptomText.trim()) {
+      setFormError(ERROR_MESSAGES.REQUIRED_FIELD);
+      return false;
     }
+    return true;
+  };
+
+  const handleSaveSymptom = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    setFormError(null);
+    setCriticalError(null);
+
+    try {
+      // In a real app, you'd save this to your state management/API
+      // For now, simulate API call with delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('Symptom to save:', { 
+        symptom: newSymptomText, 
+        severity: parseInt(severity)
+      });
+
+      Alert.alert('Success', 'Symptom logged successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (err: any) {
+      console.error('Failed to save symptom:', err);
+      const errorMessage = err.response?.data?.detail || err.message || ERROR_MESSAGES.SYMPTOM_SAVE_ERROR;
+      setFormError(errorMessage);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryOperation = () => {
+    setCriticalError(null);
+    setFormError(null);
+    // Reset form to initial state if needed
   };
 
   const getSeverityColor = (level: number, currentSeverity: string) => {
@@ -56,8 +94,29 @@ const AddSymptomScreen = () => {
     }
   };
 
+  // ✅ Render critical error state using standardized ErrorState component
+  if (criticalError) {
+    return (
+      <ScreenContainer scrollable withPadding backgroundColor={theme.colors.backgroundPrimary}>
+        <StyledView tw="flex-row items-center py-2 mb-6">
+          <StyledTouchableOpacity onPress={() => navigation.goBack()} tw="p-2">
+            <ArrowLeft size={24} color={theme.colors.textPrimary} />
+          </StyledTouchableOpacity>
+          <StyledText variant="h2" color="primary" tw="ml-2">Add New Symptom</StyledText>
+        </StyledView>
+        <ErrorState
+          title="Unable to Load Symptom Form"
+          message={criticalError}
+          onRetry={retryOperation}
+          retryLabel="Try Again"
+          icon="thermometer-outline"
+        />
+      </ScreenContainer>
+    );
+  }
+
   return (
-    <ScreenContainer scrollable withPadding backgroundColor={theme.colors.backgroundScreen}>
+    <ScreenContainer scrollable withPadding backgroundColor={theme.colors.backgroundPrimary}>
       {/* Header */}
       <StyledView tw="flex-row items-center py-2 mb-6">
         <StyledTouchableOpacity onPress={() => navigation.goBack()} tw="p-2">
@@ -67,6 +126,12 @@ const AddSymptomScreen = () => {
       </StyledView>
 
       <StyledView tw="bg-white p-5 rounded-lg shadow-sm mb-6" style={{ borderRadius: 12 }}>
+        {formError && (
+          <StyledView tw="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+            <StyledText tw="text-red-700 text-sm">{formError}</StyledText>
+          </StyledView>
+        )}
+
         <StyledInput 
           label="Symptom Description"
           placeholder="e.g., Sharp headache in the morning"
@@ -75,7 +140,8 @@ const AddSymptomScreen = () => {
           tw="mb-5"
           multiline
           numberOfLines={3}
-          style={{ backgroundColor: theme.colors.gray50, minHeight: 80, textAlignVertical: 'top' }}
+          inputStyle={{ backgroundColor: theme.colors.backgroundSecondary, minHeight: 80, textAlignVertical: 'top' }}
+          editable={!loading}
         />
         
         <StyledText variant="label" tw="mb-3 text-gray-700">Severity (1-5)</StyledText>
@@ -89,6 +155,7 @@ const AddSymptomScreen = () => {
                   : 'border-gray-200 bg-gray-100'
               }`}
               onPress={() => setSeverity(level.toString())}
+              disabled={loading}
             >
               <StyledText 
                 variant="h4" 
@@ -101,19 +168,19 @@ const AddSymptomScreen = () => {
         </StyledView>
         
         <StyledButton 
-          variant="primary" 
+          variant="filledPrimary" 
           onPress={handleSaveSymptom} 
           tw="w-full mb-2" 
-          labelStyle={{ fontSize: 16 }}
-          disabled={newSymptomText.trim() === ''}
+          disabled={loading || newSymptomText.trim() === ''}
+          loading={loading}
         >
-          Save Symptom
+          {loading ? 'Saving...' : 'Save Symptom'}
         </StyledButton>
         <StyledButton 
-          variant="ghost" 
+          variant="textPrimary" 
           onPress={() => navigation.goBack()} 
           tw="w-full" 
-          labelStyle={{ fontSize: 16 }}
+          disabled={loading}
         >
           Cancel
         </StyledButton>

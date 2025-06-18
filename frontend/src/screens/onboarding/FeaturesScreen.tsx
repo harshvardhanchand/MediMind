@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -68,12 +68,46 @@ const FeaturesScreen = () => {
       scrollViewRef.current?.scrollTo({ x: nextIndex * screenWidth, animated: true });
       setCurrentIndex(nextIndex);
     } else {
-      navigation.navigate('CreateProfile');
+      // Show simple medical disclaimer for MVP
+      Alert.alert(
+        'Important Medical Disclaimer',
+        'MediMind is NOT a medical device and does NOT provide medical advice. This app is for informational purposes only. Always consult healthcare professionals for medical decisions. Do not use for emergencies - call 911 instead.\n\nDo you accept these terms?',
+        [
+          {
+            text: 'I Do Not Accept',
+            style: 'cancel',
+            onPress: () => {
+              Alert.alert('Cannot Proceed', 'You must accept the medical disclaimer to use MediMind.');
+            }
+          },
+          {
+            text: 'I Accept',
+            onPress: () => navigation.navigate('CreateProfile')
+          }
+        ]
+      );
     }
   };
 
   const handleSkip = () => {
-    navigation.navigate('CreateProfile');
+    // Show same disclaimer for skip
+    Alert.alert(
+      'Important Medical Disclaimer',
+      'MediMind is NOT a medical device and does NOT provide medical advice. This app is for informational purposes only. Always consult healthcare professionals for medical decisions. Do not use for emergencies - call 911 instead.\n\nDo you accept these terms?',
+      [
+        {
+          text: 'I Do Not Accept',
+          style: 'cancel',
+          onPress: () => {
+            Alert.alert('Cannot Proceed', 'You must accept the medical disclaimer to use MediMind.');
+          }
+        },
+        {
+          text: 'I Accept',
+          onPress: () => navigation.navigate('CreateProfile')
+        }
+      ]
+    );
   };
 
   const renderFeature = (feature: Feature) => (
@@ -151,7 +185,7 @@ const FeaturesScreen = () => {
           >
             <StyledView className="flex-row items-center justify-center">
               <StyledText tw="text-white font-bold text-lg mr-2">
-                {currentIndex === features.length - 1 ? 'Create Profile' : 'Next'}
+                {currentIndex === features.length - 1 ? 'Continue' : 'Next'}
               </StyledText>
               <Ionicons name="arrow-forward" size={20} color="white" />
             </StyledView>
