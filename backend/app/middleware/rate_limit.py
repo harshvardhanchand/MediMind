@@ -1,9 +1,7 @@
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.requests import Request
-from fastapi import Response
 
-from app.core.config import settings
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)

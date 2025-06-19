@@ -23,8 +23,10 @@ pyjwt==2.8.0
 # Security
 slowapi==0.1.9
 
-# Logging
+# Logging and Monitoring
 google-cloud-logging==3.8.0
+structlog==23.2.0
+prometheus-client==0.19.0
 
 # Testing
 pytest==7.4.3
@@ -89,12 +91,6 @@ dynaconf==3.2.4
 # Rate limiting and security
 bcrypt==4.1.1
 
-# Monitoring and debugging (optional)
-prometheus-client==0.19.0
-
-# For structured logging
-structlog==23.2.0
-
 # For validation of URLs and other types
 pydantic[email]==2.5.0
 
@@ -106,14 +102,8 @@ python-magic==0.4.27
 pypdf2==3.0.1
 pillow==10.1.0
 
-# Email
-sendgrid==6.10.0
-
 # HTTP status codes
 httpx==0.25.2
 
 # aiohttp dependency for OpenFDA API calls
-aiohttp==3.9.1
-
-# Email
-sendgrid==6.10.0 
+aiohttp==3.9.1 
