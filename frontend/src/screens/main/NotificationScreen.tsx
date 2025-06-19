@@ -16,15 +16,10 @@ import {
   NotificationType, 
   NotificationSeverity 
 } from '../../types/api';
-import { ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
 import { crashReporting } from '../../services/crashReporting';
+import { FilterOption } from '../../types/interfaces';
 
 const StyledView = styled(View);
-
-interface FilterOption {
-  label: string;
-  value: string | null;
-}
 
 const NotificationScreen = () => {
   const { colors } = useTheme();

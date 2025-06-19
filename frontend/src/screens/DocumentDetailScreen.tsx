@@ -2,20 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Appbar, Card, Title, Paragraph, Divider, Chip, Button, ActivityIndicator, Text, List } from 'react-native-paper';
+import { Appbar, Card, Text, Divider, Chip, Button, ActivityIndicator, List } from 'react-native-paper';
 
 import { RootStackParamList } from '../navigation/types';
 import { documentServices, extractedDataServices } from '../api/services';
-import { DocumentRead, ExtractedDataResponse, ExtractionDetailsResponse, ProcessingStatus, ReviewStatus, DocumentType } from '../types/api';
+import { ExtractionDetailsResponse, ProcessingStatus } from '../types/api';
+import { MedicalEvent } from '../types/interfaces';
 
 type DocumentDetailRouteProp = RouteProp<RootStackParamList, 'DocumentDetail'>;
 type DocumentDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DocumentDetail'>;
-
-interface MedicalEvent {
-  event_type?: string;
-  description?: string;
-  [key: string]: any;
-}
 
 const DocumentDetailScreen = () => {
   const route = useRoute<DocumentDetailRouteProp>();
@@ -117,7 +112,7 @@ const DocumentDetailScreen = () => {
       return (
         <Card style={styles.card}>
           <Card.Content>
-            <Paragraph>No structured medical data extracted or available for review.</Paragraph>
+            <Text>No structured medical data extracted or available for review.</Text>
           </Card.Content>
         </Card>
       );
@@ -125,7 +120,7 @@ const DocumentDetailScreen = () => {
 
     return (
       <View style={styles.eventsContainer}>
-        <Title style={styles.sectionTitle}>Extracted Medical Data</Title>
+        <Text style={styles.sectionTitle}>Extracted Medical Data</Text>
         {details?.extracted_data?.review_status && (
             <Chip 
                 icon="information-outline" 
@@ -227,17 +222,17 @@ const DocumentDetailScreen = () => {
               </Text>
             </View>
             
-            <Paragraph style={{ fontStyle: 'italic', fontSize: 12, marginTop: 10}}>
+            <Text style={{ fontStyle: 'italic', fontSize: 12, marginTop: 10}}>
               Detailed metadata like specific document date, source, full tags, and file size may require fetching full document details if not included in this summary view.
-            </Paragraph>
+            </Text>
           </Card.Content>
         </Card>
         
         {extracted_data?.raw_text && (!extracted_data?.content?.medical_events || (extracted_data.content.medical_events as MedicalEvent[]).length === 0) && (
             <Card style={styles.card}>
                 <Card.Content>
-                    <Title style={styles.sectionTitle}>Raw Extracted Text</Title>
-                    <Paragraph selectable>{extracted_data.raw_text}</Paragraph>
+                    <Text style={styles.sectionTitle}>Raw Extracted Text</Text>
+                    <Text selectable>{extracted_data.raw_text}</Text>
                 </Card.Content>
             </Card>
         )}

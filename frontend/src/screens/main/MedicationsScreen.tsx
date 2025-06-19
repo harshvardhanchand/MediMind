@@ -3,30 +3,19 @@ import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } f
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pill, Calendar, Plus, AlertCircle, ChevronRight } from 'lucide-react-native';
+import { Pill,Plus,ChevronRight } from 'lucide-react-native';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import { medicationServices } from '../../api/services';
-import { MedicationResponse, MedicationStatus, MedicationFrequency } from '../../types/api';
+import { MedicationStatus, MedicationFrequency } from '../../types/api';
 import { useTheme } from '../../theme';
+import { MedicationEntry } from '../../types/interfaces';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-
-interface MedicationEntry {
-  id: string;
-  name: string;
-  dosage?: string;
-  frequency: string;
-  start_date?: string;
-  status: MedicationStatus;
-  reason?: string;
-  prescribing_doctor?: string;
-  created_at: string;
-}
 
 type MedicationsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Medications'>;
 

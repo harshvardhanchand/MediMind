@@ -1,25 +1,19 @@
-import React from 'react';
-import { ScrollView } from 'react-native';
+import React  from 'react';
+import {ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+
+import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
-import { MainAppStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';
+import { HealthCategory } from '../../types/interfaces';
 
 const StyledScrollView = styled(ScrollView);
-
-interface HealthCategory {
-  id: string;
-  label: string;
-  iconName: string;
-  navigateTo: keyof MainAppStackParamList;
-  description?: string;
-}
 
 const healthCategories: HealthCategory[] = [
   { id: 'meds', label: 'Medications', iconName: 'medkit-outline', navigateTo: 'MedicationsScreen', description: 'View prescribed and over-the-counter drugs' },

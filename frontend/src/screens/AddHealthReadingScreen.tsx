@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import {
-  Appbar, Button, TextInput, Title, Paragraph, HelperText, 
-  Card, Divider, Switch, Text, RadioButton, ActivityIndicator
+  Appbar, Button, TextInput, Text, HelperText, 
+  Card, RadioButton
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,7 +11,7 @@ import { RootStackParamList } from '../navigation/types';
 import { HealthReadingCreate, HealthReadingType } from '../types/api';
 import { healthReadingsServices } from '../api/services';
 import ErrorState from '../components/common/ErrorState';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES} from '../constants/messages';
 
 type AddHealthReadingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddHealthReading'>;
 
@@ -166,10 +166,10 @@ const AddHealthReadingScreen = () => {
       </Appbar.Header>
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Title style={styles.title}>Log New Health Reading</Title>
-        <Paragraph style={styles.subtitle}>
+        <Text style={styles.title}>Log New Health Reading</Text>
+        <Text style={styles.subtitle}>
           Select the type and enter your measurement.
-        </Paragraph>
+        </Text>
 
         {formError && <Text style={styles.formErrorText}>{formError}</Text>}
         

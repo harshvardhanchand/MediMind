@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
-import { Appbar, Button, Card, Title, Text, Paragraph, Chip, FAB, Divider, SegmentedButtons, TouchableRipple } from 'react-native-paper';
+import { Appbar, Button, Card, Text, Chip, FAB, Divider, TouchableRipple } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LineChart } from 'react-native-chart-kit';
@@ -8,26 +8,9 @@ import { LineChart } from 'react-native-chart-kit';
 import { MainAppStackParamList } from '../navigation/types';
 import { healthReadingsServices } from '../api/services';
 import { HealthReadingResponse } from '../types/api';
+import { ReadingType, ReadingData, ChartDataset } from '../types/interfaces';
 
 type HealthReadingsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'HealthReadings'>;
-
-type ReadingType = 'all' | 'bloodPressure' | 'bloodGlucose' | 'heartRate';
-
-interface ReadingData {
-  date: string;
-  bloodPressureSystolic?: number;
-  bloodPressureDiastolic?: number;
-  bloodGlucose?: number;
-  heartRate?: number;
-}
-
-// Define ChartDataset type to fix the TypeScript error
-interface ChartDataset {
-  data: number[];
-  color: () => string;
-  strokeWidth: number;
-  label: string;
-}
 
 // Dummy health reading data for fallback
 const dummyReadings: ReadingData[] = [
@@ -296,7 +279,7 @@ const HealthReadingsScreen = () => {
       </Appbar.Header>
       
       <View style={styles.headerContainer}>
-        <Title style={styles.headerTitle}>Health Readings</Title>
+        <Text style={styles.headerTitle}>Health Readings</Text>
         <Text style={styles.headerSubtitle}>Track and monitor your health metrics</Text>
         
         {usingDummyData && (
@@ -344,7 +327,7 @@ const HealthReadingsScreen = () => {
       <Card style={styles.card}>
         <Card.Content>
           <View style={styles.cardHeader}>
-            <Title style={styles.cardTitle}>Health Readings Overview</Title>
+            <Text style={styles.cardTitle}>Health Readings Overview</Text>
             <View style={styles.viewToggleContainer}>
               <TouchableRipple onPress={() => setViewMode('table')} style={viewMode === 'table' ? styles.activeViewToggle : styles.viewToggle}>
                 <Text style={viewMode === 'table' ? styles.activeViewToggleText : styles.viewToggleText}>Table View</Text>
@@ -354,7 +337,7 @@ const HealthReadingsScreen = () => {
               </TouchableRipple>
             </View>
           </View>
-          <Paragraph style={styles.cardSubtitle}>View and analyze your health metrics</Paragraph>
+          <Text style={styles.cardSubtitle}>View and analyze your health metrics</Text>
           <Divider style={styles.divider} />
           
           {viewMode === 'chart' ? renderChartView() : renderTableView()}

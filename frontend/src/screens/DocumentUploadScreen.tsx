@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import {
   Appbar, Button, Text, RadioButton, Snackbar, 
-  ProgressBar, Title, Card 
+  ProgressBar, Card 
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,7 +11,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import { RootStackParamList } from '../navigation/types';
 import { MAX_FILE_SIZE, SUPPORTED_FILE_TYPES, DOCUMENT_TYPES } from '../config';
 import { documentServices } from '../api/services';
-import { DocumentType as DocumentTypeEnum } from '../types/api';
 import ErrorState from '../components/common/ErrorState';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
 
@@ -188,7 +187,7 @@ const DocumentUploadScreen = () => {
       </Appbar.Header>
       
       <ScrollView contentContainerStyle={styles.content}>
-        <Title style={styles.title}>Add Medical Document</Title>
+        <Text variant="headlineSmall" style={styles.title}>Add Medical Document</Text>
         
         <Card style={styles.filePickerCard}>
           <Card.Content>

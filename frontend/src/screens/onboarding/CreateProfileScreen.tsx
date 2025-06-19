@@ -13,6 +13,7 @@ import Card from '../../components/common/Card';
 import { useTheme } from '../../theme';
 import { userServices } from '../../api/services';
 import { MedicalCondition, UserProfileUpdate } from '../../types/api';
+import { UserProfile } from '../../types/interfaces';
 
 const StyledScrollView = styled(ScrollView);
 const StyledView = styled(View);
@@ -21,15 +22,6 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledModal = styled(Modal);
 
 type CreateProfileScreenNavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'CreateProfile'>;
-
-interface UserProfile {
-  name: string;
-  dateOfBirth: Date | null;
-  weight: string;
-  height: string;
-  gender: 'male' | 'female' | 'other' | '';
-  medicalConditions: MedicalCondition[];
-}
 
 const CreateProfileScreen = () => {
   const navigation = useNavigation<CreateProfileScreenNavigationProp>();

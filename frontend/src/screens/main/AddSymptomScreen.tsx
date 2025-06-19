@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,7 +12,7 @@ import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
 import ErrorState from '../../components/common/ErrorState';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
+import { ERROR_MESSAGES} from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);

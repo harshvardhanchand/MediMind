@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, ScrollView } from 'react-native';
-import { Appbar, FAB, Card, Title, Paragraph, Divider, Chip, Button, ActivityIndicator, Text, IconButton } from 'react-native-paper';
+import { Appbar, FAB, Card, Text, Divider, Chip, Button, ActivityIndicator, IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { MainAppStackParamList } from '../navigation/types';
 import { supabaseClient } from '../services/supabase'; // Keep for logout
 import { documentServices } from '../api/services';
-import { DocumentRead } from '../types/api'; // Import DocumentRead
-
-// Import mock data as fallback
+import { Document } from '../types/interfaces';
 import { mockDocuments } from '../data/mockData'; // Keep mockDocuments for fallback logic
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Home'>;
-
-// Document type definition based on API response
-interface Document extends DocumentRead {} // Use DocumentRead from api.ts
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -68,18 +63,18 @@ const HomeScreen = () => {
   const renderFeatureCards = () => {
     return (
       <ScrollView contentContainerStyle={styles.featureCardsContainer}>
-        <Title style={styles.sectionTitle}>Medical Data Hub</Title>
-        <Paragraph style={styles.sectionSubtitle}>
+        <Text style={styles.sectionTitle}>Medical Data Hub</Text>
+        <Text style={styles.sectionSubtitle}>
           Manage your health data in one secure place
-        </Paragraph>
+        </Text>
 
         <View style={styles.cardsRow}>
           {/* Documents Card */}
           <Card style={styles.featureCard} onPress={() => onRefresh()}>
             <Card.Content>
               <IconButton icon="file-document" size={32} style={styles.featureIcon} />
-              <Title style={styles.featureTitle}>Documents</Title>
-              <Paragraph>View and manage your medical documents</Paragraph>
+              <Text style={styles.featureTitle}>Documents</Text>
+              <Text>View and manage your medical documents</Text>
             </Card.Content>
           </Card>
 
@@ -87,8 +82,8 @@ const HomeScreen = () => {
           <Card style={styles.featureCard} onPress={() => navigation.navigate('Medications')}>
             <Card.Content>
               <IconButton icon="pill" size={32} style={styles.featureIcon} />
-              <Title style={styles.featureTitle}>Medications</Title>
-              <Paragraph>Track your medications and schedule</Paragraph>
+              <Text style={styles.featureTitle}>Medications</Text>
+              <Text>Track your medications and schedule</Text>
             </Card.Content>
           </Card>
         </View>
@@ -98,8 +93,8 @@ const HomeScreen = () => {
           <Card style={styles.featureCard} onPress={() => navigation.navigate('HealthReadings')}>
             <Card.Content>
               <IconButton icon="heart-pulse" size={32} style={styles.featureIcon} />
-              <Title style={styles.featureTitle}>Health Readings</Title>
-              <Paragraph>Monitor your health metrics</Paragraph>
+              <Text style={styles.featureTitle}>Health Readings</Text>
+              <Text>Monitor your health metrics</Text>
             </Card.Content>
           </Card>
 
@@ -107,8 +102,8 @@ const HomeScreen = () => {
           <Card style={styles.featureCard} onPress={() => navigation.navigate('Query')}>
             <Card.Content>
               <IconButton icon="chat-question" size={32} style={styles.featureIcon} />
-              <Title style={styles.featureTitle}>AI Assistant</Title>
-              <Paragraph>Ask questions about your health data</Paragraph>
+              <Text style={styles.featureTitle}>AI Assistant</Text>
+              <Text>Ask questions about your health data</Text>
             </Card.Content>
           </Card>
         </View>
@@ -135,10 +130,10 @@ const HomeScreen = () => {
     return (
       <Card style={styles.card} onPress={() => navigation.navigate('DocumentDetail', { documentId: item.document_id })}>
         <Card.Content>
-          <Title style={styles.cardTitle}>{item.original_filename}</Title>
+          <Text style={styles.cardTitle}>{item.original_filename}</Text>
           
           <View style={styles.cardMetaRow}>
-            <Paragraph>Uploaded: {formattedDate}</Paragraph>
+            <Text>Uploaded: {formattedDate}</Text>
             <Chip 
               style={[styles.statusChip, { backgroundColor: getStatusColor(item.processing_status) + '20' }]}
               textStyle={{ color: getStatusColor(item.processing_status) }}
@@ -154,9 +149,9 @@ const HomeScreen = () => {
           )}
           
           {item.source_name && (
-            <Paragraph style={styles.sourceText}>
+            <Text style={styles.sourceText}>
               Source: {item.source_name}
-            </Paragraph>
+            </Text>
           )}
           
           {item.tags && item.tags.length > 0 && (
@@ -204,7 +199,7 @@ const HomeScreen = () => {
             <>
               {renderFeatureCards()}
               <Divider style={styles.divider} />
-              <Title style={styles.recentTitle}>Recent Documents</Title>
+              <Text style={styles.recentTitle}>Recent Documents</Text>
               <FlatList
                 data={documents.slice(0, 3)} // Show only the 3 most recent documents
                 renderItem={renderDocumentCard}

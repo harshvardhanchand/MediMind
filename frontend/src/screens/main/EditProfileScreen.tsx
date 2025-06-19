@@ -15,6 +15,7 @@ import { useTheme } from '../../theme';
 import { userServices } from '../../api/services';
 import { MedicalCondition, UserProfileUpdate, UserResponse } from '../../types/api';
 import { ERROR_MESSAGES, LOADING_MESSAGES, SUCCESS_MESSAGES } from '../../constants/messages';
+import { UserProfile } from '../../types/interfaces';
 
 const StyledScrollView = styled(ScrollView);
 const StyledView = styled(View);
@@ -23,17 +24,6 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledModal = styled(Modal);
 
 type EditProfileScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'EditProfile'>;
-
-interface UserProfile {
-  name: string;
-  email: string;
-  dateOfBirth: Date | null;
-  weight: string;
-  height: string;
-  gender: 'male' | 'female' | 'other' | '';
-  medicalConditions: MedicalCondition[];
-  createdAt: string | null;
-}
 
 const EditProfileScreen = () => {
   const navigation = useNavigation<EditProfileScreenNavigationProp>();

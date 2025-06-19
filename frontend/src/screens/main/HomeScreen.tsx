@@ -14,8 +14,6 @@ import { useTheme } from '../../theme';
 import { documentServices, medicationServices, healthReadingsServices } from '../../api/services';
 import { DocumentRead, MedicationResponse, HealthReadingResponse } from '../../types/api';
 import { useNotifications } from '../../context/NotificationContext';
-import { useAuth } from '../../context/AuthContext';
-import { analytics } from '../../services/analytics';
 import CrashTestButton from '../../components/debug/CrashTestButton';
 
 const StyledView = styled(View);

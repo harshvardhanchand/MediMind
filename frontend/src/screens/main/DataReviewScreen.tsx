@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, TouchableOpacity, Alert, Platform, RefreshControl, ActivityIndicator } from 'react-native';
+import { ScrollView, View, TouchableOpacity, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,45 +14,16 @@ import Card from '../../components/common/Card';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
-import { DocumentRead, ExtractedDataResponse, ReviewStatus } from '../../types/api';
+import {ExtractedDataResponse } from '../../types/api';
 import { documentServices, extractedDataServices } from '../../api/services';
-import { ERROR_MESSAGES, LOADING_MESSAGES, EMPTY_STATE_MESSAGES } from '../../constants/messages';
-
-// Interface for form field structure
-interface ExtractedField {
-  label: string;
-  value: string | number | null;
-  unit?: string;
-}
-
-interface MedicationContent {
-    name: ExtractedField;
-    dosage: ExtractedField;
-    frequency: ExtractedField;
-}
-
-interface FormattedExtractedContent {
-  lab_results?: ExtractedField[];
-  medications?: MedicationContent[];
-  notes?: string;
-}
-
-interface ReviewDocument {
-  id: string;
-  name: string;
-  type: string;
-  extractedContent: FormattedExtractedContent | null;
-}
-
-// Add interface for tracking changes
-interface ChangedField {
-  section: 'medications' | 'lab_results' | 'notes';
-  index?: number;
-  field: string;
-  oldValue: any;
-  newValue: any;
-  context?: string; // Surrounding text for AI context
-}
+import {  LOADING_MESSAGES} from '../../constants/messages';
+import { 
+  ExtractedField, 
+  MedicationContent, 
+  FormattedExtractedContent, 
+  ReviewDocument, 
+  ChangedField 
+} from '../../types/interfaces';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);

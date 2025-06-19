@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { Appbar, TextInput, Button, ActivityIndicator, Text, Chip, Card, Title, Paragraph, Divider } from 'react-native-paper';
+import { Appbar, TextInput, Button, ActivityIndicator, Text, Chip, Card, Divider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
 import { API_URL } from '../config';
 import ErrorState from '../components/common/ErrorState';
-import { ERROR_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
 import { crashReporting } from '../services/crashReporting';
 
 // Example query suggestions
@@ -119,7 +118,7 @@ const QueryScreen = () => {
     return (
       <Card style={styles.filtersCard}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>Filters Applied</Title>
+          <Text style={styles.sectionTitle}>Filters Applied</Text>
           <View style={styles.filtersContainer}>
             {Object.entries(result.query_interpretation.filters).map(([key, value]: [string, any], index: number) => {
               let displayValue: string;
@@ -155,18 +154,18 @@ const QueryScreen = () => {
         
         <Card style={styles.resultCard}>
           <Card.Content>
-            <Title style={styles.sectionTitle}>Answer</Title>
+            <Text style={styles.sectionTitle}>Answer</Text>
             {result.has_results ? (
               <>
-                <Paragraph style={styles.answerText}>
+                <Text style={styles.answerText}>
                   {result.answer}
-                </Paragraph>
+                </Text>
                 
                 {result.data && result.data.length > 0 && (
                   <>
                     <Divider style={styles.divider} />
                     
-                    <Title style={styles.sectionTitle}>Data Points</Title>
+                    <Text style={styles.sectionTitle}>Data Points</Text>
                     {result.data.map((item: any, index: number) => (
                       <View key={index} style={styles.dataPointContainer}>
                         {Object.entries(item).map(([key, value]: [string, any]) => (
@@ -188,9 +187,9 @@ const QueryScreen = () => {
                 )}
               </>
             ) : (
-              <Paragraph style={styles.noResultsText}>
+              <Text style={styles.noResultsText}>
                 No data found matching your query. Try rephrasing or use different search terms.
-              </Paragraph>
+              </Text>
             )}
           </Card.Content>
         </Card>
@@ -204,7 +203,7 @@ const QueryScreen = () => {
     return (
       <Card style={styles.suggestionsCard}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>Try These Queries</Title>
+          <Text style={styles.sectionTitle}>Try These Queries</Text>
           <View style={styles.suggestionsContainer}>
             {QUERY_SUGGESTIONS.map((suggestion, index) => (
               <TouchableOpacity key={index} onPress={() => selectSuggestion(suggestion)}>

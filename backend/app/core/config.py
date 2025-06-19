@@ -116,12 +116,4 @@ class Settings(BaseSettings):
 
 settings = Settings() 
 
-# Debug: Log settings at startup
-logger = logging.getLogger(__name__)
-logger.info(f"🔧 Settings loaded - Environment: {settings.ENVIRONMENT}")
-logger.info(f"🔧 Supabase URL configured: {bool(settings.SUPABASE_URL)}")
-logger.info(f"🔧 Supabase Key configured: {bool(settings.SUPABASE_KEY)}")
-logger.info(f"🔧 JWT Secret configured: {bool(settings.SUPABASE_JWT_SECRET)}")
-if settings.SUPABASE_JWT_SECRET:
-    logger.info(f"🔧 JWT Secret length: {len(settings.SUPABASE_JWT_SECRET)}")
-logger.info(f"🔧 Database URL configured: {bool(settings.DATABASE_URL)}") 
+ 

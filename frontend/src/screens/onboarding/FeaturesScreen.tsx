@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, ScrollView, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { OnboardingStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import { useTheme } from '../../theme';
+import { Feature } from '../../types/interfaces';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -17,14 +18,6 @@ const StyledScrollView = styled(ScrollView);
 type FeaturesScreenNavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'Features'>;
 
 const { width: screenWidth } = Dimensions.get('window');
-
-interface Feature {
-  id: number;
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  color: string;
-}
 
 const features: Feature[] = [
   {
@@ -117,7 +110,7 @@ const FeaturesScreen = () => {
         className="mb-8 rounded-full p-8 shadow-lg"
         style={{ backgroundColor: feature.color }}
       >
-        <Ionicons name={feature.icon} size={80} color="white" />
+        <Ionicons name={feature.icon as any} size={80} color="white" />
       </StyledView>
 
       {/* Feature Title */}

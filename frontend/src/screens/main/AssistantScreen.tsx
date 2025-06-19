@@ -8,18 +8,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { MainAppStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';
 import StyledText from '../../components/common/StyledText';
+import { Message } from '../../types/interfaces';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledTextInput = styled(TextInput);
 const StyledSafeAreaView = styled(SafeAreaView);
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'assistant';
-  timestamp: Date;
-}
 
 type AssistantScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Assistant'>;
 

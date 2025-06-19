@@ -3,7 +3,6 @@ import { ScrollView, View, TouchableOpacity, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
@@ -13,26 +12,12 @@ import ListItem from '../../components/common/ListItem';
 import ErrorState from '../../components/common/ErrorState';
 import { MainAppStackParamList } from '../../navigation/types'; 
 import { useTheme } from '../../theme';
-import { ERROR_MESSAGES } from '../../constants/messages';
+import { MedicationDetailData } from '../../types/interfaces';
+
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-
-// Define a type for the medication data this screen will display
-// This should match or be derivable from MedicationListItem in MedicationsListScreen
-export interface MedicationDetailData {
-  id: string;
-  name: string;
-  dosage?: string;
-  frequency?: string;
-  prescribingDoctor?: string;
-  startDate?: string; // From form, or extracted
-  endDate?: string;   // From form, or extracted
-  notes?: string;
-  reason?: string; // Added reason field
-  // Add other fields like source_document_name, date_extracted etc. if available
-}
 
 // Define navigation props
 type MedicationDetailScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'MedicationDetail'>; 

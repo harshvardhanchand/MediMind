@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } from 'react-native';
+import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator} from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Clipboard, Calendar, Plus, AlertCircle, ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { Plus, AlertCircle,ChevronRight} from 'lucide-react-native';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
@@ -14,19 +14,11 @@ import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { symptomServices, SymptomCreate } from '../../api/services/symptomServices';
-import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
+import {  ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
+import { SymptomEntry } from '../../types/interfaces';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-
-interface SymptomEntry {
-  id: string;
-  reading_date: string;
-  symptom: string;
-  severity: number;
-  notes?: string;
-  color?: string;
-}
 
 type SymptomTrackerScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'SymptomTracker'>;
 

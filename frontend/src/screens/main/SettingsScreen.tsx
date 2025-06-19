@@ -1,36 +1,25 @@
 import React from 'react';
-import { ScrollView, Switch, View, Alert } from 'react-native';
+import { ScrollView, View,  Alert, Switch } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
-import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
-import Card from '../../components/common/Card';
 import ListItem from '../../components/common/ListItem';
 import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { supabaseClient } from '../../services/supabase';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../constants/messages';
+import { MainAppStackParamList } from '../../navigation/types';
+import { ERROR_MESSAGES} from '../../constants/messages';
+import { SettingItem } from '../../types/interfaces';
 import { crashReporting } from '../../services/crashReporting';
 
 const StyledScrollView = styled(ScrollView);
 const StyledView = styled(View);
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'Settings'>;
-
-interface SettingItem {
-  id: string;
-  label: string;
-  iconName: string;
-  navigateTo?: keyof MainAppStackParamList | null;
-  action?: () => void;
-  isDestructive?: boolean;
-  isToggle?: boolean;
-  value?: boolean;
-}
 
 const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();

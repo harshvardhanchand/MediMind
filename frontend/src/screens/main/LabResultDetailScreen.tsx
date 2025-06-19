@@ -12,21 +12,12 @@ import ListItem from '../../components/common/ListItem';
 import Card from '../../components/common/Card';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
-import { MainAppStackParamList } from '../../navigation/types'; 
 import { useTheme } from '../../theme';
-import { ERROR_MESSAGES, LOADING_MESSAGES, EMPTY_STATE_MESSAGES } from '../../constants/messages';
+import { LOADING_MESSAGES } from '../../constants/messages';
+import { LabResultEntry } from '../../types/interfaces';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-
-interface LabResultEntry {
-  id: string;
-  date: string;
-  value: string; // Keep as string for input, convert for chart
-  unit: string;
-  referenceRange?: string;
-  notes?: string;
-}
 
 // Mock data for a specific lab test type's history
 const getMockLabHistory = (testTypeId: string, testTypeName: string): LabResultEntry[] => {

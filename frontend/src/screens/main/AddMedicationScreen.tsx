@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { ScrollView, View, TouchableOpacity, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -10,23 +10,11 @@ import StyledInput from '../../components/common/StyledInput';
 import Card from '../../components/common/Card'; // For grouping form elements if needed
 import { MainAppStackParamList } from '../../navigation/types'; 
 import { useTheme } from '../../theme';
+import { MedicationFormData } from '../../types/interfaces';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-
-// Match this with MedicationDetailData or a shared type
-export interface MedicationFormData {
-  id?: string; // For editing existing medication
-  name: string;
-  dosageValue: string;
-  dosageUnit: string;
-  frequency: string;
-  prescribingDoctor?: string;
-  startDate?: string; 
-  endDate?: string;   
-  notes?: string;
-}
 
 // Update navigation and route prop types for AddMedication route
 type AddMedicationScreenNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'AddMedication'>; 

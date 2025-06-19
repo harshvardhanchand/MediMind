@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import {
-  Appbar, Button, TextInput, Title, Paragraph, HelperText, 
-  Card, Divider, Switch, Text, ActivityIndicator as PaperActivityIndicator
+  Appbar, Button, TextInput, Text, HelperText, 
+  Card, Switch
 } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { MainAppStackParamList } from '../navigation/types';
 import { medicationServices } from '../api/services';
-import { MedicationCreate, MedicationUpdate, MedicationResponse, MedicationFrequency, MedicationStatus } from '../types/api';
+import { MedicationCreate, MedicationUpdate, MedicationFrequency, MedicationStatus } from '../types/api';
 import ErrorState from '../components/common/ErrorState';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES, LOADING_MESSAGES } from '../constants/messages';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES} from '../constants/messages';
 
-import { MedicationDetailData } from './main/MedicationDetailScreen';
+
 
 type AddMedicationNavigationProp = NativeStackNavigationProp<MainAppStackParamList, 'AddMedication'>;
 type AddMedicationRouteProp = RouteProp<MainAppStackParamList, 'AddMedication'>;
@@ -171,9 +171,9 @@ const AddMedicationScreen = () => {
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* <Title style={styles.title}>{isEditMode ? 'Edit Medication' : 'Add New Medication'}</Title> */}
-        <Paragraph style={styles.subtitle}>
+        <Text style={styles.subtitle}>
           {isEditMode ? 'Update the details of your medication.' : 'Enter the details of your new medication.'}
-        </Paragraph>
+        </Text>
 
         {formError && <Text style={styles.formErrorText}>{formError}</Text>}
         
