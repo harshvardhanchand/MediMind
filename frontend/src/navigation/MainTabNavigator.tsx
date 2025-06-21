@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Import your screens
@@ -53,7 +53,7 @@ const MainTabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
+                      let iconName = 'home-outline';
 
           if (route.name === 'DashboardTab') {
             iconName = focused ? 'home' : 'home-outline';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import StyledText from './StyledText';
 import StyledButton from './StyledButton';
@@ -15,7 +15,7 @@ interface ErrorStateProps {
   onRetry?: () => void;
   retryLabel?: string;
   showRetry?: boolean;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: string;
 }
 
 const ErrorState: React.FC<ErrorStateProps> = ({

@@ -1,18 +1,6 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
+import PushNotification from 'react-native-push-notification';
+import DeviceInfo from 'react-native-device-info';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
-
-// Configure notification handling
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 export interface PushNotificationData extends Record<string, unknown> {
   type: 'interaction_alert' | 'risk_alert' | 'medication_reminder' | 'lab_followup' | 'symptom_monitoring' | 'general_info';
@@ -26,7 +14,8 @@ export interface PushNotificationData extends Record<string, unknown> {
 
 class PushNotificationService {
   private static instance: PushNotificationService;
-  private expoPushToken: string | null = null;
+  private pushToken: string | null = null;
+  private isInitialized: boolean = false;
   private notificationListener: any = null;
   private responseListener: any = null;
 
@@ -38,69 +27,113 @@ class PushNotificationService {
   }
 
   async requestPermissions(): Promise<boolean> {
-    if (!Device.isDevice) {
-      console.log('Push notifications only work on physical devices');
+    try {
+      if (Platform.OS === 'ios') {
+        const permissions = await PushNotification.requestPermissions();
+        return !!(permissions.alert && permissions.sound);
+      }
+      
+      // Android permissions are handled automatically
+      return true;
+    } catch (error) {
+      console.error('Failed to request permissions:', error);
       return false;
     }
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
-      return false;
-    }
-
-    return true;
   }
 
   async registerForPushNotifications(): Promise<string | null> {
     try {
-      const hasPermissions = await this.requestPermissions();
-      if (!hasPermissions) {
-        return null;
+      if (this.isInitialized) {
+        return this.pushToken;
       }
 
-      // Get the Expo push token
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-      
-      if (!projectId) {
-        console.error('Project ID not found. Make sure your app.config.js is properly configured.');
-        return null;
-      }
+      // Configure push notifications
+      PushNotification.configure({
+        // Called when Token is generated (iOS and Android)
+        onRegister: (token) => {
+          console.log('Push Token:', token);
+          this.pushToken = token.token;
+        },
 
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId,
+        // Called when a remote notification is received while app is in foreground
+        onNotification: (notification) => {
+          console.log('Notification received:', notification);
+          
+          // Handle notification tap
+          if (notification.userInteraction && this.responseListener) {
+            this.responseListener({
+              notification: {
+                request: {
+                  content: {
+                    data: notification.userInfo || notification.data || {}
+                  }
+                }
+              }
+            });
+          } else if (this.notificationListener) {
+            this.notificationListener(notification);
+          }
+          
+          // Required on iOS only
+          notification.finish && notification.finish();
+        },
+
+        // Should the initial notification be popped automatically
+        popInitialNotification: true,
+
+        // iOS only properties
+        permissions: {
+          alert: true,
+          badge: true,
+          sound: true,
+        },
+
+        // Android only properties
+        requestPermissions: Platform.OS === 'ios',
       });
 
-      this.expoPushToken = token.data;
-      console.log('Expo Push Token:', this.expoPushToken);
-
-      // Set up notification channel for Android
+      // Create notification channels for Android
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('medical-alerts', {
-          name: 'Medical Alerts',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
-          sound: 'default',
-          enableVibrate: true,
-        });
+        PushNotification.createChannel(
+          {
+            channelId: 'medical-alerts',
+            channelName: 'Medical Alerts',
+            channelDescription: 'Critical medical alerts and notifications',
+            playSound: true,
+            soundName: 'default',
+            importance: 4, // HIGH
+            vibrate: true,
+          },
+          (created) => console.log(`Medical alerts channel created: ${created}`)
+        );
 
-        await Notifications.setNotificationChannelAsync('medication-reminders', {
-          name: 'Medication Reminders',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          sound: 'default',
-        });
+        PushNotification.createChannel(
+          {
+            channelId: 'medication-reminders',
+            channelName: 'Medication Reminders',
+            channelDescription: 'Daily medication reminder notifications',
+            playSound: true,
+            soundName: 'default',
+            importance: 3, // DEFAULT
+            vibrate: true,
+          },
+          (created) => console.log(`Medication reminders channel created: ${created}`)
+        );
       }
 
-      return this.expoPushToken;
+      const hasPermissions = await this.requestPermissions();
+      if (!hasPermissions) {
+        console.log('Push notification permissions denied');
+        return null;
+      }
+
+      // For testing, we'll use device ID as token since we're not using a push service
+      const deviceId = await DeviceInfo.getUniqueId();
+      this.pushToken = `native_${deviceId}`;
+      this.isInitialized = true;
+      
+      console.log('Native push notifications registered:', this.pushToken);
+      return this.pushToken;
     } catch (error) {
       console.error('Error registering for push notifications:', error);
       return null;
@@ -108,33 +141,18 @@ class PushNotificationService {
   }
 
   setupNotificationListeners(
-    onNotificationReceived?: (notification: Notifications.Notification) => void,
-    onNotificationResponse?: (response: Notifications.NotificationResponse) => void
+    onNotificationReceived?: (notification: any) => void,
+    onNotificationResponse?: (response: any) => void
   ) {
-    // Listener for notifications received while app is foregrounded
-    this.notificationListener = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log('Notification received:', notification);
-        onNotificationReceived?.(notification);
-      }
-    );
-
-    // Listener for when user taps on notification
-    this.responseListener = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        console.log('Notification response:', response);
-        onNotificationResponse?.(response);
-      }
-    );
+    this.notificationListener = onNotificationReceived;
+    this.responseListener = onNotificationResponse;
+    console.log('Native notification listeners configured');
   }
 
   removeNotificationListeners() {
-    if (this.notificationListener) {
-      Notifications.removeNotificationSubscription(this.notificationListener);
-    }
-    if (this.responseListener) {
-      Notifications.removeNotificationSubscription(this.responseListener);
-    }
+    this.notificationListener = null;
+    this.responseListener = null;
+    console.log('Native notification listeners removed');
   }
 
   async scheduleMedicationReminder(
@@ -144,34 +162,50 @@ class PushNotificationService {
     repeatDaily: boolean = true
   ): Promise<string | null> {
     try {
-      const trigger: Notifications.NotificationTriggerInput = repeatDaily
-        ? {
-            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-            repeats: true,
-            hour: time.getHours(),
-            minute: time.getMinutes(),
-          }
-        : {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: time,
-          };
-
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
+      const notificationId = Math.floor(Math.random() * 1000000).toString();
+      
+      const scheduleDate = new Date(time);
+      
+      if (repeatDaily) {
+        // Schedule repeating notification
+        PushNotification.localNotificationSchedule({
+          id: notificationId,
           title: 'Medication Reminder',
-          body: `Time to take your ${medicationName} (${dosage})`,
-          sound: 'default',
-          data: {
+          message: `Time to take your ${medicationName} (${dosage})`,
+          date: scheduleDate,
+          repeatType: 'day',
+          channelId: 'medication-reminders',
+          userInfo: {
             type: 'medication_reminder',
             medicationName,
             dosage,
+            notificationId,
           },
-        },
-        trigger,
-      });
+          actions: ['Take', 'Snooze'],
+          playSound: true,
+          soundName: 'default',
+        });
+      } else {
+        // Schedule one-time notification
+        PushNotification.localNotificationSchedule({
+          id: notificationId,
+          title: 'Medication Reminder',
+          message: `Time to take your ${medicationName} (${dosage})`,
+          date: scheduleDate,
+          channelId: 'medication-reminders',
+          userInfo: {
+            type: 'medication_reminder',
+            medicationName,
+            dosage,
+            notificationId,
+          },
+          playSound: true,
+          soundName: 'default',
+        });
+      }
 
-      console.log(`Scheduled medication reminder: ${id}`);
-      return id;
+      console.log(`Scheduled medication reminder: ${notificationId} for ${scheduleDate}`);
+      return notificationId;
     } catch (error) {
       console.error('Error scheduling medication reminder:', error);
       return null;
@@ -180,7 +214,9 @@ class PushNotificationService {
 
   async cancelNotification(notificationId: string): Promise<void> {
     try {
-      await Notifications.cancelScheduledNotificationAsync(notificationId);
+      PushNotification.cancelLocalNotifications({
+        id: notificationId,
+      });
       console.log(`Cancelled notification: ${notificationId}`);
     } catch (error) {
       console.error('Error cancelling notification:', error);
@@ -189,7 +225,7 @@ class PushNotificationService {
 
   async cancelAllNotifications(): Promise<void> {
     try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
+      PushNotification.cancelAllLocalNotifications();
       console.log('Cancelled all scheduled notifications');
     } catch (error) {
       console.error('Error cancelling all notifications:', error);
@@ -202,17 +238,20 @@ class PushNotificationService {
     data?: PushNotificationData
   ): Promise<string | null> {
     try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title,
-          body,
-          sound: 'default',
-          data,
-        },
-        trigger: null, // Show immediately
+      const notificationId = Math.floor(Math.random() * 1000000).toString();
+      
+      PushNotification.localNotification({
+        id: notificationId,
+        title,
+        message: body,
+        channelId: this.getNotificationChannel(data?.type || 'general_info'),
+        userInfo: data || {},
+        playSound: true,
+        soundName: 'default',
       });
 
-      return id;
+      console.log(`Sent local notification: ${notificationId}`);
+      return notificationId;
     } catch (error) {
       console.error('Error sending local notification:', error);
       return null;
@@ -220,37 +259,35 @@ class PushNotificationService {
   }
 
   async getBadgeCount(): Promise<number> {
-    try {
-      return await Notifications.getBadgeCountAsync();
-    } catch (error) {
-      console.error('Error getting badge count:', error);
-      return 0;
-    }
+    return new Promise((resolve) => {
+      PushNotification.getApplicationIconBadgeNumber((number) => {
+        resolve(number);
+      });
+    });
   }
 
   async setBadgeCount(count: number): Promise<void> {
     try {
-      await Notifications.setBadgeCountAsync(count);
+      PushNotification.setApplicationIconBadgeNumber(count);
+      console.log(`Set badge count to: ${count}`);
     } catch (error) {
       console.error('Error setting badge count:', error);
     }
   }
 
   getExpoPushToken(): string | null {
-    return this.expoPushToken;
+    return this.pushToken;
   }
 
-  // Helper method to determine notification channel based on type
   getNotificationChannel(type: PushNotificationData['type']): string {
     switch (type) {
       case 'interaction_alert':
       case 'risk_alert':
-      case 'symptom_monitoring':
         return 'medical-alerts';
       case 'medication_reminder':
         return 'medication-reminders';
       default:
-        return 'default';
+        return Platform.OS === 'android' ? 'medical-alerts' : 'default';
     }
   }
 }

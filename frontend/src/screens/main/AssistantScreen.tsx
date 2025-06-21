@@ -3,7 +3,7 @@ import { View, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, TextI
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';

@@ -3,7 +3,6 @@ import { notificationServices } from '../api/services';
 import { NotificationStatsResponse } from '../types/api';
 import PushNotificationService from '../services/pushNotificationService';
 import DeepLinkingService from '../services/deepLinkingService';
-import * as Notifications from 'expo-notifications';
 
 
 interface NotificationContextType {
@@ -56,15 +55,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // Set up notification listeners
       pushService.setupNotificationListeners(
         // When notification is received while app is in foreground
-        (notification: Notifications.Notification) => {
+        (notification: any) => {
           console.log('Foreground notification received:', notification);
           // Refresh stats to show new notification
           refreshStats();
         },
         // When user taps on notification
-        (response: Notifications.NotificationResponse) => {
+        (response: any) => {
           console.log('Notification tapped:', response);
-          const data = response.notification.request.content.data;
+          const data = response.notification?.request?.content?.data || response.userInfo || response.data || {};
           
           if (data && typeof data === 'object') {
             // Handle deep linking

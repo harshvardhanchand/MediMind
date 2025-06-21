@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { View, TouchableOpacity, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import { useTheme } from '../../theme';
 

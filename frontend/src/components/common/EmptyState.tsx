@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import StyledText from './StyledText';
 import StyledButton from './StyledButton';
@@ -10,7 +10,7 @@ import { useTheme } from '../../theme';
 const StyledView = styled(View);
 
 interface EmptyStateProps {
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: string;
   title: string;
   description?: string;
   actionLabel?: string;

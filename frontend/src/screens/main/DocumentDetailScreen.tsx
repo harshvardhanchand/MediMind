@@ -3,7 +3,8 @@ import { ScrollView, View, TouchableOpacity, Alert, Dimensions, Platform, Activi
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MaterialIcons } from '@expo/vector-icons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Pdf from 'react-native-pdf';
 
 
 import { MainAppStackParamList } from '../../navigation/types';
@@ -221,22 +222,6 @@ const DocumentDetailScreen = () => {
     setImageUriForModal(undefined);
   };
 
-  // Helper function to get PDF.js viewer URL
-  const getPDFViewerUrl = (url: string) => {
-    const encodedUrl = encodeURIComponent(url);
-    return `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodedUrl}`;
-  };
-
-  const handlePdfLoadEnd = () => {
-    setIsLoadingPdf(false);
-    setPdfError(null);
-  };
-
-  const handlePdfError = () => {
-    setIsLoadingPdf(false);
-    setPdfError('Failed to load PDF document');
-  };
-
   const documentType = getDocumentType(document);
   const documentViewUrl = getDocumentViewUrl(document);
 
@@ -283,13 +268,95 @@ const DocumentDetailScreen = () => {
               iconLeft="document"
               iconLeftColor={colors.accentPrimary}
               onPress={() => {
-                Alert.alert(
-                  'Document Viewer', 
-                  'Document viewing functionality is coming soon! For now, you can see the extracted data below.',
-                  [{ text: 'OK' }]
-                );
+                if (documentType === 'pdf') {
+                  setShowPdfViewer(!showPdfViewer);
+                } else if (documentType === 'image') {
+                  openImageViewer(documentViewUrl);
+                } else {
+                  Alert.alert(
+                    'Document Type Not Supported', 
+                    'Only PDF and image files are currently supported for viewing.',
+                    [{ text: 'OK' }]
+                  );
+                }
               }}
             />
+            
+            {/* PDF Viewer */}
+            {showPdfViewer && documentType === 'pdf' && (
+              <StyledView tw="mt-4 h-96 bg-backgroundSecondary rounded-lg overflow-hidden">
+                <StyledView tw="flex-row justify-between items-center p-3 border-b border-borderSubtle">
+                  <StyledText variant="h4" tw="font-semibold">PDF Viewer</StyledText>
+                  <StyledTouchableOpacity onPress={() => setShowPdfViewer(false)}>
+                    <MaterialIcons name="close" size={24} color={colors.textSecondary} />
+                  </StyledTouchableOpacity>
+                </StyledView>
+                
+                {isLoadingPdf && (
+                  <StyledView tw="absolute inset-0 justify-center items-center bg-backgroundPrimary/80 z-10">
+                    <ActivityIndicator size="large" color={colors.accentPrimary} />
+                    <StyledText tw="mt-2" color="textSecondary">Loading PDF...</StyledText>
+                  </StyledView>
+                )}
+                
+                {pdfError ? (
+                  <StyledView tw="flex-1 justify-center items-center p-4">
+                    <MaterialIcons name="error-outline" size={48} color={colors.error} />
+                    <StyledText tw="mt-2 text-center" color="error">{pdfError}</StyledText>
+                    <StyledButton 
+                      variant="filledPrimary" 
+                      tw="mt-4"
+                      onPress={() => {
+                        setPdfError(null);
+                        setIsLoadingPdf(true);
+                      }}
+                    >
+                      <StyledText>Retry</StyledText>
+                    </StyledButton>
+                  </StyledView>
+                ) : (
+                  <Pdf
+                    source={{ uri: documentViewUrl, cache: true }}
+                    onLoadProgress={(percent) => {
+                      console.log(`PDF Loading: ${Math.round(percent * 100)}%`);
+                    }}
+                    onLoadComplete={(numberOfPages, filePath) => {
+                      console.log(`PDF loaded with ${numberOfPages} pages`);
+                      setIsLoadingPdf(false);
+                      setPdfError(null);
+                    }}
+                    onPageChanged={(page, numberOfPages) => {
+                      console.log(`Current page: ${page} of ${numberOfPages}`);
+                    }}
+                    onError={(error) => {
+                      console.error('PDF Error:', error);
+                      setIsLoadingPdf(false);
+                      setPdfError('Failed to load PDF document');
+                    }}
+                    onPressLink={(uri) => {
+                      console.log('PDF Link pressed:', uri);
+                    }}
+                    style={{
+                      flex: 1,
+                      width: Dimensions.get('window').width - 40,
+                      backgroundColor: colors.backgroundSecondary,
+                    }}
+                    enablePaging={true}
+                    enableRTL={false}
+                    enableAnnotationRendering={true}
+                    enableAntialiasing={true}
+                    enableDoubleTapZoom={true}
+                    minScale={1.0}
+                    maxScale={3.0}
+                    spacing={10}
+                    horizontal={false}
+                    showsHorizontalScrollIndicator={false}
+                    showsVerticalScrollIndicator={true}
+                    trustAllCerts={false}
+                  />
+                )}
+              </StyledView>
+            )}
           </Card>
 
           <Card title="Extracted Data" tw="mb-6">

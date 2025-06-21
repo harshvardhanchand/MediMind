@@ -3,7 +3,7 @@ import { View, FlatList, ListRenderItem, TouchableOpacity, Dimensions, Platform,
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { LineChart } from 'react-native-chart-kit';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';

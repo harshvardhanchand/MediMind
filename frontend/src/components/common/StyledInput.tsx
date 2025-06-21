@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TextInputProps, StyleProp, ViewStyle, TextStyle, Platform, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import { useTheme } from '../../theme';
 
@@ -19,8 +19,8 @@ interface StyledInputProps extends Omit<TextInputProps, 'style' | 'placeholderTe
   inputTw?: string; // Tailwind for the TextInput itself (use sparingly, prefer variants)
   inputStyle?: StyleProp<TextStyle>; // Custom style for the TextInput
   containerStyle?: StyleProp<ViewStyle>; // Custom style for the outer container
-  leftIconName?: keyof typeof Ionicons.glyphMap;
-  rightIconName?: keyof typeof Ionicons.glyphMap;
+  leftIconName?: string;
+  rightIconName?: string;
   iconSize?: number;
   onRightIconPress?: () => void;
   showBottomBorder?: boolean; // Specific to formListItem variant
