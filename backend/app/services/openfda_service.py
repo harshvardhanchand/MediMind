@@ -10,6 +10,9 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import json
 
+# Import centralized medical utilities to eliminate duplication
+from app.utils.medical_utils import medical_normalizer
+
 logger = logging.getLogger(__name__)
 
 class OpenFDAService:
@@ -26,15 +29,6 @@ class OpenFDAService:
         self.min_notification_threshold = 0.6
         self.min_push_threshold = 0.8
         self.min_immediate_threshold = 0.9
-        
-        # Drug name mapping for common international variants
-        self.drug_name_mapping = {
-            "paracetamol": "acetaminophen",
-            "crocin": "acetaminophen", 
-            "disprin": "aspirin",
-            "combiflam": ["ibuprofen", "acetaminophen"],  # Combination drug
-            "shelcal": "calcium carbonate"
-        }
     
     async def analyze_drug_interactions(
         self, 
@@ -48,7 +42,7 @@ class OpenFDAService:
             if not medications or len(medications) < 2:
                 return self._create_empty_result()
             
-            # Normalize drug names
+            # Normalize drug names using centralized utilities
             normalized_drugs = self._normalize_drug_names(medications)
             
             # Check FDA interactions
@@ -69,22 +63,17 @@ class OpenFDAService:
     
     def _normalize_drug_names(self, medications: List[Dict[str, Any]]) -> List[str]:
         """
-        Normalize drug names to handle international variants
+        Normalize drug names using centralized medical utilities
         """
         normalized = []
         
         for med in medications:
-            drug_name = med.get('name', '').lower().strip()
+            drug_name = med.get('name', '').strip()
             
-            # Check if it's in our mapping
-            if drug_name in self.drug_name_mapping:
-                mapped = self.drug_name_mapping[drug_name]
-                if isinstance(mapped, list):
-                    normalized.extend(mapped)  # Combination drug
-                else:
-                    normalized.append(mapped)
-            else:
-                normalized.append(drug_name)
+            if drug_name:
+                # Use centralized normalization with comprehensive candidate generation
+                candidates = medical_normalizer.get_comprehensive_drug_candidates(drug_name)
+                normalized.extend(candidates)
         
         return list(set(normalized))  # Remove duplicates
     

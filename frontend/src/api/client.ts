@@ -1,40 +1,52 @@
 import axios from 'axios';
-
+import Constants from 'expo-constants';
 import { API_URL } from '../config';
 import { supabaseClient } from '../services/supabase';
 
-// Create axios instance with default config
+// Generate a simple UUID for correlation IDs
+const generateCorrelationId = (): string => {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+};
+
+
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 10000,
 });
 
-// Cache the current session to avoid repeated getSession() calls
-let cachedSession: any = null;
-let sessionCacheTime = 0;
-const SESSION_CACHE_DURATION = 5000; // 5 seconds
 
-// Add request interceptor to attach auth token
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (error?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
+
+
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      // Use cached session if it's recent
-      const now = Date.now();
-      if (cachedSession && (now - sessionCacheTime) < SESSION_CACHE_DURATION) {
-        const token = cachedSession?.access_token;
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      }
-
-      // Get fresh session if cache is stale
+      // Add correlation ID and app version for better debugging
+      config.headers['X-Request-ID'] = generateCorrelationId();
+      config.headers['X-App-Version'] = Constants.expoConfig?.version || 'unknown';
+      config.headers['X-Platform'] = 'mobile';
+      
+      // Let Supabase handle token refresh automatically
       const { data } = await supabaseClient.auth.getSession();
-      cachedSession = data.session;
-      sessionCacheTime = now;
       
       const token = data.session?.access_token;
       if (token) {
@@ -53,7 +65,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle common errors
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -62,13 +74,49 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      console.error('API Error: 401 Unauthorized. Session might be expired.');
-      // Clear cached session on 401
-      cachedSession = null;
-      sessionCacheTime = 0;
+      console.warn('🔄 401 Unauthorized - Attempting token refresh and retry...');
       
-      // Let Supabase handle token refresh automatically
-      // If refresh fails, the AuthContext will detect it and show login screen
+      if (isRefreshing) {
+        
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+      
+      isRefreshing = true;
+      
+      try {
+        
+        const { data: refreshed, error: refreshError } = await supabaseClient.auth.getSession();
+        
+        if (refreshError || !refreshed.session?.access_token) {
+          console.error('❌ Token refresh failed:', refreshError);
+          processQueue(refreshError || new Error('No session after refresh'), null);
+          
+         
+          return Promise.reject(error);
+        }
+        
+        const newToken = refreshed.session.access_token;
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        
+        processQueue(null, newToken);
+        
+        console.log('✅ Token refreshed successfully, retrying original request');
+        return apiClient(originalRequest);
+        
+      } catch (refreshError) {
+        console.error('❌ Token refresh failed with exception:', refreshError);
+        processQueue(refreshError, null);
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
     }
     
     return Promise.reject(error);

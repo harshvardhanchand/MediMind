@@ -1,109 +1,47 @@
-# Core
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-dotenv==1.0.0
 pydantic==2.5.0
 pydantic-settings==2.0.3
-
-# Database
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
 aiosqlite==0.19.0
 alembic==1.12.1
-greenlet>=1.0.0
-
-# Authentication & Authorization
-supabase==2.0.5
+greenlet>=3.0.0
+supabase==2.15.3
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 pyjwt==2.8.0
-
-# Security
 slowapi==0.1.9
-
-# Logging and Monitoring
 google-cloud-logging==3.8.0
 structlog==23.2.0
 prometheus-client==0.19.0
-
-# Testing
 pytest==7.4.3
-httpx>=0.25.0,<0.26.0
+httpx>=0.26.0,<0.29.0
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
 pytest-mock==3.12.0
-
-# AI/ML (Python 3.11 compatible)
 scikit-learn==1.7.0
 numpy>=1.22.0
 scipy>=1.8.0
 torch>=2.0.0
 transformers>=4.52.0
 sentence-transformers==2.2.2
-spacy==3.7.2
-
-# Google AI/ML Services
 google-cloud-documentai>=3.5.0
-greenlet>=3.0.0 
 google-generativeai>=0.4.2
-
-# Cloud Services
 google-cloud-storage==2.13.0
 google-cloud-tasks==2.13.1
 google-cloud-secret-manager==2.16.4
-
-# Image Processing
 Pillow==10.1.0
 reportlab>=4.4.1
-
-# Data Processing
 pandas>=1.4.0
-
-# HTTP Client
 requests==2.31.0
-
-# File Operations
 aiofiles==23.2.1
-
-# Email
-sendgrid==6.10.0
-
-# Timezone
 pytz==2023.3
-
-# JSON Processing
-orjson==3.9.10 
-
-# Additional utilities
 python-dateutil==2.8.2
-
-# Vector database support
 pgvector==0.2.4
-
-# File type detection
-filetype==1.2.0
-
-# Configuration validation
-dynaconf==3.2.4
-
-# Rate limiting and security
 bcrypt==4.1.1
-
-# For validation of URLs and other types
 pydantic[email]==2.5.0
-
-# CSV handling
-pandas>=1.4.0
-
-# File handling dependencies
-python-magic==0.4.27
-pypdf2==3.0.1
-pillow==10.1.0
-
-# HTTP status codes
-httpx==0.25.2
-
-# aiohttp dependency for OpenFDA API calls
-aiohttp==3.9.1 
+aiohttp>=3.11.18,<4.0.0

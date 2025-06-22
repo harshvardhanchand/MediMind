@@ -24,7 +24,7 @@ class NotificationService:
         self.db = db
         self.ai_service = get_medical_ai_service(db)
     
-    async def create_notification(
+    def create_notification(
         self,
         user_id: str,
         notification_type: str,
@@ -43,42 +43,9 @@ class NotificationService:
         Create and store a single notification with entity relationships
         """
         try:
-            notification_id = str(uuid.uuid4())
-            
-            # Default expiration: 30 days for low severity, 7 days for high severity
-            if not expires_at:
-                if severity == "high":
-                    expires_at = datetime.now() + timedelta(days=7)
-                elif severity == "medium":
-                    expires_at = datetime.now() + timedelta(days=14)
-                else:
-                    expires_at = datetime.now() + timedelta(days=30)
-            
-            # Store notification in database
-            self.db.execute(
-                text("""
-                    INSERT INTO notifications 
-                    (id, user_id, type, severity, title, message, notification_metadata, expires_at, 
-                     related_medication_id, related_document_id, related_health_reading_id, related_extracted_data_id,
-                     created_at)
-                    VALUES (:id, :user_id, :type, :severity, :title, :message, :notification_metadata, :expires_at,
-                            :related_medication_id, :related_document_id, :related_health_reading_id, :related_extracted_data_id,
-                            NOW())
-                """),
-                {
-                    "id": notification_id,
-                    "user_id": user_id,
-                    "type": notification_type,
-                    "severity": severity,
-                    "title": title,
-                    "message": message,
-                    "notification_metadata": json.dumps(metadata) if metadata else None,
-                    "expires_at": expires_at,
-                    "related_medication_id": related_medication_id,
-                    "related_document_id": related_document_id,
-                    "related_health_reading_id": related_health_reading_id,
-                    "related_extracted_data_id": related_extracted_data_id
-                }
+            notification_id = self._create_notification_no_commit(
+                user_id, notification_type, severity, title, message, metadata, expires_at,
+                related_medication_id, related_document_id, related_health_reading_id, related_extracted_data_id
             )
             
             self.db.commit()
@@ -91,7 +58,65 @@ class NotificationService:
             self.db.rollback()
             raise
     
-    async def create_notifications_from_analysis(
+    def _create_notification_no_commit(
+        self,
+        user_id: str,
+        notification_type: str,
+        severity: str,
+        title: str,
+        message: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        expires_at: Optional[datetime] = None,
+        # Links to existing entities
+        related_medication_id: Optional[str] = None,
+        related_document_id: Optional[str] = None,
+        related_health_reading_id: Optional[str] = None,
+        related_extracted_data_id: Optional[str] = None
+    ) -> str:
+        """
+        Create notification without committing - for batch operations
+        """
+        notification_id = str(uuid.uuid4())
+        
+        # Default expiration: 30 days for low severity, 7 days for high severity
+        if not expires_at:
+            if severity == "high":
+                expires_at = datetime.now() + timedelta(days=7)
+            elif severity == "medium":
+                expires_at = datetime.now() + timedelta(days=14)
+            else:
+                expires_at = datetime.now() + timedelta(days=30)
+        
+        # Store notification in database
+        self.db.execute(
+            text("""
+                INSERT INTO notifications 
+                (id, user_id, type, severity, title, message, notification_metadata, expires_at, 
+                 related_medication_id, related_document_id, related_health_reading_id, related_extracted_data_id,
+                 created_at)
+                VALUES (:id, :user_id, :type, :severity, :title, :message, :notification_metadata, :expires_at,
+                        :related_medication_id, :related_document_id, :related_health_reading_id, :related_extracted_data_id,
+                        NOW())
+            """),
+            {
+                "id": notification_id,
+                "user_id": user_id,
+                "type": notification_type,
+                "severity": severity,
+                "title": title,
+                "message": message,
+                "notification_metadata": json.dumps(metadata) if metadata else None,
+                "expires_at": expires_at,
+                "related_medication_id": related_medication_id,
+                "related_document_id": related_document_id,
+                "related_health_reading_id": related_health_reading_id,
+                "related_extracted_data_id": related_extracted_data_id
+            }
+        )
+        
+        return notification_id
+    
+    def create_notifications_from_analysis(
         self,
         user_id: str,
         notifications_data: List[Dict[str, Any]]
@@ -102,9 +127,10 @@ class NotificationService:
         notification_ids = []
         
         try:
+            # Wrap entire batch in single transaction for data consistency
             for notification_data in notifications_data:
-                notification_id = await self.create_notification(
-                    user_id=notification_data["user_id"],
+                notification_id = self._create_notification_no_commit(
+                    user_id=user_id,  
                     notification_type=notification_data["type"],
                     severity=notification_data["severity"],
                     title=notification_data["title"],
@@ -118,14 +144,18 @@ class NotificationService:
                 )
                 notification_ids.append(notification_id)
             
+            # Single commit for all notifications - ensures atomicity
+            self.db.commit()
+            
             logger.info(f"Created {len(notification_ids)} notifications for user {user_id}")
             return notification_ids
             
         except Exception as e:
             logger.error(f"Failed to create notifications from analysis: {str(e)}")
+            self.db.rollback()  # Rollback all notifications if any fail
             raise
     
-    async def trigger_medical_analysis(
+    def trigger_medical_analysis(
         self,
         user_id: str,
         trigger_type: str,
@@ -137,19 +167,33 @@ class NotificationService:
         try:
             logger.info(f"Triggering medical analysis for user {user_id}: {trigger_type}")
             
-            # Use AI service to analyze medical event
-            notifications_data = await self.ai_service.analyze_medical_event(
-                user_id=user_id,
-                trigger_type=trigger_type,
-                event_data=event_data
-            )
+            # Use AI service to analyze medical event - run async in sync context
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                notifications_data = loop.run_until_complete(
+                    self.ai_service.analyze_medical_event(
+                        user_id=user_id,
+                        trigger_type=trigger_type,
+                        event_data=event_data
+                    )
+                )
+            except RuntimeError:
+                # No event loop - create new one
+                notifications_data = asyncio.run(
+                    self.ai_service.analyze_medical_event(
+                        user_id=user_id,
+                        trigger_type=trigger_type,
+                        event_data=event_data
+                    )
+                )
             
             if not notifications_data:
                 logger.info(f"No notifications generated for user {user_id}")
                 return []
             
             # Create notifications from analysis
-            notification_ids = await self.create_notifications_from_analysis(
+            notification_ids = self.create_notifications_from_analysis(
                 user_id, 
                 notifications_data
             )
@@ -158,7 +202,17 @@ class NotificationService:
             
         except Exception as e:
             logger.error(f"Medical analysis trigger failed: {str(e)}")
-            return []
+            # CRITICAL FIX: Don't mask all errors - distinguish between expected and critical failures
+            # Only return [] for validation errors or "no notifications needed" scenarios
+            # Re-raise critical errors like AI service down, DB connection lost, etc.
+            error_message = str(e).lower()
+            if any(keyword in error_message for keyword in ['connection', 'timeout', 'unavailable', 'service']):
+                # Critical infrastructure failures should bubble up
+                raise
+            else:
+                # Non-critical errors (validation, parsing, etc.) can return empty list
+                logger.warning(f"Non-critical error in medical analysis for user {user_id}: {str(e)}")
+                return []
     
     def get_user_notifications(
         self,
@@ -443,7 +497,7 @@ class NotificationService:
                 }
             }
     
-    async def cleanup_expired_notifications(self) -> int:
+    def cleanup_expired_notifications(self) -> int:
         """
         Clean up expired notifications
         """
@@ -474,11 +528,11 @@ class MedicalEventTriggers:
         self.notification_service = notification_service
     
     # CREATE TRIGGERS (existing)
-    async def on_medication_added(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
+    def on_medication_added(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
         """
         Trigger analysis when new medication is added
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="new_medication",
             event_data={
@@ -489,11 +543,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_symptom_reported(self, user_id: str, symptom_data: Dict[str, Any]):
+    def on_symptom_reported(self, user_id: str, symptom_data: Dict[str, Any]):
         """
         Trigger analysis when symptom is reported
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="symptom_reported",
             event_data={
@@ -503,11 +557,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_lab_result_added(self, user_id: str, lab_data: Dict[str, Any], health_reading_id: Optional[str] = None):
+    def on_lab_result_added(self, user_id: str, lab_data: Dict[str, Any], health_reading_id: Optional[str] = None):
         """
         Trigger analysis when lab result is added
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="lab_result",
             event_data={
@@ -518,11 +572,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_health_reading_added(self, user_id: str, reading_data: Dict[str, Any], health_reading_id: Optional[str] = None):
+    def on_health_reading_added(self, user_id: str, reading_data: Dict[str, Any], health_reading_id: Optional[str] = None):
         """
         Trigger analysis when health reading is added
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="health_reading",
             event_data={
@@ -533,11 +587,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_document_processed(self, user_id: str, document_data: Dict[str, Any], document_id: str, extracted_data_id: Optional[str] = None):
+    def on_document_processed(self, user_id: str, document_data: Dict[str, Any], document_id: str, extracted_data_id: Optional[str] = None):
         """
         Trigger analysis when document is processed
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="document_processed",
             event_data={
@@ -549,11 +603,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_medication_discontinued(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
+    def on_medication_discontinued(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
         """
         Trigger analysis when medication is discontinued
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="medication_discontinued",
             event_data={
@@ -565,11 +619,11 @@ class MedicalEventTriggers:
         )
     
     # NEW UPDATE TRIGGERS
-    async def on_medication_updated(self, user_id: str, medication_data: Dict[str, Any], changes: Dict[str, Any], medication_id: Optional[str] = None):
+    def on_medication_updated(self, user_id: str, medication_data: Dict[str, Any], changes: Dict[str, Any], medication_id: Optional[str] = None):
         """
         Trigger analysis when medication is updated (dosage changes, frequency changes, etc.)
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="medication_updated",
             event_data={
@@ -581,11 +635,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_symptom_updated(self, user_id: str, symptom_data: Dict[str, Any], changes: Dict[str, Any], symptom_id: Optional[str] = None):
+    def on_symptom_updated(self, user_id: str, symptom_data: Dict[str, Any], changes: Dict[str, Any], symptom_id: Optional[str] = None):
         """
         Trigger analysis when symptom is updated (severity changes, duration changes, etc.)
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="symptom_updated",
             event_data={
@@ -597,11 +651,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_health_reading_updated(self, user_id: str, reading_data: Dict[str, Any], changes: Dict[str, Any], health_reading_id: Optional[str] = None):
+    def on_health_reading_updated(self, user_id: str, reading_data: Dict[str, Any], changes: Dict[str, Any], health_reading_id: Optional[str] = None):
         """
         Trigger analysis when health reading is updated/corrected
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="health_reading_updated",
             event_data={
@@ -613,11 +667,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_document_reprocessed(self, user_id: str, document_data: Dict[str, Any], changes: Dict[str, Any], document_id: str, extracted_data_id: Optional[str] = None):
+    def on_document_reprocessed(self, user_id: str, document_data: Dict[str, Any], changes: Dict[str, Any], document_id: str, extracted_data_id: Optional[str] = None):
         """
         Trigger analysis when document is re-processed after corrections
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="document_reprocessed",
             event_data={
@@ -631,11 +685,11 @@ class MedicalEventTriggers:
         )
     
     # NEW DELETE TRIGGERS
-    async def on_medication_deleted(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
+    def on_medication_deleted(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
         """
         Trigger analysis when medication is deleted (may affect drug interactions, etc.)
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="medication_deleted",
             event_data={
@@ -646,11 +700,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_symptom_deleted(self, user_id: str, symptom_data: Dict[str, Any], symptom_id: Optional[str] = None):
+    def on_symptom_deleted(self, user_id: str, symptom_data: Dict[str, Any], symptom_id: Optional[str] = None):
         """
         Trigger analysis when symptom is deleted (may affect symptom patterns, etc.)
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="symptom_deleted",
             event_data={
@@ -661,11 +715,11 @@ class MedicalEventTriggers:
             }
         )
     
-    async def on_health_reading_deleted(self, user_id: str, reading_data: Dict[str, Any], health_reading_id: Optional[str] = None):
+    def on_health_reading_deleted(self, user_id: str, reading_data: Dict[str, Any], health_reading_id: Optional[str] = None):
         """
         Trigger analysis when health reading is deleted (may affect health trends, etc.)
         """
-        return await self.notification_service.trigger_medical_analysis(
+        return self.notification_service.trigger_medical_analysis(
             user_id=user_id,
             trigger_type="health_reading_deleted",
             event_data={

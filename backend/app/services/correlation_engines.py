@@ -7,113 +7,363 @@ import logging
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 import json
+from app.services.openfda_service import openfda_service
+from app.utils.medical_utils import medical_normalizer, medical_date_parser
 
 logger = logging.getLogger(__name__)
 
 class DrugSymptomCorrelationEngine:
     """
-    Analyzes correlations between medications and symptoms
+    Analyzes correlations between medications and symptoms using FDA data + fallbacks
+    Optimized with inverted indices for O(K) complexity instead of O(N×M)
     """
     
     def __init__(self):
-        # Medical knowledge base for drug-symptom correlations
-        self.drug_side_effects = {
-            # ACE Inhibitors
+        self.openfda_service = openfda_service
+        
+        # Fallback knowledge base for when FDA API is unavailable
+        # Reduced to critical drugs only - FDA data takes precedence
+        self.fallback_drug_effects = {
+            # Critical ACE Inhibitors
             "lisinopril": {
                 "dizziness": {"confidence": 0.8, "onset_days": [1, 14], "severity": "medium"},
                 "dry_cough": {"confidence": 0.9, "onset_days": [7, 30], "severity": "medium"},
-                "hypotension": {"confidence": 0.7, "onset_days": [1, 7], "severity": "high"},
-                "fatigue": {"confidence": 0.6, "onset_days": [1, 14], "severity": "low"}
+                "hypotension": {"confidence": 0.7, "onset_days": [1, 7], "severity": "high"}
             },
             
-            # Beta Blockers
+            # Critical Beta Blockers
             "metoprolol": {
                 "fatigue": {"confidence": 0.8, "onset_days": [1, 21], "severity": "medium"},
-                "dizziness": {"confidence": 0.7, "onset_days": [1, 14], "severity": "medium"},
-                "depression": {"confidence": 0.5, "onset_days": [14, 60], "severity": "medium"},
-                "cold_hands": {"confidence": 0.6, "onset_days": [1, 7], "severity": "low"}
+                "dizziness": {"confidence": 0.7, "onset_days": [1, 14], "severity": "medium"}
             },
             
-            # Diabetes Medications
+            # Critical Diabetes Medications
             "metformin": {
                 "nausea": {"confidence": 0.7, "onset_days": [1, 14], "severity": "medium"},
-                "diarrhea": {"confidence": 0.6, "onset_days": [1, 21], "severity": "medium"},
-                "metallic_taste": {"confidence": 0.5, "onset_days": [1, 7], "severity": "low"},
-                "stomach_upset": {"confidence": 0.7, "onset_days": [1, 14], "severity": "medium"}
-            },
-            
-            # Statins
-            "atorvastatin": {
-                "muscle_pain": {"confidence": 0.8, "onset_days": [7, 60], "severity": "medium"},
-                "muscle_weakness": {"confidence": 0.6, "onset_days": [14, 90], "severity": "high"},
-                "headache": {"confidence": 0.5, "onset_days": [1, 14], "severity": "low"},
-                "liver_problems": {"confidence": 0.3, "onset_days": [30, 180], "severity": "high"}
-            },
-            
-            # Blood Thinners
-            "warfarin": {
-                "bleeding": {"confidence": 0.9, "onset_days": [1, 7], "severity": "high"},
-                "bruising": {"confidence": 0.8, "onset_days": [1, 14], "severity": "medium"},
-                "nosebleeds": {"confidence": 0.7, "onset_days": [1, 21], "severity": "medium"}
-            },
-            
-            # Antibiotics
-            "amoxicillin": {
-                "nausea": {"confidence": 0.6, "onset_days": [1, 7], "severity": "medium"},
-                "diarrhea": {"confidence": 0.7, "onset_days": [1, 14], "severity": "medium"},
-                "rash": {"confidence": 0.4, "onset_days": [1, 10], "severity": "medium"},
-                "stomach_upset": {"confidence": 0.6, "onset_days": [1, 7], "severity": "medium"}
+                "diarrhea": {"confidence": 0.6, "onset_days": [1, 21], "severity": "medium"}
             }
         }
+        
+        # Build inverted indices for performance optimization
+        self._build_inverted_indices()
     
-    def analyze(self, medications: List[Dict[str, Any]], symptoms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _build_inverted_indices(self):
         """
-        Analyze drug-symptom correlations
+        Build inverted indices: symptom → [drugs that can cause it]
+        This optimizes from O(N×M) to O(K) where K = relevant matches
+        """
+        self.symptom_to_drugs_index = {}
+        self.drug_to_symptoms_index = {}
+        
+        # Build fallback indices from hardcoded knowledge
+        for drug_name, effects in self.fallback_drug_effects.items():
+            normalized_drug = medical_normalizer.normalize_drug_name(drug_name)
+            self.drug_to_symptoms_index[normalized_drug] = set()
+            
+            for symptom_name, effect_data in effects.items():
+                normalized_symptom = medical_normalizer.normalize_symptom_name(symptom_name)
+                
+                # Add to symptom → drugs mapping
+                if normalized_symptom not in self.symptom_to_drugs_index:
+                    self.symptom_to_drugs_index[normalized_symptom] = set()
+                self.symptom_to_drugs_index[normalized_symptom].add(normalized_drug)
+                
+                # Add to drug → symptoms mapping
+                self.drug_to_symptoms_index[normalized_drug].add(normalized_symptom)
+                
+                # Also add variations for better matching
+                for variation in self._get_symptom_variations(symptom_name):
+                    norm_variation = medical_normalizer.normalize_symptom_name(variation)
+                    if norm_variation not in self.symptom_to_drugs_index:
+                        self.symptom_to_drugs_index[norm_variation] = set()
+                    self.symptom_to_drugs_index[norm_variation].add(normalized_drug)
+    
+    def _get_symptom_variations(self, symptom_name: str) -> List[str]:
+        """Get common variations of a symptom name for indexing"""
+        variations = [symptom_name]
+        
+        # Add common variations
+        variation_map = {
+            "dizziness": ["dizzy", "lightheaded", "light_headed", "vertigo"],
+            "fatigue": ["tired", "exhausted", "weakness"],
+            "nausea": ["queasy", "sick_to_stomach"],
+            "dry_cough": ["cough", "persistent_cough"],
+            "muscle_pain": ["muscle_ache", "myalgia", "muscle_aches"]
+        }
+        
+        for base_symptom, vars in variation_map.items():
+            if base_symptom in symptom_name.lower():
+                variations.extend(vars)
+        
+        return variations
+    
+    async def analyze(self, medications: List[Dict[str, Any]], symptoms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Analyze drug-symptom correlations using optimized indexing
+        O(K) complexity where K = number of relevant matches
         """
         correlations = []
         
-        for med in medications:
-            for symptom in symptoms:
-                correlation = self._check_drug_symptom_correlation(med, symptom)
-                if correlation:
-                    correlations.append(correlation)
+        try:
+            # Try FDA-based correlations first (still optimized)
+            fda_correlations = await self._analyze_with_fda_optimized(medications, symptoms)
+            correlations.extend(fda_correlations)
+            
+            # Add fallback correlations using inverted indices
+            fallback_correlations = await self._analyze_with_fallback_optimized(medications, symptoms, fda_correlations)
+            correlations.extend(fallback_correlations)
+            
+        except Exception as e:
+            logger.error(f"FDA analysis failed, using fallback only: {str(e)}")
+            # If FDA fails, use optimized fallback
+            fallback_correlations = await self._analyze_with_fallback_optimized(medications, symptoms, [])
+            correlations.extend(fallback_correlations)
         
         return sorted(correlations, key=lambda x: x["confidence"], reverse=True)
     
-    def _check_drug_symptom_correlation(self, medication: Dict[str, Any], symptom: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _analyze_with_fda_optimized(self, medications: List[Dict[str, Any]], symptoms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Check if a specific medication could cause a specific symptom
+        Use OpenFDA service with optimized querying
+        """
+        correlations = []
+        
+        # Build medication index for faster lookups
+        med_index = {}
+        for med in medications:
+            normalized_name = medical_normalizer.normalize_drug_name(med.get("name", ""))
+            med_index[normalized_name] = med
+        
+        # For each symptom, check only against relevant drugs
+        for symptom in symptoms:
+            normalized_symptom = medical_normalizer.normalize_symptom_name(symptom.get("symptom", ""))
+            
+            # Get candidate drugs for this symptom from our index
+            candidate_drugs = self.symptom_to_drugs_index.get(normalized_symptom, set())
+            
+            # Also check FDA terms for this symptom
+            fda_terms = medical_normalizer.get_fda_symptom_terms(symptom.get("symptom", ""))
+            for term in fda_terms:
+                norm_term = medical_normalizer.normalize_symptom_name(term)
+                candidate_drugs.update(self.symptom_to_drugs_index.get(norm_term, set()))
+            
+            # If no candidates in our index, try all medications (for unknown drugs)
+            if not candidate_drugs:
+                candidate_drugs = set(med_index.keys())
+            
+            # Query FDA only for relevant drug-symptom pairs
+            for drug_name in candidate_drugs:
+                if drug_name in med_index:
+                    medication = med_index[drug_name]
+                    fda_result = await self._query_fda_for_symptom_correlation(medication, symptom)
+                    if fda_result:
+                        correlations.append(fda_result)
+        
+        return correlations
+    
+    async def _analyze_with_fallback_optimized(self, medications: List[Dict[str, Any]], symptoms: List[Dict[str, Any]], existing_correlations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Use fallback knowledge with inverted indices - O(K) complexity
+        """
+        correlations = []
+        
+        # Get drugs already analyzed by FDA
+        fda_analyzed_drugs = set()
+        for corr in existing_correlations:
+            if corr.get("source") == "FDA_VALIDATED":
+                fda_analyzed_drugs.add(corr.get("medication", "").lower())
+        
+        # Build medication index
+        med_index = {}
+        for med in medications:
+            normalized_name = medical_normalizer.normalize_drug_name(med.get("name", ""))
+            if normalized_name not in fda_analyzed_drugs:  # Skip FDA-analyzed drugs
+                med_index[normalized_name] = med
+        
+        # For each symptom, only check against drugs that can cause it
+        for symptom in symptoms:
+            normalized_symptom = medical_normalizer.normalize_symptom_name(symptom.get("symptom", ""))
+            
+            # Get candidate drugs from inverted index
+            candidate_drugs = self.symptom_to_drugs_index.get(normalized_symptom, set())
+            
+            # Check candidates against available medications
+            for drug_name in candidate_drugs:
+                if drug_name in med_index:
+                    medication = med_index[drug_name]
+                    correlation = self._check_fallback_correlation(medication, symptom)
+                    if correlation:
+                        correlations.append(correlation)
+        
+        return correlations
+    
+    async def _query_fda_for_symptom_correlation(self, medication: Dict[str, Any], symptom: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Query FDA adverse events for drug-symptom correlation
+        """
+        try:
+            drug_name = medication.get("name", "").lower().strip()
+            symptom_name = symptom.get("symptom", "").lower().strip()
+            
+            # Use OpenFDA service to check for adverse events
+            # We'll adapt the interaction API to work for symptom correlation
+            result = await self._check_fda_adverse_events(drug_name, symptom_name)
+            
+            if result and result.get("total_events", 0) > 0:
+                # Convert FDA data to correlation format
+                correlation = self._convert_fda_to_correlation(medication, symptom, result)
+                return correlation
+            
+        except Exception as e:
+            logger.warning(f"FDA query failed for {medication.get('name')} + {symptom.get('symptom')}: {str(e)}")
+        
+        return None
+    
+    async def _check_fda_adverse_events(self, drug_name: str, symptom_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Direct FDA API call for drug-symptom adverse event correlation
+        """
+        import aiohttp
+        
+        try:
+            url = "https://api.fda.gov/drug/event.json"
+            
+            # Normalize symptom name for FDA search
+            symptom_search_terms = self._get_fda_symptom_terms(symptom_name)
+            
+            async with aiohttp.ClientSession() as session:
+                for symptom_term in symptom_search_terms:
+                    params = {
+                        "search": f'patient.drug.medicinalproduct:"{drug_name}" AND patient.reaction.reactionmeddrapt:"{symptom_term}"',
+                        "limit": 50,
+                        "count": "patient.reaction.reactionmeddrapt.exact"
+                    }
+                    
+                    async with session.get(url, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            if data.get("results"):
+                                return self._parse_fda_symptom_data(drug_name, symptom_name, data)
+                        elif response.status == 404:
+                            continue  # Try next symptom term
+            
+        except Exception as e:
+            logger.error(f"FDA API call failed: {str(e)}")
+        
+        return None
+    
+    def _get_fda_symptom_terms(self, symptom_name: str) -> List[str]:
+        """
+        Convert common symptom names to FDA medical terminology
+        """
+        return medical_normalizer.get_fda_symptom_terms(symptom_name)
+    
+    def _parse_fda_symptom_data(self, drug_name: str, symptom_name: str, fda_data: Dict) -> Dict[str, Any]:
+        """
+        Parse FDA adverse event data for symptom correlation
+        """
+        results = fda_data.get("results", [])
+        
+        total_reports = 0
+        serious_reports = 0
+        
+        # Analyze the count data
+        for result in results:
+            count = result.get("count", 0)
+            total_reports += count
+            
+        # Estimate confidence based on report frequency
+        confidence = min(0.9, total_reports / 1000)  # Scale based on report count
+        confidence = max(0.5, confidence)  # Minimum threshold for reporting
+        
+        return {
+            "drug_name": drug_name,
+            "symptom_name": symptom_name,
+            "total_reports": total_reports,
+            "confidence": confidence,
+            "source": "FDA_ADVERSE_EVENTS",
+            "data_quality": "high"
+        }
+    
+    def _convert_fda_to_correlation(self, medication: Dict[str, Any], symptom: Dict[str, Any], fda_result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert FDA adverse event data to correlation format
+        """
+        confidence = fda_result.get("confidence", 0.5)
+        total_reports = fda_result.get("total_reports", 0)
+        
+        # Determine severity based on report frequency
+        if total_reports > 500:
+            severity = "high"
+        elif total_reports > 100:
+            severity = "medium"
+        else:
+            severity = "low"
+        
+        # Calculate timing score if dates available
+        timing_score = self._calculate_timing_score(medication, symptom, {"onset_days": [1, 30]})
+        final_confidence = confidence * timing_score
+        
+        return {
+            "type": "drug_symptom_correlation",
+            "medication": medication.get("name"),
+            "symptom": symptom.get("symptom"),
+            "confidence": final_confidence,
+            "severity": severity,
+            "fda_reports": total_reports,
+            "source": "FDA_VALIDATED",
+            "timing_analysis": {
+                "timing_score": timing_score,
+                "expected_onset_days": [1, 30]  # Conservative estimate
+            },
+            "recommendation": self._generate_fda_based_recommendation(medication, symptom, severity, total_reports)
+        }
+    
+    def _generate_fda_based_recommendation(self, medication: Dict[str, Any], symptom: Dict[str, Any], severity: str, report_count: int) -> str:
+        """
+        Generate FDA-based recommendation
+        """
+        med_name = medication.get("name")
+        symptom_name = symptom.get("symptom")
+        
+        if severity == "high" or report_count > 500:
+            return f"⚠️ FDA data shows {symptom_name} is frequently reported with {med_name} ({report_count} reports). Contact your doctor immediately."
+        elif severity == "medium" or report_count > 100:
+            return f"📊 FDA adverse event reports link {symptom_name} to {med_name} ({report_count} reports). Discuss with your healthcare provider."
+        else:
+            return f"📝 FDA has {report_count} reports of {symptom_name} with {med_name}. Mention this to your doctor at your next visit."
+    
+    def _check_fallback_correlation(self, medication: Dict[str, Any], symptom: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Check fallback hardcoded knowledge (reduced set)
         """
         drug_name = medication.get("name", "").lower().strip()
         symptom_name = symptom.get("symptom", "").lower().strip()
         
-        # Normalize drug names (remove common suffixes)
-        drug_name = self._normalize_drug_name(drug_name)
-        symptom_name = self._normalize_symptom_name(symptom_name)
+        # Normalize names using centralized utilities
+        drug_name = medical_normalizer.normalize_drug_name(drug_name)
+        symptom_name = medical_normalizer.normalize_symptom_name(symptom_name)
         
-        if drug_name not in self.drug_side_effects:
+        if drug_name not in self.fallback_drug_effects:
             return None
         
-        drug_effects = self.drug_side_effects[drug_name]
+        drug_effects = self.fallback_drug_effects[drug_name]
         
-        # Check for direct match or similar symptoms
+        # Check for matches
         matching_effect = None
         for effect_name, effect_data in drug_effects.items():
-            if self._symptoms_match(symptom_name, effect_name):
+            if medical_normalizer.symptoms_match(symptom_name, effect_name):
                 matching_effect = effect_data
                 break
         
         if not matching_effect:
             return None
         
-        # Check timing if available
+        # Calculate timing and confidence
         timing_score = self._calculate_timing_score(medication, symptom, matching_effect)
-        
-        # Calculate final confidence
         base_confidence = matching_effect["confidence"]
-        final_confidence = base_confidence * timing_score
+        final_confidence = base_confidence * timing_score * 0.9  # Slightly lower confidence for fallback
         
-        if final_confidence < 0.5:  # Threshold for reporting
+        if final_confidence < 0.5:
             return None
         
         return {
@@ -122,6 +372,7 @@ class DrugSymptomCorrelationEngine:
             "symptom": symptom.get("symptom"),
             "confidence": final_confidence,
             "severity": matching_effect["severity"],
+            "source": "FALLBACK_KNOWLEDGE",
             "timing_analysis": {
                 "timing_score": timing_score,
                 "expected_onset_days": matching_effect["onset_days"]
@@ -129,59 +380,8 @@ class DrugSymptomCorrelationEngine:
             "recommendation": self._generate_drug_symptom_recommendation(medication, symptom, matching_effect)
         }
     
-    def _normalize_drug_name(self, drug_name: str) -> str:
-        """Normalize drug name for matching"""
-        # Remove common suffixes and brand name variations
-        suffixes = ["er", "xl", "cr", "sr", "mg", "mcg"]
-        normalized = drug_name.lower()
-        for suffix in suffixes:
-            if normalized.endswith(suffix):
-                normalized = normalized[:-len(suffix)].strip()
-        return normalized
-    
-    def _normalize_symptom_name(self, symptom_name: str) -> str:
-        """Normalize symptom name for matching"""
-        # Handle common symptom variations
-        symptom_mapping = {
-            "tired": "fatigue",
-            "exhausted": "fatigue",
-            "lightheaded": "dizziness",
-            "light_headed": "dizziness",
-            "upset_stomach": "stomach_upset",
-            "stomach_pain": "stomach_upset",
-            "muscle_ache": "muscle_pain",
-            "muscle_aches": "muscle_pain"
-        }
-        
-        normalized = symptom_name.lower().replace(" ", "_")
-        return symptom_mapping.get(normalized, normalized)
-    
-    def _symptoms_match(self, reported_symptom: str, known_effect: str) -> bool:
-        """Check if reported symptom matches known drug effect"""
-        # Direct match
-        if reported_symptom == known_effect:
-            return True
-        
-        # Partial matches for common variations
-        partial_matches = [
-            ("muscle", "muscle"),
-            ("stomach", "stomach"),
-            ("nausea", "nausea"),
-            ("dizz", "dizz"),  # dizziness variations
-            ("fatigue", "tired"),
-            ("tired", "fatigue")
-        ]
-        
-        for pattern1, pattern2 in partial_matches:
-            if pattern1 in reported_symptom and pattern2 in known_effect:
-                return True
-            if pattern2 in reported_symptom and pattern1 in known_effect:
-                return True
-        
-        return False
-    
     def _calculate_timing_score(self, medication: Dict[str, Any], symptom: Dict[str, Any], effect_data: Dict[str, Any]) -> float:
-        """Calculate timing correlation score"""
+        """Calculate timing correlation score using robust date parsing"""
         try:
             med_start = medication.get("start_date")
             symptom_date = symptom.get("reported_date") or symptom.get("date")
@@ -189,13 +389,16 @@ class DrugSymptomCorrelationEngine:
             if not med_start or not symptom_date:
                 return 0.8  # Default score when timing data unavailable
             
-            # Parse dates
-            if isinstance(med_start, str):
-                med_start = datetime.fromisoformat(med_start.replace("Z", "+00:00"))
-            if isinstance(symptom_date, str):
-                symptom_date = datetime.fromisoformat(symptom_date.replace("Z", "+00:00"))
+            # Use robust date parsing with appropriate context
+            med_start_dt = medical_date_parser.parse_medical_date(med_start, "medication_start")
+            symptom_date_dt = medical_date_parser.parse_medical_date(symptom_date, "symptom_report")
             
-            days_diff = (symptom_date - med_start).days
+            if not med_start_dt or not symptom_date_dt:
+                # Don't default to now() - return lower confidence instead
+                logger.warning(f"Could not parse dates for timing analysis: med_start={med_start}, symptom_date={symptom_date}")
+                return 0.6  # Lower confidence when timing cannot be analyzed
+            
+            days_diff = (symptom_date_dt - med_start_dt).days
             
             # Check if timing falls within expected onset window
             onset_range = effect_data["onset_days"]
@@ -220,7 +423,7 @@ class DrugSymptomCorrelationEngine:
             
         except Exception as e:
             logger.error(f"Error calculating timing score: {str(e)}")
-            return 0.8  # Default score on error
+            return 0.6  # Lower confidence on error, don't use current time
         
         return 0.8
     
@@ -241,6 +444,7 @@ class DrugSymptomCorrelationEngine:
 class LabSymptomCorrelationEngine:
     """
     Analyzes correlations between lab results and symptoms
+    Optimized with inverted indices for O(K) complexity
     """
     
     def __init__(self):
@@ -308,18 +512,92 @@ class LabSymptomCorrelationEngine:
                 }
             }
         }
+        
+        # Build inverted indices for performance optimization
+        self._build_symptom_lab_indices()
+    
+    def _build_symptom_lab_indices(self):
+        """
+        Build inverted indices: symptom → [lab_tests that could explain it]
+        Optimizes from O(N×M) to O(K) where K = relevant matches
+        """
+        self.symptom_to_labs_index = {}
+        self.lab_to_symptoms_index = {}
+        
+        for lab_test, patterns in self.lab_symptom_patterns.items():
+            normalized_lab = lab_test.lower().strip()
+            self.lab_to_symptoms_index[normalized_lab] = set()
+            
+            for pattern_type, symptoms in patterns.items():
+                for symptom_name, pattern_data in symptoms.items():
+                    normalized_symptom = medical_normalizer.normalize_symptom_name(symptom_name)
+                    
+                    # Add to symptom → labs mapping
+                    if normalized_symptom not in self.symptom_to_labs_index:
+                        self.symptom_to_labs_index[normalized_symptom] = set()
+                    self.symptom_to_labs_index[normalized_symptom].add(normalized_lab)
+                    
+                    # Add to lab → symptoms mapping
+                    self.lab_to_symptoms_index[normalized_lab].add(normalized_symptom)
+                    
+                    # Add symptom variations for better matching
+                    for variation in self._get_symptom_variations(symptom_name):
+                        norm_variation = medical_normalizer.normalize_symptom_name(variation)
+                        if norm_variation not in self.symptom_to_labs_index:
+                            self.symptom_to_labs_index[norm_variation] = set()
+                        self.symptom_to_labs_index[norm_variation].add(normalized_lab)
+    
+    def _get_symptom_variations(self, symptom_name: str) -> List[str]:
+        """Get common variations of a symptom name for lab correlation indexing"""
+        variations = [symptom_name]
+        
+        # Lab-specific symptom variations
+        variation_map = {
+            "fatigue": ["tired", "exhausted", "weakness", "low_energy"],
+            "shortness_of_breath": ["breathless", "short_of_breath", "difficulty_breathing"],
+            "frequent_urination": ["frequent_urinating", "polyuria"],
+            "excessive_thirst": ["increased_thirst", "polydipsia"],
+            "weight_loss": ["losing_weight", "weight_drop"],
+            "weight_gain": ["gaining_weight", "weight_increase"],
+            "heart_palpitations": ["palpitations", "rapid_heartbeat", "racing_heart"],
+            "abdominal_pain": ["stomach_pain", "belly_pain", "stomach_ache"]
+        }
+        
+        for base_symptom, vars in variation_map.items():
+            if base_symptom in symptom_name.lower():
+                variations.extend(vars)
+        
+        return variations
     
     def analyze(self, lab_results: List[Dict[str, Any]], symptoms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Analyze lab-symptom correlations
+        Analyze lab-symptom correlations using optimized indexing
+        O(K) complexity where K = number of relevant matches
         """
         correlations = []
         
+        # Build lab results index for faster lookups
+        lab_index = {}
         for lab in lab_results:
-            for symptom in symptoms:
-                correlation = self._check_lab_symptom_correlation(lab, symptom)
-                if correlation:
-                    correlations.append(correlation)
+            test_name = lab.get("test", "").lower().strip()
+            if test_name not in lab_index:
+                lab_index[test_name] = []
+            lab_index[test_name].append(lab)
+        
+        # For each symptom, only check against relevant lab tests
+        for symptom in symptoms:
+            normalized_symptom = medical_normalizer.normalize_symptom_name(symptom.get("symptom", ""))
+            
+            # Get candidate lab tests from inverted index
+            candidate_labs = self.symptom_to_labs_index.get(normalized_symptom, set())
+            
+            # Check candidates against available lab results
+            for lab_test in candidate_labs:
+                if lab_test in lab_index:
+                    for lab_result in lab_index[lab_test]:
+                        correlation = self._check_lab_symptom_correlation(lab_result, symptom)
+                        if correlation:
+                            correlations.append(correlation)
         
         return sorted(correlations, key=lambda x: x["confidence"], reverse=True)
     
@@ -401,6 +679,7 @@ class LabSymptomCorrelationEngine:
 class DrugLabCorrelationEngine:
     """
     Analyzes correlations between medications and lab results
+    Optimized with inverted indices for O(K) complexity
     """
     
     def __init__(self):
@@ -424,18 +703,94 @@ class DrugLabCorrelationEngine:
                 "potassium": {"effect": "increases", "monitoring": "baseline_then_periodic", "concern_threshold": ">5.0"}
             }
         }
+        
+        # Build inverted indices for performance optimization
+        self._build_drug_lab_indices()
+    
+    def _build_drug_lab_indices(self):
+        """
+        Build inverted indices: drug → [lab_tests to monitor], lab_test → [drugs that affect it]
+        Optimizes from O(N×M) to O(K) where K = relevant matches
+        """
+        self.drug_to_labs_index = {}
+        self.lab_to_drugs_index = {}
+        
+        for drug_name, lab_tests in self.drug_lab_monitoring.items():
+            normalized_drug = medical_normalizer.normalize_drug_name(drug_name)
+            self.drug_to_labs_index[normalized_drug] = set()
+            
+            for lab_test, monitoring_data in lab_tests.items():
+                normalized_lab = lab_test.lower().strip()
+                
+                # Add to drug → labs mapping
+                self.drug_to_labs_index[normalized_drug].add(normalized_lab)
+                
+                # Add to lab → drugs mapping
+                if normalized_lab not in self.lab_to_drugs_index:
+                    self.lab_to_drugs_index[normalized_lab] = set()
+                self.lab_to_drugs_index[normalized_lab].add(normalized_drug)
+                
+                # Add drug name variations
+                for variation in self._get_drug_variations(drug_name):
+                    norm_variation = medical_normalizer.normalize_drug_name(variation)
+                    if norm_variation not in self.drug_to_labs_index:
+                        self.drug_to_labs_index[norm_variation] = set()
+                    self.drug_to_labs_index[norm_variation].add(normalized_lab)
+                    self.lab_to_drugs_index[normalized_lab].add(norm_variation)
+    
+    def _get_drug_variations(self, drug_name: str) -> List[str]:
+        """Get common brand/generic variations of drug names"""
+        variations = [drug_name]
+        
+        # Common brand/generic mappings
+        brand_generic_map = {
+            "metformin": ["glucophage", "fortamet", "riomet"],
+            "atorvastatin": ["lipitor"],
+            "lisinopril": ["zestril", "prinivil"],
+            "warfarin": ["coumadin", "jantoven"]
+        }
+        
+        for generic, brands in brand_generic_map.items():
+            if generic in drug_name.lower():
+                variations.extend(brands)
+            elif drug_name.lower() in brands:
+                variations.append(generic)
+        
+        return variations
     
     def analyze(self, medications: List[Dict[str, Any]], lab_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Analyze drug-lab correlations
+        Analyze drug-lab correlations using optimized indexing
+        O(K) complexity where K = number of relevant matches
         """
         correlations = []
         
+        # Build indices for faster lookups
+        med_index = {}
         for med in medications:
-            for lab in lab_results:
-                correlation = self._check_drug_lab_correlation(med, lab)
-                if correlation:
-                    correlations.append(correlation)
+            normalized_name = medical_normalizer.normalize_drug_name(med.get("name", ""))
+            if normalized_name not in med_index:
+                med_index[normalized_name] = []
+            med_index[normalized_name].append(med)
+        
+        lab_index = {}
+        for lab in lab_results:
+            test_name = lab.get("test", "").lower().strip()
+            if test_name not in lab_index:
+                lab_index[test_name] = []
+            lab_index[test_name].append(lab)
+        
+        # Approach 1: For each drug, check its relevant lab tests
+        for drug_name, drug_list in med_index.items():
+            relevant_labs = self.drug_to_labs_index.get(drug_name, set())
+            
+            for lab_test in relevant_labs:
+                if lab_test in lab_index:
+                    for medication in drug_list:
+                        for lab_result in lab_index[lab_test]:
+                            correlation = self._check_drug_lab_correlation(medication, lab_result)
+                            if correlation:
+                                correlations.append(correlation)
         
         return sorted(correlations, key=lambda x: x.get("urgency_score", 0), reverse=True)
     
@@ -446,8 +801,8 @@ class DrugLabCorrelationEngine:
         drug_name = medication.get("name", "").lower().strip()
         test_name = lab_result.get("test", "").lower().strip()
         
-        # Normalize names
-        drug_name = self._normalize_drug_name(drug_name)
+        # Normalize names using centralized utilities
+        drug_name = medical_normalizer.normalize_drug_name(drug_name)
         
         if drug_name not in self.drug_lab_monitoring:
             return None
@@ -478,13 +833,7 @@ class DrugLabCorrelationEngine:
             "recommendation": self._generate_drug_lab_recommendation(medication, lab_result, pattern_data, concern_level)
         }
     
-    def _normalize_drug_name(self, drug_name: str) -> str:
-        """Normalize drug name for matching"""
-        # Remove dosage information and common suffixes
-        import re
-        normalized = re.sub(r'\d+\s*mg', '', drug_name.lower())
-        normalized = re.sub(r'\s+', ' ', normalized).strip()
-        return normalized
+
     
     def _assess_concern_level(self, lab_value: float, pattern_data: Dict[str, Any]) -> str:
         """Assess level of concern based on lab value"""
@@ -567,6 +916,13 @@ class TemporalPatternEngine:
         
         return sorted(patterns, key=lambda x: x.get("confidence", 0), reverse=True)
     
+    def _parse_date(self, date_str: str) -> Optional[datetime]:
+        """Parse date string to datetime object using robust parsing - returns None if invalid"""
+        parsed_date = medical_date_parser.parse_medical_date(date_str, "medical_event")
+        if not parsed_date:
+            logger.warning(f"Failed to parse date: {date_str}")
+        return parsed_date
+    
     def _create_unified_timeline(self, medical_profile: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create unified timeline of all medical events"""
         timeline = []
@@ -574,46 +930,47 @@ class TemporalPatternEngine:
         # Add medications
         for med in medical_profile.get("medications", []):
             if med.get("start_date"):
-                timeline.append({
-                    "date": med["start_date"],
-                    "type": "medication_started",
-                    "data": med,
-                    "entity": "medication"
-                })
+                parsed_date = self._parse_date(med["start_date"])
+                if parsed_date:  # Only add if date is valid
+                    timeline.append({
+                        "date": med["start_date"],
+                        "parsed_date": parsed_date,
+                        "type": "medication_started",
+                        "data": med,
+                        "entity": "medication"
+                    })
         
         # Add symptoms
         for symptom in medical_profile.get("recent_symptoms", []):
-            if symptom.get("reported_date") or symptom.get("date"):
-                timeline.append({
-                    "date": symptom.get("reported_date") or symptom.get("date"),
-                    "type": "symptom_reported",
-                    "data": symptom,
-                    "entity": "symptom"
-                })
+            symptom_date = symptom.get("reported_date") or symptom.get("date")
+            if symptom_date:
+                parsed_date = self._parse_date(symptom_date)
+                if parsed_date:  # Only add if date is valid
+                    timeline.append({
+                        "date": symptom_date,
+                        "parsed_date": parsed_date,
+                        "type": "symptom_reported",
+                        "data": symptom,
+                        "entity": "symptom"
+                    })
         
         # Add lab results
         for lab in medical_profile.get("lab_results", []):
             if lab.get("date"):
-                timeline.append({
-                    "date": lab["date"],
-                    "type": "lab_result",
-                    "data": lab,
-                    "entity": "lab"
-                })
+                parsed_date = self._parse_date(lab["date"])
+                if parsed_date:  # Only add if date is valid
+                    timeline.append({
+                        "date": lab["date"],
+                        "parsed_date": parsed_date,
+                        "type": "lab_result",
+                        "data": lab,
+                        "entity": "lab"
+                    })
         
-        # Sort by date
-        timeline.sort(key=lambda x: self._parse_date(x["date"]))
+        # Sort by parsed date
+        timeline.sort(key=lambda x: x["parsed_date"])
         
         return timeline
-    
-    def _parse_date(self, date_str: str) -> datetime:
-        """Parse date string to datetime object"""
-        try:
-            if isinstance(date_str, str):
-                return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-            return date_str
-        except:
-            return datetime.now()
     
     def _find_event_clusters(self, timeline: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Find clusters of events in short timeframes"""
@@ -622,12 +979,12 @@ class TemporalPatternEngine:
         
         for i, event in enumerate(timeline):
             cluster_events = [event]
-            event_date = self._parse_date(event["date"])
+            event_date = event["parsed_date"]  # Use pre-parsed date
             
             # Look for events within window
             for j in range(i + 1, len(timeline)):
                 other_event = timeline[j]
-                other_date = self._parse_date(other_event["date"])
+                other_date = other_event["parsed_date"]  # Use pre-parsed date
                 
                 if (other_date - event_date).days <= window_days:
                     cluster_events.append(other_event)
@@ -654,7 +1011,7 @@ class TemporalPatternEngine:
         for i, event in enumerate(timeline):
             if event["type"] == "medication_started":
                 # Look for symptoms that follow
-                med_date = self._parse_date(event["date"])
+                med_date = event["parsed_date"]  # Use pre-parsed date
                 
                 for j in range(i + 1, len(timeline)):
                     if j >= len(timeline):
@@ -662,7 +1019,7 @@ class TemporalPatternEngine:
                     
                     next_event = timeline[j]
                     if next_event["type"] == "symptom_reported":
-                        symptom_date = self._parse_date(next_event["date"])
+                        symptom_date = next_event["parsed_date"]  # Use pre-parsed date
                         days_diff = (symptom_date - med_date).days
                         
                         if 1 <= days_diff <= 30:  # Reasonable timeframe for side effects
@@ -707,9 +1064,9 @@ class MultiCorrelationAnalyzer:
         """
         logger.info(f"Starting comprehensive correlation analysis for trigger: {trigger_event.get('type')}")
         
-        # Run all correlation engines
+        # Run all correlation engines (drug_symptom is now async)
         correlations = {
-            "drug_symptom": self.drug_symptom_engine.analyze(
+            "drug_symptom": await self.drug_symptom_engine.analyze(
                 medical_profile.get("medications", []), 
                 medical_profile.get("recent_symptoms", [])
             ),

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, Dict, Any, List
 from decimal import Decimal
 
-# Medical condition schema for user profile
+
 class MedicalCondition(BaseModel):
     condition_name: str = Field(..., description="Name of the medical condition", max_length=200)
     diagnosed_date: Optional[date] = Field(None, description="Date when condition was diagnosed")
@@ -25,7 +25,7 @@ class MedicalCondition(BaseModel):
             raise ValueError('Severity must be one of: mild, moderate, severe, critical')
         return v
 
-# Pydantic schema for reading user information from the database
+
 class UserRead(BaseModel):
     user_id: uuid.UUID = Field(..., description="Internal database UUID for the user")
     supabase_id: Optional[str] = Field(None, description="Supabase user ID (auth.users.id)")
@@ -34,7 +34,7 @@ class UserRead(BaseModel):
     updated_at: datetime = Field(..., description="Timestamp when the user was last updated in DB")
     last_login: Optional[datetime] = Field(None, description="Timestamp of the user's last login (from Supabase)")
     
-    # Profile fields
+    
     name: Optional[str] = Field(None, description="User's full name")
     date_of_birth: Optional[date] = Field(None, description="User's date of birth")
     weight: Optional[Decimal] = Field(None, description="Weight in kg")
@@ -43,21 +43,21 @@ class UserRead(BaseModel):
     profile_photo_url: Optional[str] = Field(None, description="URL to profile photo")
     medical_conditions: Optional[List[MedicalCondition]] = Field(default_factory=list, description="List of user's medical conditions")
     
-    # Keep metadata fields for backward compatibility
+   
     user_metadata: Optional[Dict[str, Any]] = Field(None, description="User metadata from Supabase")
     app_metadata: Optional[Dict[str, Any]] = Field(None, description="Application-specific metadata from Supabase")
 
     class Config:
-        from_attributes = True # Allow mapping from ORM model
+        from_attributes = True 
 
-# Pydantic schema for creating new users
+
 class UserCreate(BaseModel):
     email: str = Field(..., description="User's email address")
     supabase_id: str = Field(..., description="Supabase user ID (auth.users.id)")
     user_metadata: Optional[Dict[str, Any]] = Field(None, description="User-specific metadata from Supabase")
     app_metadata: Optional[Dict[str, Any]] = Field(None, description="Application-specific metadata from Supabase")
 
-# Pydantic schema for updating user profile
+
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = Field(None, description="User's full name", max_length=100)
     date_of_birth: Optional[date] = Field(None, description="User's date of birth (YYYY-MM-DD)")
@@ -79,7 +79,7 @@ class UserProfileUpdate(BaseModel):
             today = date.today()
             if v > today:
                 raise ValueError('Date of birth cannot be in the future')
-            # Check if age would be reasonable (0-150 years)
+           
             age = today.year - v.year - ((today.month, today.day) < (v.month, v.day))
             if age > 150:
                 raise ValueError('Date of birth indicates unrealistic age')
@@ -90,7 +90,7 @@ class UserProfileUpdate(BaseModel):
         if v is not None:
             if len(v) > 50:  # Reasonable limit
                 raise ValueError('Maximum 50 medical conditions allowed')
-            # Check for duplicate condition names
+            
             condition_names = [condition.condition_name.lower().strip() for condition in v]
             if len(condition_names) != len(set(condition_names)):
                 raise ValueError('Duplicate medical conditions are not allowed')

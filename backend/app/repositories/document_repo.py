@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any
 from datetime import date
 
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import select, and_, func, or_, text
+from sqlalchemy import select, and_, func, or_, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import Date as SQLDate
 
@@ -50,6 +50,42 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
     def get_document(self, db: Session, *, document_id: UUID) -> Optional[Document]:
         """Alias for get_by_id for compatibility with tests."""
         return self.get_by_id(db, document_id=document_id)
+
+    async def get_document_async(self, db, *, document_id: UUID) -> Optional[Document]:
+        """Get a document by its ID using async session."""
+        stmt = select(self.model).where(self.model.document_id == document_id)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_document_with_lock_async(self, db, *, document_id: UUID) -> Optional[Document]:
+        """Get a document by its ID with row-level locking to prevent race conditions."""
+        stmt = (
+            select(self.model)
+            .where(self.model.document_id == document_id)
+            .with_for_update()  # SELECT FOR UPDATE to lock the row
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def update_status_async(self, db, *, document_id: UUID, status: ProcessingStatus) -> bool:
+        """Update document processing status using async session."""
+        stmt = (
+            update(self.model)
+            .where(self.model.document_id == document_id)
+            .values(processing_status=status)
+        )
+        result = await db.execute(stmt)
+        return result.rowcount > 0
+
+    async def update_metadata_async(self, db, *, document_id: UUID, metadata_updates: Dict[str, Any]) -> bool:
+        """Update document metadata using async session."""
+        stmt = (
+            update(self.model)
+            .where(self.model.document_id == document_id)
+            .values(**metadata_updates)
+        )
+        result = await db.execute(stmt)
+        return result.rowcount > 0
 
     def get_multi_by_owner(
         self, db: Session, *, user_id: UUID, skip: int = 0, limit: int = 100

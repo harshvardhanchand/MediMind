@@ -3,14 +3,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { enableScreens } from 'react-native-screens';
 import { theme } from './src/theme';
 import AppNavigator from './src/navigation/AppNavigator';
-import "./src/global.css"; // Import global styles
-import { AuthProvider } from './src/context/AuthContext'; // Import AuthProvider
+import "./src/global.css";
+import { AuthProvider } from './src/context/AuthContext';
 import DeepLinkingService from './src/services/deepLinkingService';
 import { analytics } from './src/services/analytics';
 import { crashReporting } from './src/services/crashReporting';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+
+enableScreens();
 
 const linking = {
   prefixes: ['medimind://'],
@@ -31,18 +34,14 @@ export default function App() {
   useEffect(() => {
     // Initialize services
     crashReporting.init();
-    
-    // Initialize deep linking service
     const deepLinkingService = DeepLinkingService.getInstance();
     deepLinkingService.setNavigationRef(navigationRef.current!);
-
-    // Track app open
     analytics.trackAppOpen();
   }, []);
 
   return (
-    <ErrorBoundary 
-      level="global" 
+    <ErrorBoundary
+      level="global"
       context="App"
       onError={(error, errorInfo) => {
         console.error('🚨 Global Error Boundary triggered:', error);

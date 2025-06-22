@@ -16,39 +16,39 @@ export const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: appColors.primary,
-    onPrimary: appColors.white, // Text color on primary background
-    primaryContainer: appColors.primaryLight,
-    onPrimaryContainer: appColors.primaryDark,
+    primary: appColors.accentPrimary,
+    onPrimary: appColors.textOnPrimaryColor,
+    primaryContainer: appColors.legacyPrimaryLight,
+    onPrimaryContainer: appColors.legacyPrimaryDark,
     
-    secondary: appColors.accent, // Using accent as secondary for Paper
-    onSecondary: appColors.white,
-    secondaryContainer: appColors.accentLight,
-    onSecondaryContainer: appColors.accentDark,
+    secondary: appColors.accentPrimary,
+    onSecondary: appColors.textOnPrimaryColor,
+    secondaryContainer: appColors.legacySecondaryLight,
+    onSecondaryContainer: appColors.legacySecondaryDark,
     
-    tertiary: appColors.accent, // Or another color if you have a specific tertiary
-    onTertiary: appColors.white,
-    tertiaryContainer: appColors.accentLight,
-    onTertiaryContainer: appColors.accentDark,
+    tertiary: appColors.accentPrimary,
+    onTertiary: appColors.textOnPrimaryColor,
+    tertiaryContainer: appColors.legacyAccentLight,
+    onTertiaryContainer: appColors.legacyAccentDark,
 
     error: appColors.error,
-    onError: appColors.white,
-    errorContainer: '#FFDAD6', // A light red for error backgrounds
-    onErrorContainer: '#410002', // Dark red text on errorContainer
+    onError: appColors.textOnDestructiveColor,
+    errorContainer: '#FFDAD6',
+    onErrorContainer: '#410002',
 
-    background: appColors.backgroundScreen, // Screen background
-    onBackground: appColors.textPrimary,    // Text on screen background
+    background: appColors.backgroundPrimary,
+    onBackground: appColors.textPrimary,
     
-    surface: appColors.backgroundCard,      // Card/surface background
-    onSurface: appColors.textPrimary,       // Text on card/surface
-    surfaceVariant: appColors.gray50,       // Slightly different surface variant
-    onSurfaceVariant: appColors.textSecondary, // Text on surfaceVariant
+    surface: appColors.backgroundSecondary,
+    onSurface: appColors.textPrimary,
+    surfaceVariant: appColors.backgroundTertiary,
+    onSurfaceVariant: appColors.textSecondary,
 
-    outline: appColors.gray300,
-    outlineVariant: appColors.gray200,
+    outline: appColors.borderStrong,
+    outlineVariant: appColors.borderSubtle,
     
-    shadow: appColors.black,
-    scrim: appColors.black, // For modal backdrop, etc.
+    shadow: appColors.legacyBlack,
+    scrim: appColors.legacyBlack,
 
     // Custom colors directly available under theme.colors
     ...appColors, // Spreading all our custom colors here for easy access

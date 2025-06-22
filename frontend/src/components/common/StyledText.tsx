@@ -9,17 +9,17 @@ const NativeWindText = styled(RNText);
 
 interface StyledTextProps extends RNTextProps {
   children: ReactNode;
-  variant?: 
-    | 'h1' 
-    | 'h2' 
-    | 'h3' 
-    | 'h4' 
-    | 'body1' // Standard body text
-    | 'body2' // Slightly smaller or different weight body text
-    | 'caption' 
-    | 'label'   // For form labels or similar
-    | 'button'  // Text style for buttons if not handled by button component itself
-    | 'subtle'; // For less important text
+  variant?:
+  | 'h1'
+  | 'h2'
+  | 'h3'
+  | 'h4'
+  | 'body1' // Standard body text
+  | 'body2' // Slightly smaller or different weight body text
+  | 'caption'
+  | 'label'   // For form labels or similar
+  | 'button'  // Text style for buttons if not handled by button component itself
+  | 'subtle'; // For less important text
   color?: keyof typeof appColors | string; // Use keys from our actual colors.ts export or a custom string
   tw?: string; // For additional ad-hoc Tailwind classes
 }
@@ -37,8 +37,9 @@ const StyledText: React.FC<StyledTextProps> = ({
 
   if (typeof color === 'string') {
     // Check if it's a key in our appColors first
-    if (appColors[color as keyof typeof appColors]) {
-      finalTextColor = appColors[color as keyof typeof appColors];
+    const colorValue = appColors[color as keyof typeof appColors];
+    if (colorValue && typeof colorValue === 'string') {
+      finalTextColor = colorValue;
     } else {
       // Assume it's a custom hex color string
       finalTextColor = color;

@@ -56,6 +56,7 @@ export type MainAppStackParamList = {
 
 // The actual navigation structure in the app seems to be flattened
 export type RootStackParamList = {
+  Splash: undefined; // Loading/splash screen
   Auth: undefined; // This will nest the AuthStack
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>; // Updated to use OnboardingStack
   Main: NavigatorScreenParams<MainBottomTabParamList>;

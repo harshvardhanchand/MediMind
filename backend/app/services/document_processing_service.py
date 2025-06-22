@@ -39,9 +39,10 @@ async def run_document_processing_pipeline(document_id: uuid.UUID):
         extracted_data_repo = ExtractedDataRepository(ExtractedData)
 
         try:
-            # Get document with performance tracking
+            # Get document with row-level locking to prevent race conditions
             with track_database_query("select", "documents", str(document_id)):
-                document = await doc_repo.get_document_async(db=db, document_id=document_id)
+                # Use SELECT FOR UPDATE to lock the row
+                document = await doc_repo.get_document_with_lock_async(db=db, document_id=document_id)
             
             if not document:
                 raise DocumentProcessingError(
@@ -50,19 +51,20 @@ async def run_document_processing_pipeline(document_id: uuid.UUID):
                     processing_stage="initialization"
                 )
 
-            # Early exit conditions - avoid processing if already completed
+            # Early exit conditions - avoid processing if already completed or failed
             if document.processing_status in [ProcessingStatus.COMPLETED, ProcessingStatus.FAILED]:
                 logger.info(f"Document {document_id} already processed (status: {document.processing_status}). Skipping.")
                 return
 
-            # Concurrency protection - don't process if already in progress
-            if document.processing_status in [
-                ProcessingStatus.OCR_COMPLETED, 
-                ProcessingStatus.EXTRACTION_COMPLETED, 
-                ProcessingStatus.REVIEW_REQUIRED
-            ]:
-                logger.info(f"Document {document_id} is already being processed (status: {document.processing_status}). Skipping.")
+            # Race condition protection - check if another worker is processing
+            if document.processing_status == ProcessingStatus.PROCESSING:
+                logger.info(f"Document {document_id} is already being processed by another worker. Skipping.")
                 return
+
+            # Set status to PROCESSING immediately to prevent race conditions
+            await doc_repo.update_status_async(db, document_id=document_id, status=ProcessingStatus.PROCESSING)
+            await db.commit()
+            logger.info(f"Document {document_id} status set to PROCESSING")
 
             # Check for existing extracted data to avoid redundant processing
             with track_database_query("select", "extracted_data", str(document_id)):
@@ -70,34 +72,48 @@ async def run_document_processing_pipeline(document_id: uuid.UUID):
                     db, document_id=document_id
                 )
             
+            # If we have complete structured content, mark as completed
             if existing_extracted_data and existing_extracted_data.content and existing_extracted_data.content != {}:
-                if document.processing_status != ProcessingStatus.FAILED:
-                    logger.info(f"Document {document_id} has structured content. Setting to completed.")
-                    await doc_repo.update_status_async(db, document_id=document_id, status=ProcessingStatus.COMPLETED)
-                    await db.commit()
-                    return
-
-            # === OCR Processing Stage ===
-            raw_text_content = await process_ocr_stage(
-                db, doc_repo, extracted_data_repo, document, existing_extracted_data
-            )
-            
-            if not raw_text_content:
-                await doc_repo.update_status_async(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                logger.info(f"Document {document_id} has structured content. Setting to completed.")
+                await doc_repo.update_status_async(db, document_id=document_id, status=ProcessingStatus.COMPLETED)
                 await db.commit()
-                raise DocumentProcessingError(
-                    "OCR processing failed - no text extracted",
-                    document_id=str(document_id),
-                    processing_stage="ocr",
-                    error_code=ErrorCode.OCR_PROCESSING_FAILED
-                )
+                return
 
-            # === LLM Structuring Stage ===
-            await process_llm_structuring_stage(
-                db, doc_repo, extracted_data_repo, document, raw_text_content
-            )
+            # Determine which stage to start from based on existing data
+            raw_text_content = None
+            
+            # === OCR Processing Stage (if needed) ===
+            if not existing_extracted_data or not existing_extracted_data.raw_text:
+                logger.info(f"Starting OCR stage for document {document_id}")
+                raw_text_content = await process_ocr_stage(
+                    db, doc_repo, extracted_data_repo, document, existing_extracted_data
+                )
+                
+                if not raw_text_content:
+                    await doc_repo.update_status_async(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                    await db.commit()
+                    raise DocumentProcessingError(
+                        "OCR processing failed - no text extracted",
+                        document_id=str(document_id),
+                        processing_stage="ocr",
+                        error_code=ErrorCode.OCR_PROCESSING_FAILED
+                    )
+            else:
+                # Use existing raw text
+                raw_text_content = existing_extracted_data.raw_text
+                logger.info(f"Using existing raw text for document {document_id}")
+
+            # === LLM Structuring Stage (if needed) ===
+            if not existing_extracted_data or not existing_extracted_data.content or existing_extracted_data.content == {}:
+                logger.info(f"Starting LLM structuring stage for document {document_id}")
+                await process_llm_structuring_stage(
+                    db, doc_repo, extracted_data_repo, document, raw_text_content
+                )
+            else:
+                logger.info(f"Using existing structured content for document {document_id}")
 
             # === Auto-population Stage ===
+            logger.info(f"Starting auto-population stage for document {document_id}")
             await process_auto_population_stage(db, document, extracted_data_repo)
 
             # Mark as completed
@@ -106,12 +122,26 @@ async def run_document_processing_pipeline(document_id: uuid.UUID):
             
             logger.info(f"Document processing pipeline completed successfully for document {document_id}")
 
-        except DocumentProcessingError:
+        except DocumentProcessingError as e:
             await db.rollback()
+            # Ensure failed documents are marked as FAILED
+            try:
+                await doc_repo.update_status_async(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                await db.commit()
+                logger.error(f"Document {document_id} marked as FAILED due to processing error: {str(e)}")
+            except Exception as status_update_error:
+                logger.error(f"Failed to update status to FAILED for document {document_id}: {status_update_error}")
             raise
         except Exception as e:
             await db.rollback()
             logger.error(f"Unexpected error in document processing pipeline: {str(e)}", exc_info=True)
+            # Ensure failed documents are marked as FAILED
+            try:
+                await doc_repo.update_status_async(db, document_id=document_id, status=ProcessingStatus.FAILED)
+                await db.commit()
+                logger.error(f"Document {document_id} marked as FAILED due to unexpected error")
+            except Exception as status_update_error:
+                logger.error(f"Failed to update status to FAILED for document {document_id}: {status_update_error}")
             raise DocumentProcessingError(
                 f"Document processing failed: {str(e)}",
                 document_id=str(document_id),
@@ -158,7 +188,13 @@ async def process_ocr_stage(
         raw_text_content = doc_ai_result.text
         
         # Store raw text with performance tracking
-        with track_database_query("update", "extracted_data", str(document.user_id)):
+        with track_database_query("update", "extracted_data", str(document.document_id)):
+            # Ensure extracted data record exists
+            if not existing_extracted_data:
+                await extracted_data_repo.create_initial_extracted_data_async(
+                    db, document_id=document.document_id
+                )
+            
             await extracted_data_repo.update_raw_text_async(
                 db, document_id=document.document_id, raw_text=raw_text_content
             )
@@ -174,6 +210,11 @@ async def process_ocr_stage(
 
     except Exception as e:
         logger.error(f"OCR processing failed for document {document.document_id}: {str(e)}", exc_info=True)
+        # Mark document as failed on OCR errors
+        await doc_repo.update_status_async(
+            db, document_id=document.document_id, status=ProcessingStatus.FAILED
+        )
+        await db.commit()
         raise DocumentProcessingError(
             f"OCR processing failed: {str(e)}",
             document_id=str(document.document_id),
@@ -254,7 +295,7 @@ async def process_llm_structuring_stage(
             extracted_metadata = {}
 
         # Update structured content
-        with track_database_query("update", "extracted_data", str(document.user_id)):
+        with track_database_query("update", "extracted_data", str(document.document_id)):
             await extracted_data_repo.update_structured_content_async(
                 db, document_id=document.document_id, content=medical_events
             )
@@ -272,6 +313,12 @@ async def process_llm_structuring_stage(
         logger.info(f"LLM structuring successful for document {document.document_id}")
 
     except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"Failed to parse LLM output for document {document.document_id}: {str(e)}")
+        # Mark document as failed on parse errors
+        await doc_repo.update_status_async(
+            db, document_id=document.document_id, status=ProcessingStatus.FAILED
+        )
+        await db.commit()
         raise DocumentProcessingError(
             f"Failed to parse LLM output: {str(e)}",
             document_id=str(document.document_id),
@@ -381,36 +428,13 @@ async def trigger_medical_analysis(db: AsyncSession, document: Document, populat
 
 # Fallback sync version for compatibility
 async def run_document_processing_pipeline_sync(document_id: uuid.UUID):
-    """Fallback sync version when async session is not available."""
-    
-    logger.warning("Using sync fallback for document processing - consider configuring async database")
-    
-    db: Session = SessionLocal()
-    doc_repo = DocumentRepository(Document) 
-    extracted_data_repo = ExtractedDataRepository(ExtractedData)
-
-    try:
-        # Use the existing sync logic but with better error handling
-        document = doc_repo.get_document(db=db, document_id=document_id)
-        if not document:
-            raise DocumentProcessingError(
-                f"Document with id {document_id} not found",
-                document_id=str(document_id),
-                processing_stage="initialization"
-            )
-
-        # Rest of the sync processing logic would go here
-        # This is kept as fallback only
-        
-    except Exception as e:
-        logger.error(f"Sync document processing failed: {str(e)}", exc_info=True)
-        raise
-    finally:
-        db.close()
-
-# Note: Ensure DocumentRepository has get_by_id and update_status methods.
-# Ensure settings in app.core.config correctly load:
-# GOOGLE_CLOUD_PROJECT, DOCUMENT_AI_PROCESSOR_LOCATION, DOCUMENT_AI_PROCESSOR_ID, GEMINI_API_KEY
-# Assumed Document model has file_metadata JSON field with content_type.
-# Assumed Document model ProcessingStatus enum includes: PENDING, PROCESSING, REVIEW_REQUIRED, COMPLETED, FAILED
-# (and potentially OCR_COMPLETED if more granular status is desired) 
+    """
+    DEPRECATED: This function is removed due to async/sync mixing issues.
+    Use the main async pipeline instead.
+    """
+    logger.error(f"Sync fallback called for document {document_id} - this should not happen")
+    raise DocumentProcessingError(
+        "Sync processing fallback is not supported. Please configure async database session.",
+        document_id=str(document_id),
+        processing_stage="initialization"
+    )

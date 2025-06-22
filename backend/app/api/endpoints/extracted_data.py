@@ -280,11 +280,16 @@ async def run_selective_reprocessing(
     current_content: Any,
     raw_text: str = None
 ):
-    """Background task for running selective reprocessing."""
+    """
+    Background task for running selective reprocessing.
+    Uses AI to suggest improvements to related fields based on user corrections.
+    """
     try:
+        logger.info(f"Starting selective reprocessing for document {document_id}")
+        
         selective_service = SelectiveReprocessingService()
         
-        # Run selective reprocessing
+        # Run selective reprocessing with AI suggestions
         enhanced_content = await selective_service.reprocess_changed_fields(
             db=db,
             document_id=document_id,
@@ -293,21 +298,32 @@ async def run_selective_reprocessing(
             raw_text=raw_text
         )
         
-        # Update the content with enhanced results
-        extracted_data_repo = ExtractedDataRepository(ExtractedData)
-        extracted_data_repo.update_structured_content(
-            db=db,
-            document_id=uuid.UUID(document_id),
-            content=enhanced_content
-        )
-        
-        # Update status to completed after successful reprocessing
-        extracted_data_repo.update_review_status(
-            db=db,
-            document_id=uuid.UUID(document_id),
-            review_status=ReviewStatus.REVIEWED_APPROVED,
-            reviewed_by_user_id=None  # System enhancement
-        )
+        # Only update if the content was actually enhanced
+        if enhanced_content != current_content:
+            logger.info(f"AI suggested improvements found for document {document_id}")
+            
+            # Update the content with enhanced results
+            extracted_data_repo = ExtractedDataRepository(ExtractedData)
+            updated_data = extracted_data_repo.update_structured_content(
+                db=db,
+                document_id=uuid.UUID(document_id),
+                content=enhanced_content
+            )
+            
+            if updated_data:
+                logger.info(f"Successfully applied AI suggestions for document {document_id}")
+                
+                # Mark as system-enhanced (keep user's corrected status but indicate AI enhancement)
+                extracted_data_repo.update_review_status(
+                    db=db,
+                    document_id=uuid.UUID(document_id),
+                    review_status=ReviewStatus.REVIEWED_CORRECTED,
+                    reviewed_by_user_id=None  # System enhancement
+                )
+            else:
+                logger.warning(f"Failed to save AI suggestions for document {document_id}")
+        else:
+            logger.info(f"No AI improvements suggested for document {document_id}")
         
         logger.info(f"Selective reprocessing completed successfully for document {document_id}")
         

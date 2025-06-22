@@ -10,8 +10,9 @@ import logging
 import uuid
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, select
 
 from .medical_embedding_service import medical_embedding_service
 from .medical_vector_db import MedicalVectorDatabase, SimplifiedVectorSearch
@@ -33,7 +34,7 @@ class MedicalAIService:
     Uses BioBERT embeddings + Gemini LLM + OpenFDA API + Multi-Correlation Analysis for intelligent medical analysis
     """
     
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession, similarity_threshold: float = 0.85, confidence_threshold: float = 0.8):
         self.db = db
         self.vector_db = MedicalVectorDatabase(db)
         self.vector_search = SimplifiedVectorSearch(db)
@@ -42,9 +43,13 @@ class MedicalAIService:
         self.llm_cost_per_call = 0.02  # $0.02 per Gemini call
         self.embedding_cost_per_call = 0.001  # Minimal cost for BioBERT
         
-        # Performance thresholds
-        self.similarity_threshold = 0.85
-        self.confidence_threshold = 0.8
+        # Performance thresholds (now configurable)
+        self.similarity_threshold = similarity_threshold
+        self.confidence_threshold = confidence_threshold
+        
+        # Initialize embedding service with configurable threshold
+        self.embedding_service = medical_embedding_service
+        self.embedding_service.similarity_threshold = similarity_threshold
     
     async def analyze_medical_event(
         self,
@@ -170,10 +175,13 @@ class MedicalAIService:
             }
             
             # Get current medications using ORM
-            medications = self.db.query(Medication).filter(
-                Medication.user_id == user_id,
-                Medication.status == MedicationStatus.ACTIVE
-            ).order_by(Medication.start_date.desc()).all()
+            medications_result = await self.db.execute(
+                select(Medication).filter(
+                    Medication.user_id == user_id,
+                    Medication.status == MedicationStatus.ACTIVE
+                ).order_by(Medication.start_date.desc())
+            )
+            medications = medications_result.scalars().all()
             
             profile["medications"] = [
                 {
@@ -187,10 +195,13 @@ class MedicalAIService:
             
             # Get recent symptoms (last 30 days) using ORM
             cutoff_date = datetime.now() - timedelta(days=30)
-            symptoms = self.db.query(Symptom).filter(
-                Symptom.user_id == user_id,
-                Symptom.reported_date >= cutoff_date
-            ).order_by(Symptom.reported_date.desc()).limit(10).all()
+            symptoms_result = await self.db.execute(
+                select(Symptom).filter(
+                    Symptom.user_id == user_id,
+                    Symptom.reported_date >= cutoff_date
+                ).order_by(Symptom.reported_date.desc()).limit(10)
+            )
+            symptoms = symptoms_result.scalars().all()
             
             profile["recent_symptoms"] = [
                 {
@@ -959,7 +970,7 @@ class MedicalAIService:
             # Convert embedding to string for pgvector
             embedding_str = str(embedding.tolist()) if hasattr(embedding, 'tolist') else str([])
             
-            self.db.execute(
+            await self.db.execute(
                 text("""
                     INSERT INTO ai_analysis_logs 
                     (id, user_id, trigger_type, medical_profile_hash, embedding, 
@@ -989,12 +1000,16 @@ class MedicalAIService:
                 }
             )
             
-            self.db.commit()
+            await self.db.commit()
             
         except Exception as e:
             logger.error(f"Failed to log analysis: {str(e)}")
 
 # Global service instance
-def get_medical_ai_service(db: Session) -> MedicalAIService:
-    """Get medical AI service instance"""
-    return MedicalAIService(db) 
+def get_medical_ai_service(
+    db: AsyncSession, 
+    similarity_threshold: float = 0.85, 
+    confidence_threshold: float = 0.8
+) -> MedicalAIService:
+    """Get medical AI service instance with configurable thresholds"""
+    return MedicalAIService(db, similarity_threshold, confidence_threshold) 

@@ -9,6 +9,7 @@ import logging
 import numpy as np
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -19,7 +20,7 @@ class MedicalVectorDatabase:
     Vector database for medical situations using pgvector
     """
     
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
         self.similarity_threshold = 0.85
         self.max_search_results = 5
@@ -44,7 +45,7 @@ class MedicalVectorDatabase:
             anonymized_context = self._anonymize_medical_context(medical_context)
             
             # Store in database using pgvector
-            self.db.execute(
+            await self.db.execute(
                 text("""
                     INSERT INTO medical_situations 
                     (id, embedding, medical_context, analysis_result, confidence_score, created_at, last_used_at)
@@ -59,14 +60,14 @@ class MedicalVectorDatabase:
                 }
             )
             
-            self.db.commit()
+            await self.db.commit()
             
             logger.info(f"Stored medical situation: {situation_id}")
             return situation_id
             
         except Exception as e:
             logger.error(f"Failed to store medical situation: {str(e)}")
-            self.db.rollback()
+            await self.db.rollback()
             raise
     
     async def search_similar_situations(
@@ -83,7 +84,7 @@ class MedicalVectorDatabase:
             query_list = query_embedding.tolist()
             
             # Use pgvector's cosine similarity operator for fast search
-            result = self.db.execute(
+            result = await self.db.execute(
                 text("""
                     SELECT 
                         id,
@@ -105,7 +106,8 @@ class MedicalVectorDatabase:
                     "threshold": self.similarity_threshold,
                     "limit": limit
                 }
-            ).fetchall()
+            )
+            result = result.fetchall()
             
             # Format results
             similar_situations = []
@@ -133,7 +135,7 @@ class MedicalVectorDatabase:
         Increment usage count when a situation is reused
         """
         try:
-            self.db.execute(
+            await self.db.execute(
                 text("""
                     UPDATE medical_situations 
                     SET usage_count = usage_count + 1, last_used_at = NOW()
@@ -141,7 +143,7 @@ class MedicalVectorDatabase:
                 """),
                 {"id": situation_id}
             )
-            self.db.commit()
+            await self.db.commit()
             
         except Exception as e:
             logger.error(f"Failed to update usage count: {str(e)}")
@@ -151,10 +153,11 @@ class MedicalVectorDatabase:
         Retrieve embedding vector by situation ID
         """
         try:
-            result = self.db.execute(
+            result = await self.db.execute(
                 text("SELECT embedding FROM medical_situations WHERE id = :id"),
                 {"id": situation_id}
-            ).fetchone()
+            )
+            result = result.fetchone()
             
             if result and result[0]:
                 # pgvector returns the embedding as a string, parse it back to array
@@ -176,7 +179,7 @@ class MedicalVectorDatabase:
         try:
             cutoff_date = datetime.now() - timedelta(days=days_old)
             
-            result = self.db.execute(
+            result = await self.db.execute(
                 text("""
                     DELETE FROM medical_situations 
                     WHERE last_used_at < :cutoff_date 
@@ -186,7 +189,7 @@ class MedicalVectorDatabase:
             )
             
             deleted_count = result.rowcount
-            self.db.commit()
+            await self.db.commit()
             
             logger.info(f"Cleaned up {deleted_count} old medical situations")
             return deleted_count
@@ -228,7 +231,7 @@ class MedicalVectorDatabase:
         Get statistics about the medical situations database
         """
         try:
-            result = self.db.execute(
+            result = await self.db.execute(
                 text("""
                     SELECT 
                         COUNT(*) as total_situations,
@@ -238,7 +241,8 @@ class MedicalVectorDatabase:
                         COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as recent_additions
                     FROM medical_situations
                 """)
-            ).fetchone()
+            )
+            result = result.fetchone()
             
             if result:
                 return {
@@ -260,7 +264,7 @@ class SimplifiedVectorSearch:
     Simplified vector search using pgvector for fast similarity queries
     """
     
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
         self.similarity_threshold = 0.85
         # No need for in-memory cache with pgvector - it's fast enough
@@ -277,7 +281,7 @@ class SimplifiedVectorSearch:
             query_list = query_embedding.tolist()
             
             # Use pgvector for fast similarity search
-            result = self.db.execute(
+            result = await self.db.execute(
                 text("""
                     SELECT 
                         id,
@@ -295,7 +299,8 @@ class SimplifiedVectorSearch:
                     "query_embedding": str(query_list),
                     "threshold": self.similarity_threshold
                 }
-            ).fetchall()
+            )
+            result = result.fetchall()
             
             # Format results
             similarities = []

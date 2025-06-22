@@ -110,4 +110,67 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
                 return None
         return None
 
+    
+    
+    async def get_by_document_id_async(self, db, *, document_id: uuid.UUID) -> Optional[ExtractedData]:
+        """Retrieves an ExtractedData record by its associated document_id using async session."""
+        try:
+            from sqlalchemy import select
+            stmt = select(ExtractedData).where(ExtractedData.document_id == document_id)
+            result = await db.execute(stmt)
+            return result.scalar_one_or_none()
+        except SQLAlchemyError as e:
+            logger.error(f"Error retrieving ExtractedData for document {document_id}: {e}", exc_info=True)
+            return None
+
+    async def update_raw_text_async(self, db, *, document_id: uuid.UUID, raw_text: str) -> bool:
+        """Updates the raw_text field of an ExtractedData record using async session."""
+        try:
+            from sqlalchemy import update
+            stmt = (
+                update(ExtractedData)
+                .where(ExtractedData.document_id == document_id)
+                .values(raw_text=raw_text)
+            )
+            result = await db.execute(stmt)
+            return result.rowcount > 0
+        except SQLAlchemyError as e:
+            logger.error(f"Error updating raw_text for ExtractedData (document {document_id}): {e}", exc_info=True)
+            return False
+
+    async def update_structured_content_async(self, db, *, document_id: uuid.UUID, content: Dict[str, Any]) -> bool:
+        """Updates the structured content field of an ExtractedData record using async session."""
+        try:
+            from sqlalchemy import update
+            stmt = (
+                update(ExtractedData)
+                .where(ExtractedData.document_id == document_id)
+                .values(
+                    content=content,
+                    extraction_timestamp=datetime.utcnow()  # Update extraction timestamp
+                )
+            )
+            result = await db.execute(stmt)
+            return result.rowcount > 0
+        except SQLAlchemyError as e:
+            logger.error(f"Error updating content for ExtractedData (document {document_id}): {e}", exc_info=True)
+            return False
+
+    async def create_initial_extracted_data_async(self, db, *, document_id: uuid.UUID) -> bool:
+        """Creates an initial ExtractedData record for a new document using async session."""
+        try:
+            from sqlalchemy import insert
+            stmt = insert(ExtractedData).values(
+                document_id=document_id,
+                content={},  # Default to empty JSON object
+                # raw_text will be populated after OCR
+                # review_status defaults to PENDING_REVIEW in the model
+            )
+            await db.execute(stmt)
+            logger.info(f"Initial ExtractedData record created for document_id: {document_id}")
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"Error creating initial ExtractedData for document {document_id}: {e}", exc_info=True)
+            return False
+
     # Add other methods as needed, e.g., delete 

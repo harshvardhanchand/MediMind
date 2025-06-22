@@ -5,21 +5,17 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import OnboardingNavigator from './OnboardingNavigator';
 import { NotificationProvider } from '../context/NotificationContext';
 import ErrorBoundary from '../components/common/ErrorBoundary';
-
-// Import actual Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../theme'; // Assuming theme is correctly exported from ../theme
-
+import { theme } from '../theme';
 import MainTabNavigator from './MainTabNavigator';
 import { RootStackParamList, AuthStackParamList } from './types';
 
-// Wrap screens with error boundaries
 const LoginScreenWithErrorBoundary = () => (
-  <ErrorBoundary 
-    level="screen" 
+  <ErrorBoundary
+    level="screen"
     context="LoginScreen"
     onError={(error, errorInfo) => {
       console.error('🚨 LoginScreen Error Boundary triggered:', error);
@@ -30,8 +26,8 @@ const LoginScreenWithErrorBoundary = () => (
 );
 
 const SignUpScreenWithErrorBoundary = () => (
-  <ErrorBoundary 
-    level="screen" 
+  <ErrorBoundary
+    level="screen"
     context="SignUpScreen"
     onError={(error, errorInfo) => {
       console.error('🚨 SignUpScreen Error Boundary triggered:', error);
@@ -42,8 +38,8 @@ const SignUpScreenWithErrorBoundary = () => (
 );
 
 const ResetPasswordScreenWithErrorBoundary = () => (
-  <ErrorBoundary 
-    level="screen" 
+  <ErrorBoundary
+    level="screen"
     context="ResetPasswordScreen"
     onError={(error, errorInfo) => {
       console.error('🚨 ResetPasswordScreen Error Boundary triggered:', error);
@@ -70,42 +66,46 @@ const AuthenticatedAppWrapper = ({ children }: { children: React.ReactNode }) =>
   </NotificationProvider>
 );
 
-// Root Stack
+
+const MainWithNotifications = () => (
+  <AuthenticatedAppWrapper>
+    <MainTabNavigator />
+  </AuthenticatedAppWrapper>
+);
+
+const OnboardingWithNotifications = () => (
+  <AuthenticatedAppWrapper>
+    <OnboardingNavigator />
+  </AuthenticatedAppWrapper>
+);
+
+
+const SplashScreen = () => (
+  <View style={styles.splashContainer}>
+    <ActivityIndicator size="large" color={theme.colors.primary} />
+    {/* Add your app logo or branding here */}
+  </View>
+);
+
+
 const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
   const { session, user, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <RootStackNav.Navigator screenOptions={{ headerShown: false }}>
-      {session ? (
+      {isLoading ? (
+        // Show splash screen while loading
+        <RootStackNav.Screen name="Splash" component={SplashScreen} />
+      ) : session ? (
         // User is authenticated
         user?.name ? (
           // User has completed profile - go to main app with notifications
-          <RootStackNav.Screen name="Main">
-            {() => (
-              <AuthenticatedAppWrapper>
-                <MainTabNavigator />
-              </AuthenticatedAppWrapper>
-            )}
-          </RootStackNav.Screen>
+          <RootStackNav.Screen name="Main" component={MainWithNotifications} />
         ) : (
           // User is authenticated but hasn't completed profile - show onboarding with notifications
-          <RootStackNav.Screen name="Onboarding">
-            {() => (
-              <AuthenticatedAppWrapper>
-                <OnboardingNavigator />
-              </AuthenticatedAppWrapper>
-            )}
-          </RootStackNav.Screen>
+          <RootStackNav.Screen name="Onboarding" component={OnboardingWithNotifications} />
         )
       ) : (
         // User is not authenticated - show auth screens (no NotificationProvider)
@@ -120,7 +120,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background, // Or another suitable background color from theme
+    backgroundColor: theme.colors.background,
+  },
+  splashContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
   },
 });
 

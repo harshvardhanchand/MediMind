@@ -18,6 +18,7 @@ class DocumentType(str, enum.Enum):
 
 class ProcessingStatus(str, enum.Enum):
     PENDING = "pending"
+    PROCESSING = "processing"  
     OCR_COMPLETED = "ocr_completed"
     EXTRACTION_COMPLETED = "extraction_completed"
     REVIEW_REQUIRED = "review_required"
