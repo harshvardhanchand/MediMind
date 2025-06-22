@@ -12,6 +12,7 @@ from collections import OrderedDict
 from typing import Dict, List, Any, Tuple, Optional
 import torch
 from transformers import AutoTokenizer, AutoModel
+import spacy
 
 
 logger = logging.getLogger(__name__)
@@ -22,8 +23,8 @@ class MedicalEmbeddingService:
     """
     
     def __init__(self, similarity_threshold: float = 0.85):
-        self.model_name = 'microsoft/PubMedBERT-base-uncased-abstract-fulltext'
-        self.embedding_dim = 768  # PubMedBERT dimension
+        self.model_name = 'microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext'
+        self.embedding_dim = 768  # BiomedBERT dimension
         self.similarity_threshold = similarity_threshold
         
         # Thread-safe LRU cache for embeddings with proper tracking
@@ -35,16 +36,16 @@ class MedicalEmbeddingService:
         self._cache_hits = 0
         self._cache_requests = 0
         
-        # Initialize PubMedBERT
-        self._init_pubmedbert()
+        # Initialize BiomedBERT
+        self._init_biomedbert()
         
         # Initialize medical NER (optional - for entity extraction)
         self._init_medical_ner()
     
-    def _init_pubmedbert(self):
-        """Initialize PubMedBERT model and tokenizer"""
+    def _init_biomedbert(self):
+        """Initialize BiomedBERT model and tokenizer"""
         try:
-            logger.info("Loading PubMedBERT model for medical embeddings...")
+            logger.info("Loading BiomedBERT model for medical embeddings...")
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModel.from_pretrained(self.model_name)
             self.model.eval()  # Set to evaluation mode
@@ -53,20 +54,20 @@ class MedicalEmbeddingService:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             self.model.to(self.device)
             
-            # Set flag to indicate PubMedBERT is loaded successfully
-            self.use_pubmedbert = True
+            # Set flag to indicate BiomedBERT is loaded successfully
+            self.use_biomedbert = True
             
-            logger.info(f"PubMedBERT loaded successfully on {self.device}")
+            logger.info(f"BiomedBERT loaded successfully on {self.device}")
             
         except Exception as e:
-            logger.error(f"Failed to load PubMedBERT: {str(e)}")
+            logger.error(f"Failed to load BiomedBERT: {str(e)}")
             # Store the error for potential use in final error message
-            self._pubmedbert_error = str(e)
-            # Fallback to BioBERT-large if PubMedBERT fails
+            self._biomedbert_error = str(e)
+            # Fallback to BioBERT-large if BiomedBERT fails
             self._init_fallback_model()
     
     def _init_fallback_model(self):
-        """Fallback to BioBERT-large if PubMedBERT fails"""
+        """Fallback to BioBERT-large if BiomedBERT fails"""
         try:
             logger.info("Loading BioBERT-large as fallback model...")
             # Use BioBERT-large - medical domain BERT model
@@ -79,23 +80,23 @@ class MedicalEmbeddingService:
             self.model.to(self.device)
             
             self.embedding_dim = 1024  # BERT-large dimension
-            self.use_pubmedbert = False
+            self.use_biomedbert = False
             logger.info(f"BioBERT-large fallback loaded successfully on {self.device}")
             
         except Exception as e:
             logger.error(f"Failed to load BioBERT fallback: {str(e)}")
             # If both models fail, raise exception - no third fallback
-            pubmedbert_err = getattr(self, '_pubmedbert_error', 'Unknown')
+            biomedbert_err = getattr(self, '_biomedbert_error', 'Unknown')
             raise RuntimeError(
-                f"Failed to load both PubMedBERT and BioBERT-large models. "
-                f"PubMedBERT error: {pubmedbert_err}. "
+                f"Failed to load both BiomedBERT and BioBERT-large models. "
+                f"BiomedBERT error: {biomedbert_err}. "
                 f"BioBERT error: {str(e)}"
             )
     
     def _init_medical_ner(self):
         """Initialize medical NER for entity extraction using spaCy medical models"""
         try:
-            import spacy
+            
             # Try to load a medical NER model (requires separate installation)
             try:
                 self.nlp = spacy.load("en_core_sci_md")  # scispaCy medical model
@@ -110,7 +111,7 @@ class MedicalEmbeddingService:
     
     def create_medical_embedding(self, medical_profile: Dict[str, Any]) -> np.ndarray:
         """
-        Create embedding vector from medical profile using PubMedBERT with caching
+        Create embedding vector from medical profile using BiomedBERT with caching
         """
         try:
             # Convert medical profile to text
@@ -130,10 +131,10 @@ class MedicalEmbeddingService:
                     logger.debug(f"Cache hit for medical embedding: {text_hash[:8]}")
                     return embedding.copy()
             
-            # Generate embedding using the loaded model (PubMedBERT or BioBERT-large)
-            if hasattr(self, 'use_pubmedbert') and self.use_pubmedbert:
-                # PubMedBERT model
-                embedding = self._create_pubmedbert_embedding(medical_text)
+            # Generate embedding using the loaded model (BiomedBERT or BioBERT-large)
+            if hasattr(self, 'use_biomedbert') and self.use_biomedbert:
+                # BiomedBERT model
+                embedding = self._create_biomedbert_embedding(medical_text)
             else:
                 # BioBERT-large fallback model
                 embedding = self._create_biobert_embedding(medical_text)
@@ -160,8 +161,8 @@ class MedicalEmbeddingService:
             self._embedding_cache[text_hash] = embedding.copy()
             logger.debug(f"Cached embedding: {text_hash[:8]}, cache size: {len(self._embedding_cache)}")
     
-    def _create_pubmedbert_embedding(self, text: str) -> np.ndarray:
-        """Create embedding using PubMedBERT model with improved chunking for long texts"""
+    def _create_biomedbert_embedding(self, text: str) -> np.ndarray:
+        """Create embedding using BiomedBERT model with improved chunking for long texts"""
         
         # Check if text needs chunking
         tokens = self.tokenizer.encode(text, add_special_tokens=False)
@@ -282,9 +283,9 @@ class MedicalEmbeddingService:
             medical_texts = [self._medical_profile_to_text(profile) for profile in medical_profiles]
             
             # Generate embeddings using the loaded model
-            if hasattr(self, 'use_pubmedbert') and self.use_pubmedbert:
-                # PubMedBERT model - implement batching with chunking support
-                embeddings = self._create_pubmedbert_embeddings_batch(medical_texts)
+            if hasattr(self, 'use_biomedbert') and self.use_biomedbert:
+                # BiomedBERT model - implement batching with chunking support
+                embeddings = self._create_biomedbert_embeddings_batch(medical_texts)
             else:
                 # BioBERT-large fallback model - implement batching with chunking support
                 embeddings = self._create_biobert_embeddings_batch(medical_texts)
@@ -296,20 +297,20 @@ class MedicalEmbeddingService:
             # Return zero vectors as fallback
             return np.zeros((len(medical_profiles), self.embedding_dim))
     
-    def _create_pubmedbert_embeddings_batch(self, texts: List[str], batch_size: int = 8) -> np.ndarray:
-        """Create embeddings for multiple texts using PubMedBERT with batching and chunking support"""
+    def _create_biomedbert_embeddings_batch(self, texts: List[str], batch_size: int = 8) -> np.ndarray:
+        """Create embeddings for multiple texts using BiomedBERT with batching and chunking support"""
         all_embeddings = []
         
         # Process each text individually to handle chunking properly
         for text in texts:
-            embedding = self._create_pubmedbert_embedding(text)
+            embedding = self._create_biomedbert_embedding(text)
             all_embeddings.append(embedding)
         
         return np.array(all_embeddings)
     
     def _create_biobert_embeddings_batch(self, texts: List[str], batch_size: int = 8) -> np.ndarray:
         """Create embeddings for multiple texts using BioBERT-large with batching and chunking support"""
-        # BioBERT-large uses the same process as PubMedBERT (both are transformers models)
+        # BioBERT-large uses the same process as BiomedBERT (both are transformers models)
         all_embeddings = []
         
         # Process each text individually to handle chunking properly

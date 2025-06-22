@@ -5,7 +5,7 @@
 echo "🚀 Deploying MediMind to RunPod..."
 
 # Set your Docker Hub username
-DOCKER_USERNAME="your-dockerhub-username"
+DOCKER_USERNAME="harshvardhan876"
 IMAGE_NAME="medimind-backend"
 TAG="latest"
 

@@ -29,6 +29,8 @@ from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.middleware.security import SecurityHeadersMiddleware
 from app.middleware.rate_limit import limiter, get_client_ip
+from app.db.session import SessionLocal
+from sqlalchemy import text
 
 # Standardized error response schema
 class ErrorResponse(BaseModel):
@@ -49,13 +51,31 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting up MediMind Backend...")
     
     try:
+        logger.info("📋 Environment check:")
+        logger.info(f"  DATABASE_URL: {'✅ Set' if settings.DATABASE_URL else '❌ Missing'}")
+        logger.info(f"  SUPABASE_URL: {'✅ Set' if settings.SUPABASE_URL else '❌ Missing'}")
+        logger.info(f"  ENVIRONMENT: {settings.ENVIRONMENT}")
         
+        logger.info("🔌 Testing database connection...")
         from app.db.session import SessionLocal
+        from sqlalchemy import text
         db = SessionLocal()
-        db.execute("SELECT 1")
+        result = db.execute(text("SELECT 1"))
+        logger.info(f"✅ Database query result: {result.fetchone()}")
         db.close()
         logger.info("✅ Database connection verified")
         
+        logger.info("🤖 Testing ML libraries...")
+        try:
+            import torch
+            import transformers
+            logger.info(f"✅ PyTorch {torch.__version__} loaded")
+            logger.info(f"✅ Transformers {transformers.__version__} loaded")
+            logger.info(f"🎮 CUDA available: {torch.cuda.is_available()}")
+            if torch.cuda.is_available():
+                logger.info(f"🎮 GPU count: {torch.cuda.device_count()}")
+        except Exception as ml_error:
+            logger.warning(f"⚠️ ML libraries issue: {ml_error}")
         
         logger.info("✅ Application startup completed successfully")
         
@@ -305,8 +325,9 @@ async def health_check():
     try:
         
         from app.db.session import SessionLocal
+        from sqlalchemy import text
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         db_status = "healthy"
     except Exception as e:
