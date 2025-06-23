@@ -1,5 +1,8 @@
 import logging
 import uuid
+import os
+import json
+import tempfile
 from google.cloud import storage
 from fastapi import UploadFile
 from typing import Optional, Tuple
@@ -8,15 +11,33 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Initialize GCS client
-# Handles authentication via GOOGLE_APPLICATION_CREDENTIALS implicitly
-try:
-    if not settings.GCP_PROJECT_ID:
-        raise EnvironmentError("GCP_PROJECT_ID not set in environment/config.")
-    storage_client = storage.Client(project=settings.GCP_PROJECT_ID)
-except Exception as e:
-    logger.error(f"Failed to initialize Google Cloud Storage client: {e}. Ensure credentials are set and GCP_PROJECT_ID is configured.", exc_info=True)
-    storage_client = None # Set to None if init fails
+# Initialize GCS client with proper credential handling
+def _initialize_gcs_client():
+    """Initialize Google Cloud Storage client with proper credential handling for RunPod"""
+    try:
+        if not settings.GCP_PROJECT_ID:
+            logger.warning("GCP_PROJECT_ID not set - Google Cloud Storage will be disabled")
+            return None
+        
+        # Check for JSON credentials in environment variable
+        creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        if creds_json:
+            # Create temporary credentials file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                f.write(creds_json)
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
+            logger.info("Using Google Cloud credentials from GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        
+        # Try to initialize the client
+        storage_client = storage.Client(project=settings.GCP_PROJECT_ID)
+        logger.info("✅ Google Cloud Storage client initialized successfully")
+        return storage_client
+        
+    except Exception as e:
+        logger.warning(f"Google Cloud Storage not available: {e}")
+        return None
+
+storage_client = _initialize_gcs_client()
 
 async def upload_file_to_gcs(file: UploadFile, user_id: uuid.UUID) -> Optional[str]:
     """
