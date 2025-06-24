@@ -5,7 +5,7 @@ Provides REST API for symptom tracking and management
 
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks, Path
 from sqlalchemy.orm import Session
 
@@ -15,8 +15,7 @@ from app.models.user import User
 from app.models.symptom import SymptomSeverity
 from app.schemas.symptom import (
     SymptomCreate, SymptomUpdate, SymptomResponse, SymptomListResponse,
-    SymptomStatsResponse, SymptomSearchRequest, SymptomAnalysisRequest,
-    SymptomCorrelationResponse, SymptomBulkCreateRequest, SymptomBulkCreateResponse
+    SymptomStatsResponse, SymptomBulkCreateRequest, SymptomBulkCreateResponse
 )
 from app.repositories.symptom_repo import symptom_repo
 from app.services.notification_service import get_notification_service, get_medical_triggers, detect_changes
@@ -56,16 +55,16 @@ async def get_symptoms(
                 skip=skip, 
                 limit=limit
             )
-            # Get total count for search results (simplified)
+            
             total = len(symptom_repo.search_symptoms(
                 db=db, 
                 user_id=current_user.user_id, 
                 search_query=search,
                 skip=0, 
-                limit=1000  # Get a large number to count
+                limit=1000  
             ))
         else:
-            # Use filtered query
+            
             symptoms = symptom_repo.get_by_user(
                 db=db,
                 user_id=current_user.user_id,
@@ -75,12 +74,12 @@ async def get_symptoms(
                 start_date=start_date,
                 end_date=end_date
             )
-            # Get total count (simplified - in production, you'd want a separate count query)
+            
             total = len(symptom_repo.get_by_user(
                 db=db,
                 user_id=current_user.user_id,
                 skip=0,
-                limit=1000,  # Get a large number to count
+                limit=1000,  
                 severity=severity,
                 start_date=start_date,
                 end_date=end_date
@@ -115,23 +114,23 @@ async def create_symptom(
     with medications and patterns.
     """
     try:
-        # Set reported_date to now if not provided
+        
         if not symptom.reported_date:
             symptom.reported_date = datetime.utcnow()
         
-        # Create the symptom
+        
         db_symptom = symptom_repo.create_with_user(
             db=db, 
             obj_in=symptom, 
             user_id=current_user.user_id
         )
         
-        # Trigger medical analysis in background
+        
         try:
             notification_service = get_notification_service(db)
             medical_triggers = get_medical_triggers(notification_service)
             
-            # Prepare symptom data for analysis
+           
             symptom_data = {
                 "symptom": symptom.symptom,
                 "severity": symptom.severity.value,
@@ -141,7 +140,7 @@ async def create_symptom(
                 "reported_date": symptom.reported_date.isoformat()
             }
             
-            # Trigger analysis in background
+            
             background_tasks.add_task(
                 medical_triggers.on_symptom_reported,
                 str(current_user.user_id),
@@ -151,7 +150,7 @@ async def create_symptom(
             logger.info(f"Triggered medical analysis for symptom: {symptom.symptom}")
             
         except Exception as e:
-            # Log error but don't fail the symptom creation
+            
             logger.warning(f"Failed to trigger symptom analysis: {str(e)}")
         
         return db_symptom
@@ -199,7 +198,7 @@ async def update_symptom(
     Update a specific symptom by ID.
     """
     try:
-        # Get the existing symptom first for change detection
+       
         existing_symptom = symptom_repo.get_by_user(
             db=db,
             symptom_id=symptom_id,
@@ -212,7 +211,7 @@ async def update_symptom(
                 detail="Symptom not found"
             )
         
-        # Capture old data for change detection
+        
         old_symptom_data = {
             "symptom": existing_symptom.symptom,
             "severity": existing_symptom.severity.value if existing_symptom.severity else None,
@@ -235,7 +234,7 @@ async def update_symptom(
                 detail="Symptom not found"
             )
         
-        # Trigger AI analysis for symptom update
+        
         try:
             notification_service = get_notification_service(db)
             medical_triggers = get_medical_triggers(notification_service)
@@ -289,7 +288,7 @@ async def delete_symptom(
     Delete a specific symptom by ID.
     """
     try:
-        # Get the symptom data before deletion for AI analysis
+       
         existing_symptom = symptom_repo.get_by_user(
             db=db,
             symptom_id=symptom_id,
@@ -324,7 +323,7 @@ async def delete_symptom(
                 detail="Symptom not found"
             )
         
-        # Trigger AI analysis for symptom deletion
+        
         try:
             notification_service = get_notification_service(db)
             medical_triggers = get_medical_triggers(notification_service)
@@ -337,7 +336,7 @@ async def delete_symptom(
             logger.info(f"AI analysis triggered for symptom deletion: {symptom_id}")
             
         except Exception as e:
-            # Log error but don't fail the symptom deletion
+            
             logger.warning(f"Failed to trigger symptom deletion analysis: {str(e)}")
             
     except HTTPException:
@@ -467,11 +466,11 @@ async def create_symptoms_bulk(
     try:
         for i, symptom_data in enumerate(request.symptoms):
             try:
-                # Set reported_date to now if not provided
+                
                 if not symptom_data.reported_date:
                     symptom_data.reported_date = datetime.utcnow()
                 
-                # Create the symptom
+                
                 db_symptom = symptom_repo.create_with_user(
                     db=db,
                     obj_in=symptom_data,
@@ -487,7 +486,7 @@ async def create_symptoms_bulk(
                 })
                 logger.error(f"Failed to create symptom at index {i}: {str(e)}")
         
-        # Trigger analysis for all created symptoms in background
+        
         if created_symptoms:
             try:
                 notification_service = get_notification_service(db)

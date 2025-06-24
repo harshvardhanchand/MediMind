@@ -6,7 +6,7 @@ Converts extracted medical events from documents into structured database entrie
 import logging
 import uuid
 import re
-from typing import Dict, List, Optional, Any, Set, Tuple, NamedTuple
+from typing import Dict, Optional, Any, Tuple
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,9 +17,6 @@ from app.models.medication import Medication, MedicationStatus, MedicationFreque
 from app.models.symptom import Symptom, SymptomSeverity
 from app.models.health_reading import HealthReading, HealthReadingType
 from app.models.extracted_data import ExtractedData
-from app.repositories.medication_repo import medication_repo
-from app.repositories.symptom_repo import symptom_repo
-from app.repositories.health_reading_repo import health_reading_repo
 from app.schemas.medication import MedicationCreate
 from app.schemas.symptom import SymptomCreate
 from app.schemas.health_reading import HealthReadingCreate
@@ -39,7 +36,7 @@ class ProcessingResult:
 class ExistingRecords:
     """Container for existing records used in duplicate detection"""
     medications: Dict[str, Medication]
-    symptoms: Dict[Tuple[str, date], Symptom]  # (symptom_name, date) -> Symptom
+    symptoms: Dict[Tuple[str, date], Symptom]  
     health_readings: Dict[Tuple[HealthReadingType, date], HealthReading]
 
 class MedicalDataExtractor:
@@ -287,13 +284,13 @@ class AutoPopulationService:
             logger.warning(f"No valid medical events found in extracted data for document {document_id}")
             return result
         
-        # Start transaction
+        
         async with self.db.begin():
             try:
-                # Bulk fetch existing records for duplicate detection
+                
                 existing_records = await self._fetch_existing_records(user_uuid)
                 
-                # Process events with proper error categorization
+                
                 processing_results = []
                 for event in extracted_data.content:
                     try:
@@ -302,7 +299,7 @@ class AutoPopulationService:
                         )
                         processing_results.append(event_result)
                         
-                        # Update existing records cache if new record was created
+                        
                         if event_result.success and not event_result.was_duplicate:
                             await self._update_existing_records_cache(
                                 existing_records, event_result, event
@@ -318,7 +315,7 @@ class AutoPopulationService:
                             error_message=error_msg
                         ))
                 
-                # Aggregate results
+                
                 for res in processing_results:
                     if res.success:
                         if res.event_type == "medication":
@@ -332,13 +329,13 @@ class AutoPopulationService:
                     else:
                         result["errors"].append(res.error_message)
                 
-                # Transaction will auto-commit here
+                
                 logger.info(f"Auto-population completed successfully: {result}")
                 
             except Exception as e:
                 logger.error(f"Transaction failed during auto-population: {str(e)}", exc_info=True)
                 result["errors"].append(f"Transaction failed: {str(e)}")
-                # Transaction will auto-rollback here
+               
                 raise
         
         return result
@@ -347,7 +344,7 @@ class AutoPopulationService:
         """Bulk fetch existing records for efficient duplicate detection"""
         logger.debug(f"Fetching existing records for user {user_uuid}")
         
-        # Fetch active medications
+        
         medications_stmt = select(Medication).where(
             and_(
                 Medication.user_id == user_uuid,
@@ -360,7 +357,7 @@ class AutoPopulationService:
             for med in medications_result.scalars().all()
         }
         
-        # Fetch recent symptoms (last 7 days)
+       
         cutoff_date = datetime.utcnow() - timedelta(days=7)
         symptoms_stmt = select(Symptom).where(
             and_(
@@ -374,7 +371,7 @@ class AutoPopulationService:
             for sym in symptoms_result.scalars().all()
         }
         
-        # Fetch today's health readings
+        
         today = datetime.utcnow().date()
         readings_stmt = select(HealthReading).where(
             and_(
@@ -456,16 +453,15 @@ class AutoPopulationService:
         """Update the existing records cache when new records are created"""
         if result.event_type == "medication":
             medication_name = event.get("description", "").lower()
-            # We would need to fetch the created medication to add to cache
-            # For now, just mark it as existing to prevent re-creation
-            existing_records.medications[medication_name] = None  # Placeholder
+            
+            existing_records.medications[medication_name] = None  
             
         elif result.event_type == "symptom":
             symptom_name = event.get("description", "").lower()
             event_date = self.extractor.parse_robust_datetime(event.get("date_time"))
             if event_date:
                 key = (symptom_name, event_date.date())
-                existing_records.symptoms[key] = None  # Placeholder
+                existing_records.symptoms[key] = None  
                 
         elif result.event_type in ["labresult", "lab_result", "vitalsign", "vital_sign"]:
             test_name = event.get("description", "").lower()
@@ -473,7 +469,7 @@ class AutoPopulationService:
             event_date = self.extractor.parse_robust_datetime(event.get("date_time"))
             if event_date:
                 key = (reading_type, event_date.date())
-                existing_records.health_readings[key] = None  # Placeholder
+                existing_records.health_readings[key] = None 
     
     async def _create_medication_from_event(
         self, 
@@ -535,11 +531,11 @@ class AutoPopulationService:
         """Create symptom entry from extracted event"""
         symptom_name = event.get("description", "").strip()
         
-        # Parse date first for duplicate checking
+        
         reported_date = self.extractor.parse_robust_datetime(event.get("date_time"))
         event_date = reported_date.date() if reported_date else datetime.utcnow().date()
         
-        # Check for duplicates using bulk fetched data
+        
         duplicate_key = (symptom_name.lower(), event_date)
         if duplicate_key in existing_records.symptoms:
             logger.info(f"Skipping duplicate symptom: {symptom_name} on {event_date}")
@@ -550,16 +546,16 @@ class AutoPopulationService:
                 was_duplicate=True
             )
         
-        # Parse severity using extractor
+        
         severity = self.extractor.extract_severity(event)
         
-        # Extract location and notes
+        
         location = event.get("body_location")
         notes = f"Auto-populated from document. Raw text: {event.get('raw_text_snippet', '')[:200]}"
         if event.get("notes"):
             notes += f" | Additional notes: {event.get('notes')}"
         
-        # Create symptom
+       
         symptom_data = SymptomCreate(
             symptom=symptom_name,
             severity=severity,
@@ -568,10 +564,10 @@ class AutoPopulationService:
             notes=notes
         )
         
-        # Use async session directly for creation
+        
         db_symptom = Symptom(**symptom_data.model_dump(), user_id=user_uuid)
         self.db.add(db_symptom)
-        await self.db.flush()  # Get ID without committing
+        await self.db.flush()  
         
         logger.info(f"Created symptom: {symptom_name} for user {user_uuid}")
         return ProcessingResult(
@@ -590,10 +586,10 @@ class AutoPopulationService:
         """Create health reading entry from extracted event"""
         test_name = event.get("description", "").strip().lower()
         
-        # Map to health reading type
+      
         reading_type = self.extractor.map_health_reading_type(test_name)
         
-        # Parse value and units
+       
         value = event.get("value")
         units = event.get("units")
         
@@ -606,11 +602,11 @@ class AutoPopulationService:
                 error_message="No value provided"
             )
         
-        # Parse date for duplicate checking
+        
         reading_date = self.extractor.parse_robust_datetime(event.get("date_time"))
         event_date = reading_date.date() if reading_date else datetime.utcnow().date()
         
-        # Check for duplicates using bulk fetched data
+        
         duplicate_key = (reading_type, event_date)
         if duplicate_key in existing_records.health_readings:
             logger.info(f"Skipping duplicate health reading: {test_name} on {event_date}")
@@ -621,13 +617,13 @@ class AutoPopulationService:
                 was_duplicate=True
             )
         
-        # Handle special cases (blood pressure)
+        
         systolic_value = None
         diastolic_value = None
         numeric_value = None
         
         if reading_type == HealthReadingType.BLOOD_PRESSURE and "/" in str(value):
-            # Parse blood pressure format like "120/80"
+            
             try:
                 bp_parts = str(value).split("/")
                 systolic_value = int(bp_parts[0].strip())
@@ -637,7 +633,7 @@ class AutoPopulationService:
         else:
             numeric_value = self.extractor.parse_numeric_value(value)
         
-        # Create health reading
+        
         health_reading_data = HealthReadingCreate(
             reading_type=reading_type,
             numeric_value=numeric_value,
@@ -650,10 +646,10 @@ class AutoPopulationService:
             related_document_id=document_uuid
         )
         
-        # Use async session directly for creation
+       
         db_health_reading = HealthReading(**health_reading_data.model_dump(), user_id=user_uuid)
         self.db.add(db_health_reading)
-        await self.db.flush()  # Get ID without committing
+        await self.db.flush()  
         
         logger.info(f"Created health reading: {test_name} = {value} {units} for user {user_uuid}")
         return ProcessingResult(

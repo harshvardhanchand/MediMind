@@ -4,9 +4,8 @@ Comprehensive multi-domain correlation analysis for intelligent medical notifica
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
-import json
+from typing import Dict, List, Optional, Any
+from datetime import datetime
 from app.services.openfda_service import openfda_service
 from app.utils.medical_utils import medical_normalizer, medical_date_parser
 
@@ -851,7 +850,7 @@ class DrugLabCorrelationEngine:
             if not self._value_in_range(lab_value, target_range):
                 return "medium"
         
-        return "monitor"  # Value to monitor but not immediately concerning
+        return "monitor" 
     
     def _value_meets_threshold(self, value: float, threshold: str) -> bool:
         """Check if value meets threshold"""

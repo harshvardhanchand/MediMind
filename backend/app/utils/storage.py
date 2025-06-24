@@ -11,7 +11,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Initialize GCS client with proper credential handling
+
 def _initialize_gcs_client():
     """Initialize Google Cloud Storage client with proper credential handling for RunPod"""
     try:
@@ -19,18 +19,18 @@ def _initialize_gcs_client():
             logger.warning("GCP_PROJECT_ID not set - Google Cloud Storage will be disabled")
             return None
         
-        # Check for JSON credentials in environment variable
+        
         creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
         if creds_json:
-            # Create temporary credentials file
+            
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
                 f.write(creds_json)
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
             logger.info("Using Google Cloud credentials from GOOGLE_APPLICATION_CREDENTIALS_JSON")
         
-        # Try to initialize the client
+        
         storage_client = storage.Client(project=settings.GCP_PROJECT_ID)
-        logger.info("✅ Google Cloud Storage client initialized successfully")
+        logger.info("Google Cloud Storage client initialized successfully")
         return storage_client
         
     except Exception as e:
@@ -60,21 +60,19 @@ async def upload_file_to_gcs(file: UploadFile, user_id: uuid.UUID) -> Optional[s
 
     bucket = storage_client.bucket(settings.GCS_BUCKET_NAME)
     
-    # Generate a unique filename using UUID to avoid collisions
+    
     file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'bin'
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     
-    # Construct blob path: user_id/unique_filename
-    # Using user ID provides basic isolation
+    
     blob_name = f"{str(user_id)}/{unique_filename}"
     blob = bucket.blob(blob_name)
 
     try:
-        # Read file content asynchronously
+        
         content = await file.read()
         
-        # Upload the file content
-        # Use upload_from_string for in-memory content (synchronous call)
+        
         blob.upload_from_string(content, content_type=file.content_type)
         
         gcs_path = f"gs://{settings.GCS_BUCKET_NAME}/{blob_name}"
@@ -84,7 +82,7 @@ async def upload_file_to_gcs(file: UploadFile, user_id: uuid.UUID) -> Optional[s
         logger.error(f"Failed to upload {file.filename} to GCS path {blob_name}: {e}", exc_info=True)
         return None
     finally:
-        # Ensure the UploadFile is closed
+        
         await file.close()
 
 def parse_gcs_path(gcs_path: str) -> Tuple[str, str]:
@@ -100,10 +98,10 @@ def parse_gcs_path(gcs_path: str) -> Tuple[str, str]:
     if not gcs_path.startswith("gs://"):
         raise ValueError(f"Invalid GCS path format: {gcs_path}")
     
-    # Remove 'gs://' prefix
+   
     path = gcs_path[5:]
     
-    # Split into bucket name and blob name
+    
     parts = path.split("/", 1)
     if len(parts) < 2:
         raise ValueError(f"Invalid GCS path format, missing blob name: {gcs_path}")
@@ -128,14 +126,14 @@ async def delete_file_from_gcs(gcs_path: str) -> bool:
         return False
     
     try:
-        # Parse the GCS path
+       
         bucket_name, blob_name = parse_gcs_path(gcs_path)
         
-        # Get the bucket and blob
+        
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(blob_name)
         
-        # Delete the blob
+       
         blob.delete()
         
         logger.info(f"File deleted successfully from {gcs_path}")
@@ -155,10 +153,10 @@ def get_gcs_uri(storage_path: str) -> str:
         A properly formatted GCS URI (gs://bucket_name/path)
     """
     if storage_path.startswith("gs://"):
-        # Already a GCS URI
+       
         return storage_path
     
-    # Assume it's a relative path in the default bucket
+   
     if not settings.GCS_BUCKET_NAME:
         logger.error("GCS_BUCKET_NAME not configured. Cannot construct GCS URI.")
         raise ValueError("GCS_BUCKET_NAME not configured")

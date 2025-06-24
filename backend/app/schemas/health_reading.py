@@ -3,9 +3,9 @@ from datetime import datetime
 from typing import Optional, Any, Dict
 from pydantic import BaseModel, Field
 
-from app.models.health_reading import HealthReadingType # Import the enum
+from app.models.health_reading import HealthReadingType
 
-# Base schema with common fields
+
 class HealthReadingBase(BaseModel):
     reading_type: HealthReadingType = Field(..., description="Type of health reading")
     numeric_value: Optional[float] = Field(None, description="Numeric value of the reading, if applicable")

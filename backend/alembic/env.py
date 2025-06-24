@@ -7,41 +7,32 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+
 config = context.config
 
-# Set the database URL from environment variable
+
 config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Add the project's root directory (backend) to the Python path
-# This allows Alembic to find your application modules
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import your Base from your application. Adjust the import path as necessary.
-# Common locations might be app.db.base.Base or app.db.session.Base
-from app.db.session import Base  # Assuming Base is in app.db.session
-# Import all your models here so Base.metadata knows about them
+
+from app.db.session import Base  
 from app.models.user import User
 from app.models.document import Document
 from app.models.extracted_data import ExtractedData
 from app.models.medication import Medication
-# Add other models if you have them, e.g.:
-# from app.models.some_other_model import SomeOtherModel
 
-# target_metadata for 'autogenerate' support
-# For autogenerate to work, Base.metadata needs to be populated with all your models.
+
+
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+
 
 
 def run_migrations_offline() -> None:

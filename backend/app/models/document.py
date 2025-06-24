@@ -44,10 +44,10 @@ class Document(Base):
     document_type = Column(
         SQLAlchemyEnum(
             DocumentType,
-            values_callable=enum_values,   # Use .value list instead of .name
-            name="documenttype",           # Must match existing PG type
-            native_enum=True,              # Keep it a real PG enum
-            create_type=False              # Don't try to recreate
+            values_callable=enum_values,   
+            name="documenttype",           
+            native_enum=True,              
+            create_type=False             
         ),
         nullable=False
     )
@@ -55,7 +55,7 @@ class Document(Base):
     processing_status = Column(
         SQLAlchemyEnum(
             ProcessingStatus,
-            values_callable=enum_values,   # Use .value list for ProcessingStatus too
+            values_callable=enum_values,   
             name="processingstatus",
             native_enum=True,
             create_type=False
@@ -63,24 +63,24 @@ class Document(Base):
         default=ProcessingStatus.PENDING,
         nullable=False
     )
-    file_hash = Column(String, nullable=True, index=True) # Optional: To detect duplicates
-    file_metadata = Column(JSON, nullable=True) # Optional: Store content type, size, etc. Renamed from 'metadata'
+    file_hash = Column(String, nullable=True, index=True) 
+    file_metadata = Column(JSON, nullable=True) 
 
-    # New metadata fields for enhanced filtering
-    document_date = Column(Date, nullable=True) # Actual date on the report/prescription
-    source_name = Column(String, nullable=True) # Doctor, lab, hospital name
-    source_location_city = Column(String, nullable=True) # City of the source
-    tags = Column(JSON, nullable=True) # List of LLM-generated keywords/tags
-    user_added_tags = Column(JSON, nullable=True) # List of user-added tags
-    related_to_health_goal_or_episode = Column(String, nullable=True) # Link to a health goal or episode
+   
+    document_date = Column(Date, nullable=True) 
+    source_name = Column(String, nullable=True) 
+    source_location_city = Column(String, nullable=True) 
+    tags = Column(JSON, nullable=True) 
+    user_added_tags = Column(JSON, nullable=True) 
+    related_to_health_goal_or_episode = Column(String, nullable=True) 
 
-    # NEW field to store user overrides for specific metadata fields
+    
     metadata_overrides = Column(JSON, nullable=True) 
-    # Example: {"document_date": "YYYY-MM-DD", "source_name": "User Input Clinic", "tags": ["override_tag"]} 
+   
 
-    # Relationships
+    
     user = relationship("User")
-    extracted_data = relationship("ExtractedData", back_populates="document", uselist=False) # One-to-one
+    extracted_data = relationship("ExtractedData", back_populates="document", uselist=False) 
     notifications = relationship("Notification", back_populates="related_document")
     ai_analysis_logs = relationship("AIAnalysisLog", back_populates="related_document")
 

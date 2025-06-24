@@ -202,15 +202,13 @@ class NotificationService:
             
         except Exception as e:
             logger.error(f"Medical analysis trigger failed: {str(e)}")
-            # CRITICAL FIX: Don't mask all errors - distinguish between expected and critical failures
-            # Only return [] for validation errors or "no notifications needed" scenarios
-            # Re-raise critical errors like AI service down, DB connection lost, etc.
+            
             error_message = str(e).lower()
             if any(keyword in error_message for keyword in ['connection', 'timeout', 'unavailable', 'service']):
-                # Critical infrastructure failures should bubble up
+                
                 raise
             else:
-                # Non-critical errors (validation, parsing, etc.) can return empty list
+               
                 logger.warning(f"Non-critical error in medical analysis for user {user_id}: {str(e)}")
                 return []
     
@@ -597,8 +595,8 @@ class MedicalEventTriggers:
             event_data={
                 "type": "document_processed",
                 "document": document_data,
-                "document_id": document_id,  # Link to specific document
-                "extracted_data_id": extracted_data_id,  # Link to extracted data
+                "document_id": document_id,  
+                "extracted_data_id": extracted_data_id,  
                 "timestamp": datetime.now().isoformat()
             }
         )
@@ -613,12 +611,12 @@ class MedicalEventTriggers:
             event_data={
                 "type": "medication_discontinued",
                 "medication": medication_data,
-                "medication_id": medication_id,  # Link to specific medication
+                "medication_id": medication_id, 
                 "timestamp": datetime.now().isoformat()
             }
         )
     
-    # NEW UPDATE TRIGGERS
+    
     def on_medication_updated(self, user_id: str, medication_data: Dict[str, Any], changes: Dict[str, Any], medication_id: Optional[str] = None):
         """
         Trigger analysis when medication is updated (dosage changes, frequency changes, etc.)
@@ -629,7 +627,7 @@ class MedicalEventTriggers:
             event_data={
                 "type": "medication_updated",
                 "medication": medication_data,
-                "changes": changes,  # What specifically changed
+                "changes": changes, 
                 "medication_id": medication_id,
                 "timestamp": datetime.now().isoformat()
             }
@@ -645,7 +643,7 @@ class MedicalEventTriggers:
             event_data={
                 "type": "symptom_updated",
                 "symptom": symptom_data,
-                "changes": changes,  # What specifically changed
+                "changes": changes,  
                 "symptom_id": symptom_id,
                 "timestamp": datetime.now().isoformat()
             }
@@ -661,7 +659,7 @@ class MedicalEventTriggers:
             event_data={
                 "type": "health_reading_updated",
                 "reading": reading_data,
-                "changes": changes,  # What specifically changed
+                "changes": changes,  
                 "health_reading_id": health_reading_id,
                 "timestamp": datetime.now().isoformat()
             }
@@ -677,14 +675,14 @@ class MedicalEventTriggers:
             event_data={
                 "type": "document_reprocessed",
                 "document": document_data,
-                "changes": changes,  # What was corrected/changed
+                "changes": changes, 
                 "document_id": document_id,
                 "extracted_data_id": extracted_data_id,
                 "timestamp": datetime.now().isoformat()
             }
         )
     
-    # NEW DELETE TRIGGERS
+    
     def on_medication_deleted(self, user_id: str, medication_data: Dict[str, Any], medication_id: Optional[str] = None):
         """
         Trigger analysis when medication is deleted (may affect drug interactions, etc.)
@@ -737,7 +735,7 @@ def detect_changes(old_data: Dict[str, Any], new_data: Dict[str, Any]) -> Dict[s
     """
     changes = {}
     
-    # Check for changed fields
+   
     for key, new_value in new_data.items():
         old_value = old_data.get(key)
         if old_value != new_value:
@@ -746,7 +744,7 @@ def detect_changes(old_data: Dict[str, Any], new_data: Dict[str, Any]) -> Dict[s
                 "new": new_value
             }
     
-    # Check for removed fields (present in old but not in new)
+    
     for key, old_value in old_data.items():
         if key not in new_data:
             changes[key] = {

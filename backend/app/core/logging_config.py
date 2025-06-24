@@ -57,11 +57,11 @@ class StructuredFormatter(logging.Formatter):
             "line": record.lineno,
         }
         
-        # Add structured data if available
+        
         if hasattr(record, "structured_data") and record.structured_data:
             log_data.update(record.structured_data)
             
-        # Add exception info if available
+        
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
             
@@ -75,13 +75,13 @@ def setup_logging(level: Optional[str] = None) -> None:
     Args:
         level: Optional override for the log level
     """
-    # Set the log level from settings or the provided override
+    
     log_level = getattr(logging, level or settings.LOG_LEVEL)
     
-    # Register the custom logger class
+    
     logging.setLoggerClass(StructuredLogger)
     
-    # Get the root logger
+    
     logger = logging.getLogger()
     logger.setLevel(log_level)
     
@@ -89,7 +89,7 @@ def setup_logging(level: Optional[str] = None) -> None:
     if logger.handlers:
         logger.handlers.clear()
     
-    # In production, use Google Cloud Logging if credentials are available
+    
     if (settings.ENVIRONMENT == "production" and 
             settings.GCP_PROJECT_ID and 
             os.path.exists(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", ""))):
@@ -100,7 +100,7 @@ def setup_logging(level: Optional[str] = None) -> None:
             logger.info("Google Cloud Logging configured", 
                       extra={"structured_data": {"environment": settings.ENVIRONMENT}})
         except Exception as e:
-            # Fall back to standard logging if GCP logging setup fails
+            
             handler = logging.StreamHandler(sys.stdout)
             formatter = StructuredFormatter()
             handler.setFormatter(formatter)
@@ -108,9 +108,9 @@ def setup_logging(level: Optional[str] = None) -> None:
             logger.error(f"Failed to set up Google Cloud Logging: {str(e)}", 
                        extra={"structured_data": {"environment": settings.ENVIRONMENT}})
     else:
-        # For local development, use stdout with simple console formatting for debugging
+        
         handler = logging.StreamHandler(sys.stdout)
-        # Use simple formatter instead of structured for debugging
+        
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )

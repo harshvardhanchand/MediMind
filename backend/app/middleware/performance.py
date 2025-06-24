@@ -115,10 +115,9 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
             raise
         
         finally:
-            # Calculate duration
+           
             duration = time.time() - start_time
             
-            # Update metrics
             REQUEST_COUNT.labels(
                 method=method,
                 endpoint=endpoint,
@@ -134,7 +133,7 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
             
             ACTIVE_REQUESTS.labels(method=method, endpoint=endpoint).dec()
             
-            # Structured logging
+            
             log_data = {
                 "correlation_id": correlation_id,
                 "method": method,

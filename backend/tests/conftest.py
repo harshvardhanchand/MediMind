@@ -1,40 +1,35 @@
 import os
-os.environ["ENVIRONMENT"] = "test" # Set ENVIRONMENT to test as early as possible
+os.environ["ENVIRONMENT"] = "test" 
 
 import pytest
-import pytest_asyncio # Added for async fixtures
-import uuid # For test_user_in_db fixture
-from typing import AsyncGenerator, Dict, Any # For async fixtures
-from unittest.mock import patch, Mock
+import pytest_asyncio
+import uuid 
+from typing import AsyncGenerator, Dict, Any 
+from unittest.mock import patch
 
-# Set environment variables for tests
-# Defaults to SQLite if TEST_DATABASE_URL is not set in the environment (e.g., via pytest.ini)
-# Ensure this uses a scheme compatible with synchronous SQLAlchemy (e.g., sqlite:///./test.db)
-# For async tests, we will derive an async-compatible URL or use a separate ASYNC_TEST_DATABASE_URL
+
 os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", "sqlite:///./test.db")
-# Example if you want a separate async DB URL for tests, otherwise we derive it.
-# os.environ["ASYNC_TEST_DATABASE_URL"] = os.environ.get("ASYNC_TEST_DATABASE_URL", "sqlite+aiosqlite:///./test_async.db")
+
 
 os.environ["SUPABASE_URL"] = "https://test.supabase.co"
 os.environ["SUPABASE_KEY"] = "test-key"
 os.environ["SUPABASE_JWT_SECRET"] = "test-jwt-secret"
 
-# Patch settings module
+
 @pytest.fixture(scope="session", autouse=True)
 def patch_settings():
     """Patch settings before any imports"""
     with patch("app.core.config.settings") as mock_settings:
         mock_settings.ENVIRONMENT = "test"
         mock_settings.DATABASE_URL = os.environ["DATABASE_URL"]
-        # Derive ASYNC_DATABASE_URL for tests or use a specific test async URL
-        # This assumes if DATABASE_URL is sqlite, ASYNC_DATABASE_URL should be sqlite+aiosqlite
+        
         if mock_settings.DATABASE_URL.startswith("sqlite:///"):
             mock_settings.ASYNC_DATABASE_URL = mock_settings.DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
         elif mock_settings.DATABASE_URL.startswith("postgresql://"):
             mock_settings.ASYNC_DATABASE_URL = mock_settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
         else:
-            # Fallback or error if no specific async URL is set for other DB types
-            mock_settings.ASYNC_DATABASE_URL = None # Or raise an error
+           
+            mock_settings.ASYNC_DATABASE_URL = None 
 
         mock_settings.SUPABASE_URL = os.environ["SUPABASE_URL"]
         mock_settings.SUPABASE_KEY = os.environ["SUPABASE_KEY"]
@@ -49,23 +44,14 @@ def patch_settings():
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine # Added async imports
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from app.db.session import Base # Import the actual Base
-from app.models.user import User # For test_user fixture
-from app.main import app # For dependency overrides
-from app.core.auth import verify_token # For mocking auth
+from app.db.session import Base 
+from app.models.user import User 
+from app.main import app 
+from app.core.auth import verify_token 
 
-# Mock the Base object with its metadata
-# @pytest.fixture(scope="session") # Commented out or remove if not needed elsewhere
-# def mock_base():
-#     """Create a mock for Base that will be used in tests"""
-#     with patch("app.db.session.Base") as mock_base:
-#         # Mock the metadata attribute with a create_all method
-#         mock_base.metadata = Mock()
-#         mock_base.metadata.create_all = Mock()
-#         mock_base.metadata.drop_all = Mock()
-#         yield mock_base
+
 
 @pytest.fixture(scope="session")
 def engine():
@@ -74,7 +60,7 @@ def engine():
     engine = create_engine(test_db_url, poolclass=NullPool)
     yield engine
     
-    # For SQLite, clean up the file after tests
+    
     if test_db_url.startswith("sqlite"):
         try:
             os.remove("./test.db")
@@ -82,11 +68,11 @@ def engine():
             pass
 
 @pytest.fixture(scope="session")
-def tables(engine): # Removed mock_base dependency
+def tables(engine): 
     """Create all tables in the test database before tests and drop after."""
-    Base.metadata.create_all(bind=engine) # Use the actual Base
+    Base.metadata.create_all(bind=engine) 
     yield
-    Base.metadata.drop_all(bind=engine) # Cleanup after tests
+    Base.metadata.drop_all(bind=engine) 
 
 @pytest.fixture
 def db_session(engine, tables):
@@ -97,7 +83,7 @@ def db_session(engine, tables):
     Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = Session()
 
-    # Begin nested transaction
+   
     nested = connection.begin_nested()
     
     yield session

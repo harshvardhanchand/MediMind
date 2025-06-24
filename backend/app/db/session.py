@@ -2,6 +2,7 @@ import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from typing import Generator, AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
@@ -9,8 +10,12 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Define Base here
-Base = declarative_base()
+# Define separate Base classes for sync and async to avoid engine mixing
+Base = declarative_base()  # For synchronous operations
+AsyncBase = declarative_base()  # For asynchronous operations
+
+# Keep Base as the primary one for backward compatibility
+# But AsyncBase can be used for async-specific models if needed
 
 # Use create_engine for synchronous connection with the DATABASE_URL from settings
 # Ensure settings.DATABASE_URL provides a sync DSN (e.g., postgresql://... or postgresql+psycopg2://...)
@@ -45,18 +50,38 @@ else:
     logger.warning("ASYNC_DATABASE_URL not configured. Asynchronous database features will be unavailable.")
 
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    FastAPI dependency that provides async database session with automatic transaction management.
+    Commits on success, rolls back on exception.
+    """
     if AsyncSessionLocal is None:
         raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            # For async, commit is often handled by the caller or at the end of a unit of work.
-            # await session.commit() # Typically not here in get_async_db
+            # Auto-commit successful transactions
+            await session.commit()
         except Exception:
-            # await session.rollback() # Rollback on exception
+            # Auto-rollback on any exception
+            await session.rollback()
             raise
         finally:
-            await session.close() # Ensure session is closed
+            await session.close()
+
+@asynccontextmanager
+async def get_async_db_manual() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Context manager for manual transaction control. 
+    Caller is responsible for commit/rollback.
+    Use this when you need explicit transaction boundaries.
+    """
+    if AsyncSessionLocal is None:
+        raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 # Optional: Add a function to create tables (useful for initial setup/tests without Alembic)
 # def init_db():

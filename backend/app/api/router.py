@@ -1,14 +1,11 @@
 from fastapi import APIRouter
-# Removed auth from imports as backend auth endpoints are not used (Supabase client-side handles it)
 from app.api.endpoints import users, medications, documents, query, extracted_data, health_readings, medical_analysis, symptoms
 from app.routers import notifications
 
-# This will be the main router for all API endpoints, mounted at /api
+
 api_router = APIRouter()
 
-# Include individual endpoint routers
-# The prefixes here are relative to where api_router is mounted (e.g. /api)
-# api_router.include_router(auth.router, prefix="/auth", tags=["auth"]) # Removed auth router
+
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(medications.router, prefix="/medications", tags=["medications"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])

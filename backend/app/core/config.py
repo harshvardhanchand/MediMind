@@ -37,25 +37,25 @@ class Settings(BaseSettings):
     
     # Database settings
     DATABASE_URL: Optional[Union[PostgresDsn, str]] = None
-    ASYNC_DATABASE_URL: Optional[str] = None # Added for async operations
+    ASYNC_DATABASE_URL: Optional[str] = None 
     
     # Security settings
     SECURITY_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 8 days
-    RATE_LIMIT_DEFAULT: str = "60/minute"  # Default rate limit
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  
+    RATE_LIMIT_DEFAULT: str = "60/minute"  
     
-    # Logging settings
+   
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
-    # GCP settings
+    
     GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "")
     GCP_STORAGE_BUCKET: str = os.getenv("GCP_STORAGE_BUCKET", "")
 
-    # Document AI specific settings
+    
     DOCUMENT_AI_PROCESSOR_LOCATION: Optional[str] = os.getenv("DOC_AI_LOCATION")
     DOCUMENT_AI_PROCESSOR_ID: Optional[str] = os.getenv("DOC_AI_PROCESSOR_ID")
 
-    # Gemini API Key
+    
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
 
     # Google Cloud Storage (GCS) - Kept for potential compatibility
@@ -71,19 +71,19 @@ class Settings(BaseSettings):
                 return v 
             else:
                 try:
-                    # Attempt to parse as PostgresDsn. If it fails, Pydantic handles the error.
+                    
                     return PostgresDsn(v)
-                except ValueError as e: # Catch Pydantic's validation error if v is not a valid PostgresDsn
+                except ValueError as e:
                     raise ValueError(f"Invalid DATABASE_URL for {environment} environment: {v}. Must be a valid PostgreSQL DSN. Error: {e}")
         
         if environment == "test" and not v:
              raise ValueError("DATABASE_URL must be provided for the test environment (e.g., sqlite:///./test.db)")
         
-        # If not test env and connection cannot be assembled, raise error.
+        
         if environment != "test" and not v:
             raise ValueError("Missing PostgreSQL connection parameters or direct DATABASE_URL for non-test environment")
         
-        # Fallback for test environment if v was None initially
+       
         if environment == "test":
             logger = logging.getLogger(__name__)
             logger.warning("DATABASE_URL not explicitly set for test environment, defaulting to in-memory SQLite. This might not be intended for all tests.")
@@ -99,7 +99,7 @@ class Settings(BaseSettings):
                 raise ValueError("ASYNC_DATABASE_URL must use the 'postgresql+asyncpg://' scheme.")
             return v
         
-        # Get DATABASE_URL from environment since we can't access validated values in V2
+        
         sync_db_url_str = os.getenv("DATABASE_URL")
         
         if sync_db_url_str and sync_db_url_str.startswith("postgresql://"):

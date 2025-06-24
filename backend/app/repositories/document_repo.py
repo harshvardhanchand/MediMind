@@ -40,6 +40,25 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         db.commit()
         db.refresh(db_obj)
         return db_obj
+        
+    async def create_with_owner_async(
+        self, db, *, obj_in: DocumentCreate, user_id: UUID, storage_path: str, file_hash: Optional[str] = None
+    ) -> Document:
+        """Create a new document record associated with a user (async version)."""
+        db_obj_data = obj_in.model_dump(exclude_unset=True)
+        
+        db_obj = Document(
+            **db_obj_data, 
+            user_id=user_id,
+            storage_path=storage_path,
+            file_hash=file_hash,
+            processing_status=ProcessingStatus.PENDING
+        )
+        
+        db.add(db_obj)
+        await db.flush() 
+        await db.refresh(db_obj)
+        return db_obj
 
     def get_by_id(self, db: Session, *, document_id: UUID) -> Optional[Document]:
         """Get a document by its ID using select()."""

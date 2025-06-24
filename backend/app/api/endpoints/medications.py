@@ -37,11 +37,11 @@ async def get_medications(
     - optimized=False: Uses lazy loading, backward compatibility, slower for large datasets
     """
     try:
-        # Limit to reasonable size for performance
-        limit = min(limit, 100)
+        
+        limit = min(limit, 10)
         
         if optimized:
-            # Use optimized methods with eager loading
+            
             if active_only:
                 medications = medication_repo.get_active_by_owner_optimized(
                     db=db, user_id=current_user.user_id, skip=skip, limit=limit
@@ -60,7 +60,7 @@ async def get_medications(
                     db=db, user_id=current_user.user_id, skip=skip, limit=limit
                 )
         else:
-            # Use original methods for backward compatibility
+            
             if active_only:
                 medications = medication_repo.get_active_by_owner(
                     db=db, user_id=current_user.user_id, skip=skip, limit=limit
@@ -130,12 +130,12 @@ async def create_medication(
             db=db, obj_in=medication, user_id=current_user.user_id
         )
         
-        # After successful creation, trigger medical analysis
+        
         try:
             notification_service = get_notification_service(db)
             medical_triggers = get_medical_triggers(notification_service)
             
-            # Trigger analysis in background (don't wait for completion)
+            
             medication_data = {
                 "name": medication.name,
                 "dosage": medication.dosage,
@@ -146,11 +146,11 @@ async def create_medication(
             await medical_triggers.on_medication_added(
                 str(current_user.user_id), 
                 medication_data,
-                medication_id=str(db_medication.id)  # Pass the medication ID
+                medication_id=str(db_medication.id)  
             )
             
         except Exception as e:
-            # Log error but don't fail the medication creation
+            
             logger.warning(f"Failed to trigger medication analysis: {str(e)}")
         
         return db_medication
@@ -188,7 +188,7 @@ async def get_medication(
                 detail="Medication not found"
             )
         
-        # Ensure the medication belongs to the authenticated user
+       
         if medication.user_id != current_user.user_id:
             logger.warning(f"User {current_user.user_id} attempted to access medication {medication_id} owned by {medication.user_id}")
             raise HTTPException(
@@ -225,7 +225,7 @@ async def update_medication(
             detail="Medication not found"
         )
     
-    # Ensure the medication belongs to the authenticated user
+   
     if db_medication.user_id != current_user.user_id:
         logger.warning(f"User {current_user.user_id} attempted to update medication {medication_id} owned by {db_medication.user_id}")
         raise HTTPException(
@@ -234,7 +234,7 @@ async def update_medication(
         )
     
     try:
-        # Capture old data for change detection
+       
         old_medication_data = {
             "name": db_medication.name,
             "dosage": db_medication.dosage,
@@ -251,12 +251,12 @@ async def update_medication(
             db=db, db_obj=db_medication, obj_in=medication_update
         )
         
-        # Trigger AI analysis for medication update
+       
         try:
             notification_service = get_notification_service(db)
             medical_triggers = get_medical_triggers(notification_service)
             
-            # Prepare new medication data
+            
             new_medication_data = {
                 "name": updated_medication.name,
                 "dosage": updated_medication.dosage,
@@ -269,10 +269,9 @@ async def update_medication(
                 "notes": updated_medication.notes
             }
             
-            # Detect changes
-            changes = detect_changes(old_medication_data, new_medication_data)
             
-            # Only trigger analysis if there are meaningful changes
+            changes = detect_changes(old_medication_data, new_medication_data)
+             
             if changes:
                 await medical_triggers.on_medication_updated(
                     str(current_user.user_id),
@@ -283,7 +282,7 @@ async def update_medication(
                 logger.info(f"AI analysis triggered for medication update: {medication_id}")
             
         except Exception as e:
-            # Log error but don't fail the medication update
+            
             logger.warning(f"Failed to trigger medication update analysis: {str(e)}")
         
         return updated_medication
@@ -311,7 +310,7 @@ async def delete_medication(
             detail="Medication not found"
         )
     
-    # Ensure the medication belongs to the authenticated user
+    
     if db_medication.user_id != current_user.user_id:
         logger.warning(f"User {current_user.user_id} attempted to delete medication {medication_id} owned by {db_medication.user_id}")
         raise HTTPException(
@@ -320,7 +319,7 @@ async def delete_medication(
         )
     
     try:
-        # Capture medication data before deletion for AI analysis
+        
         medication_data = {
             "name": db_medication.name,
             "dosage": db_medication.dosage,
@@ -335,7 +334,7 @@ async def delete_medication(
         
         medication_repo.remove(db=db, id=medication_id)
         
-        # Trigger AI analysis for medication deletion
+        
         try:
             notification_service = get_notification_service(db)
             medical_triggers = get_medical_triggers(notification_service)
@@ -348,7 +347,7 @@ async def delete_medication(
             logger.info(f"AI analysis triggered for medication deletion: {medication_id}")
             
         except Exception as e:
-            # Log error but don't fail the medication deletion
+            
             logger.warning(f"Failed to trigger medication deletion analysis: {str(e)}")
         
     except Exception as e:

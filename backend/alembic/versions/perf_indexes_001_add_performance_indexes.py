@@ -21,8 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Add performance-critical indexes for common query patterns."""
     
-    # === MEDICATIONS TABLE INDEXES ===
-    # Composite index for user + status queries (most common)
+ 
     op.create_index(
         'idx_medications_user_status_updated', 
         'medications', 
@@ -31,7 +30,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # Index for active medications only
+    
     op.create_index(
         'idx_medications_user_active',
         'medications',
@@ -41,7 +40,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # Index for medication search queries (text search)
+   
     op.execute("""
         CREATE INDEX CONCURRENTLY idx_medications_search 
         ON medications USING gin(
@@ -53,8 +52,7 @@ def upgrade() -> None:
         )
     """)
     
-    # === DOCUMENTS TABLE INDEXES ===
-    # Composite index for user + type + upload time (most common query pattern)
+   
     op.create_index(
         'idx_documents_user_type_upload', 
         'documents', 
@@ -63,7 +61,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # Index for recent documents
+    
     op.create_index(
         'idx_documents_user_upload',
         'documents',
@@ -72,7 +70,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # Index for duplicate detection
+    
     op.create_index(
         'idx_documents_hash_user',
         'documents',
@@ -81,7 +79,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # Full-text search index for documents
+    
     op.execute("""
         CREATE INDEX CONCURRENTLY idx_documents_fulltext_search 
         ON documents USING gin(
@@ -93,8 +91,7 @@ def upgrade() -> None:
         )
     """)
     
-    # === HEALTH READINGS TABLE INDEXES ===
-    # Composite index for user + type + date (most common query)
+    
     op.create_index(
         'idx_health_readings_user_type_date', 
         'health_readings', 
@@ -103,7 +100,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # Index for recent readings dashboard queries
+   
     op.create_index(
         'idx_health_readings_user_date',
         'health_readings',
@@ -112,7 +109,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # === SYMPTOMS TABLE INDEXES ===
+    
     op.create_index(
         'idx_symptoms_user_date',
         'symptoms',
@@ -129,7 +126,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # === NOTIFICATIONS TABLE INDEXES ===
+    
     op.create_index(
         'idx_notifications_user_unread',
         'notifications',
@@ -154,7 +151,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # === EXTRACTED DATA TABLE INDEXES ===
+    
     op.create_index(
         'idx_extracted_data_document',
         'extracted_data',
@@ -163,7 +160,7 @@ def upgrade() -> None:
         postgresql_using='btree'
     )
     
-    # === USERS TABLE INDEXES ===
+   
     op.create_index(
         'idx_users_supabase_id',
         'users',
@@ -176,7 +173,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Remove performance indexes."""
     
-    # Drop all indexes in reverse order
+    
     indexes_to_drop = [
         'idx_medications_user_status_updated',
         'idx_medications_user_active', 
@@ -200,5 +197,5 @@ def downgrade() -> None:
         try:
             op.drop_index(index_name, postgresql_concurrently=True)
         except Exception:
-            # Index might not exist, continue with others
+            
             pass 

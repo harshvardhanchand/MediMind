@@ -1,23 +1,17 @@
 import logging
 import hashlib
-# Use sync Session
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form, Query, BackgroundTasks
-from typing import List, Dict, Any, Optional
+from typing import List,Optional
 from uuid import UUID
-
-# Use sync get_db
-from app.db.session import get_db
+from app.db.session import get_db, get_async_db
 from app.core.auth import verify_token, get_user_id_from_token
-# Update to use repositories (plural)
 from app.repositories.document_repo import document_repo
 from app.repositories.user_repo import user_repo
 from app.schemas.document import DocumentRead, DocumentCreate, DocumentMetadataUpdate
-# Assuming sync storage utils or that they handle sync calls
 from app.utils.storage import upload_file_to_gcs, delete_file_from_gcs 
 from app.models.document import DocumentType
-
-# Import for background task and new sync repository
 from app.services.document_processing_service import run_document_processing_pipeline
 from app.models.extracted_data import ExtractedData
 from app.repositories.extracted_data_repo import ExtractedDataRepository
@@ -25,20 +19,20 @@ from app.repositories.extracted_data_repo import ExtractedDataRepository
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["documents"])
 
-def get_or_create_user(db: Session, token_data: dict):
+async def get_or_create_user(db: AsyncSession, token_data: dict):
     """Get user from database or auto-create if doesn't exist."""
     supabase_id = token_data.get("sub")
     if not supabase_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token payload")
     
-    user = user_repo.get_by_supabase_id_sync(db, supabase_id=supabase_id)
+    user = await user_repo.get_by_supabase_id(db, supabase_id=supabase_id)
     
     if not user:
-        # Auto-create user if they don't exist
+        
         logger.info(f"Auto-creating new user for supabase_id: {supabase_id}")
         from app.schemas.user import UserCreate
         
-        # Extract email from token for user creation
+       
         email = token_data.get("email", f"user-{supabase_id}@example.com")
         
         user_create = UserCreate(
@@ -46,7 +40,7 @@ def get_or_create_user(db: Session, token_data: dict):
             supabase_id=supabase_id
         )
         
-        user = user_repo.create(db=db, obj_in=user_create)
+        user = await user_repo.create(db=db, obj_in=user_create)
         logger.info(f"✅ Auto-created user with id: {user.user_id}")
     
     return user
@@ -60,7 +54,7 @@ def calculate_hash(content: bytes) -> str:
 @router.post("/upload", response_model=List[DocumentRead], status_code=status.HTTP_201_CREATED)
 async def upload_document(
     *,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     background_tasks: BackgroundTasks,
     token_data: dict = Depends(verify_token),
     document_type: DocumentType = Form(...),
@@ -73,7 +67,7 @@ async def upload_document(
     Returns a list of successfully uploaded documents. If any file fails, it continues with others.
     """
     
-    # Validate file count
+    
     if len(files) > 5:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -86,7 +80,7 @@ async def upload_document(
             detail="At least one file is required"
         )
     
-    user = get_or_create_user(db, token_data)
+    user = await get_or_create_user(db, token_data)
     
     uploaded_documents = []
     failed_uploads = []
@@ -95,10 +89,10 @@ async def upload_document(
         try:
             logger.info(f"Processing file {file_index + 1}/{len(files)}: {file.filename}")
             
-            # Read file content to calculate hash and pass to storage
+            
             try:
-                file_content = file.file.read()
-                file.file.seek(0) # Reset file pointer after reading for GCS upload
+                file_content = await file.read()
+                await file.seek(0) 
             except Exception as e:
                 logger.error(f"Failed to read uploaded file {file.filename}: {e}", exc_info=True)
                 failed_uploads.append({
@@ -109,7 +103,7 @@ async def upload_document(
 
             file_hash = calculate_hash(file_content)
             
-            # Check if a document with this hash already exists for this user to prevent duplicates
+            
             existing_doc = document_repo.get_by_hash_for_user(db, user_id=user.user_id, file_hash=file_hash)
             if existing_doc:
                 logger.info(f"Duplicate file detected for user {user.user_id}, existing document: {existing_doc.document_id}")
@@ -121,7 +115,7 @@ async def upload_document(
                 })
                 continue
 
-            # Upload to GCS
+            
             gcs_path = await upload_file_to_gcs(file=file, user_id=user.user_id)
             if not gcs_path:
                 failed_uploads.append({
@@ -130,7 +124,7 @@ async def upload_document(
                 })
                 continue
 
-            # Create document metadata schema
+            
             doc_meta = DocumentCreate(
                 original_filename=file.filename,
                 document_type=document_type,
@@ -141,57 +135,43 @@ async def upload_document(
                 }
             )
 
-            # Save document record to database with proper transaction handling
+            
             try:
-                # Create a fresh database session for each file to avoid cascade failures
-                from app.db.session import get_db
-                fresh_db = next(get_db())
-                
-                try:
-                    created_document = document_repo.create_with_owner(
-                        db=fresh_db,
+               
+                async with db.begin():
+                   
+                    created_document = await document_repo.create_with_owner_async(
+                        db=db,
                         obj_in=doc_meta,
                         user_id=user.user_id,
                         storage_path=gcs_path,
                         file_hash=file_hash
                     )
-                    fresh_db.commit()
                     logger.info(f"Document record created successfully for {file.filename}, ID: {created_document.document_id}")
                     
-                    # Create initial ExtractedData record using the fresh session
-                    extracted_data_repo = ExtractedDataRepository(ExtractedData)  # Pass model class
-                    initial_extracted_data = extracted_data_repo.create_initial_extracted_data(db=fresh_db, document_id=created_document.document_id)
+                    
+                    extracted_data_repo = ExtractedDataRepository(ExtractedData)  
+                    initial_extracted_data_success = await extracted_data_repo.create_initial_extracted_data_async(
+                        db=db, 
+                        document_id=created_document.document_id
+                    )
 
-                    if not initial_extracted_data:
-                        fresh_db.rollback()
-                        logger.critical(f"CRITICAL: Failed to create initial ExtractedData record for document {created_document.document_id}. Rolling back and cleaning up GCS file.")
-                        # Attempt to cleanup the GCS file as the document processing cannot proceed reliably.
-                        if gcs_path:
-                            await delete_file_from_gcs(gcs_path)
+                    if not initial_extracted_data_success:
+                        logger.critical(f"CRITICAL: Failed to create initial ExtractedData record for document {created_document.document_id}. Rolling back transaction.")
                         
-                        failed_uploads.append({
-                            "filename": file.filename,
-                            "error": "Failed to initialize document for processing. Uploaded file has been removed."
-                        })
-                        continue
+                        raise Exception("Failed to initialize document for processing")
 
-                    fresh_db.commit()
-                    
-                    # Add document processing to background tasks
-                    background_tasks.add_task(run_document_processing_pipeline, created_document.document_id)
-                    logger.info(f"Added document processing pipeline to background tasks for document ID: {created_document.document_id}")
+                   
+                    logger.info(f"Successfully created document and extracted data records for {file.filename}")
 
-                    uploaded_documents.append(created_document)
-                    
-                except Exception as db_error:
-                    fresh_db.rollback()
-                    logger.error(f"Database error for {file.filename}: {db_error}", exc_info=True)
-                    raise db_error
-                finally:
-                    fresh_db.close()
+                
+                background_tasks.add_task(run_document_processing_pipeline, created_document.document_id)
+                logger.info(f"Added document processing pipeline to background tasks for document ID: {created_document.document_id}")
+
+                uploaded_documents.append(created_document)
                     
             except Exception as e:
-                # Cleanup the GCS file if DB operations fail
+                
                 logger.error(f"Failed to create document record in DB for {file.filename} at {gcs_path}: {e}", exc_info=True)
                 if gcs_path:
                     try:
@@ -213,13 +193,13 @@ async def upload_document(
             })
             continue
     
-    # Log summary
+    
     logger.info(f"Upload batch completed. Successful: {len(uploaded_documents)}, Failed: {len(failed_uploads)}")
     
     if failed_uploads:
         logger.warning(f"Some files failed to upload: {failed_uploads}")
     
-    # If no files were successfully uploaded, return an error
+    
     if not uploaded_documents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -229,8 +209,7 @@ async def upload_document(
             }
         )
     
-    # If some files failed but at least one succeeded, include failed uploads in response headers or log
-    # For now, we'll just return the successful uploads and log the failures
+    
     return uploaded_documents
 
 @router.get("", response_model=List[DocumentRead])
@@ -254,7 +233,7 @@ def list_documents(
     """
     user = get_or_create_user(db, token_data)
     
-    # Limit to reasonable size for performance
+    
     limit = min(limit, 100)
     
     if optimized:
@@ -294,7 +273,7 @@ def get_document(
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     
-    # Ensure the document belongs to the authenticated user
+    
     if document.user_id != user.user_id:
         logger.warning(f"User {user.user_id} attempted to access document {document_id} owned by {document.user_id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this document")
@@ -307,7 +286,7 @@ def update_document_metadata(
     db: Session = Depends(get_db),
     token_data: dict = Depends(verify_token),
     document_id: UUID,
-    metadata_in: DocumentMetadataUpdate # Use the new schema
+    metadata_in: DocumentMetadataUpdate 
 ):
     """
     Update user-editable metadata fields for a specific document.
@@ -320,7 +299,7 @@ def update_document_metadata(
     """
     user = get_or_create_user(db, token_data)
     
-    # Verify document exists and belongs to user (get_by_id fetches the object)
+   
     document = document_repo.get_by_id(db=db, document_id=document_id)
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -328,17 +307,15 @@ def update_document_metadata(
         logger.warning(f"User {user.user_id} attempted to update metadata for document {document_id} owned by {document.user_id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to update this document's metadata")
         
-    # Convert Pydantic model to dict, excluding unset fields to handle PATCH correctly
-    # Only include fields that the user actually sent in the request
+    
     update_data = metadata_in.model_dump(exclude_unset=True)
 
     if not update_data:
-         # If the request body was empty or only contained nulls that didn't change anything
-         logger.info(f"No metadata fields provided to update for document {document_id}")
-         # Return the current document state without attempting an update
-         return document
+        logger.info(f"No metadata fields provided to update for document {document_id}")
+         
+        return document
 
-    # Call the repository method to update the overrides
+    
     updated_document = document_repo.update_overrides(
         db=db, 
         document_id=document_id, 
@@ -346,11 +323,11 @@ def update_document_metadata(
     )
 
     if not updated_document:
-        # This could happen if the document was deleted between check and update, or DB error
+        
         logger.error(f"Failed to update metadata overrides for document {document_id} in repository.")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update document metadata")
 
-    # Return the updated document data (DocumentRead schema includes overrides field)
+    
     return updated_document
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -373,20 +350,19 @@ async def delete_document(
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     
-    # Ensure the document belongs to the authenticated user
+    
     if document.user_id != user.user_id:
         logger.warning(f"User {user.user_id} attempted to delete document {document_id} owned by {document.user_id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this document")
     
-    # Delete the file from GCS storage
+    
     gcs_path = document.storage_path
     gcs_deletion_success = await delete_file_from_gcs(gcs_path)
     
     if not gcs_deletion_success:
-        logger.warning(f"Failed to delete file from GCS: {gcs_path}")
-        # Continue anyway to delete the database record
+        logger.warning(f"Failed to delete file from GCS: {gcs_path}")# Continue anyway to delete the database record
     
-    # Delete the document from database
+   
     document_repo.remove(db=db, id=document_id)
     
     return None 
@@ -413,11 +389,11 @@ def search_documents(
     
     Results are ranked by relevance and filtered to only include the authenticated user's documents.
     """
-    # Get user ID from token
+    
     user_id = get_user_id_from_token(db, token_data)
     
     try:
-        # Search documents using the repository method
+        
         documents = document_repo.search_documents(
             db=db, 
             user_id=user_id, 
@@ -427,7 +403,7 @@ def search_documents(
             limit=limit
         )
         
-        # Log search for analytics purposes
+        
         logger.info(
             f"Document search performed", 
             extra={

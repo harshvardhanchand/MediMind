@@ -22,7 +22,7 @@ from pydantic import BaseModel
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Request models
+
 class SymptomAnalysisRequest(BaseModel):
     symptom: str
     severity: Optional[str] = "medium"
@@ -31,7 +31,7 @@ class SymptomAnalysisRequest(BaseModel):
 
 class MedicationAnalysisRequest(BaseModel):
     medication_id: str
-    analysis_type: str = "new_medication"  # new_medication, medication_change, etc.
+    analysis_type: str = "new_medication"  
 
 class LabResultAnalysisRequest(BaseModel):
     test_name: str
@@ -41,11 +41,11 @@ class LabResultAnalysisRequest(BaseModel):
     reference_range: Optional[str] = None
 
 class ComprehensiveAnalysisRequest(BaseModel):
-    trigger_type: str  # symptom_reported, medication_added, lab_result, etc.
+    trigger_type: str  
     event_data: Dict[str, Any]
-    force_llm: Optional[bool] = False  # Force LLM analysis even if correlations exist
+    force_llm: Optional[bool] = False  
 
-# Response models
+
 class AnalysisResponse(BaseModel):
     analysis_id: str
     correlations_found: int
@@ -67,7 +67,7 @@ async def analyze_symptom(
     try:
         logger.info(f"Analyzing symptom '{request.symptom}' for user {current_user.user_id}")
         
-        # Create the event data
+        
         event_data = {
             "symptom": request.symptom,
             "severity": request.severity,
@@ -75,10 +75,10 @@ async def analyze_symptom(
             "reported_date": (request.reported_date or datetime.now()).isoformat()
         }
         
-        # Initialize services
+       
         ai_service = MedicalAIService(db)
         
-        # Run comprehensive analysis
+        
         start_time = datetime.now()
         notifications = await ai_service.analyze_medical_event(
             user_id=str(current_user.user_id),
@@ -87,7 +87,7 @@ async def analyze_symptom(
         )
         processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
         
-        # Create notifications in background
+        
         if notifications:
             notification_service = NotificationService(db)
             background_tasks.add_task(
@@ -96,14 +96,14 @@ async def analyze_symptom(
                 notifications
             )
         
-        # Generate response
+        
         summary = f"Analyzed symptom '{request.symptom}' and found {len(notifications)} potential correlations."
         
         return AnalysisResponse(
             analysis_id=f"symptom_{current_user.user_id}_{int(datetime.now().timestamp())}",
             correlations_found=len(notifications),
             notifications_created=len(notifications),
-            confidence=0.8,  # TODO: Calculate from actual analysis
+            confidence=0.8,  
             summary=summary,
             processing_time_ms=processing_time
         )
@@ -125,7 +125,7 @@ async def analyze_medication(
     try:
         logger.info(f"Analyzing medication {request.medication_id} for user {current_user.user_id}")
         
-        # Get medication from database
+        
         medication = db.query(Medication).filter(
             Medication.id == request.medication_id,
             Medication.user_id == current_user.user_id
@@ -134,7 +134,7 @@ async def analyze_medication(
         if not medication:
             raise HTTPException(status_code=404, detail="Medication not found")
         
-        # Create the event data
+        
         event_data = {
             "medication_id": str(medication.id),
             "name": medication.name,
@@ -145,7 +145,7 @@ async def analyze_medication(
             "doctor": medication.doctor
         }
         
-        # Get AI service and run analysis
+        
         ai_service = MedicalAIService(db)
         start_time = datetime.now()
         notifications = await ai_service.analyze_medical_event(
@@ -182,7 +182,7 @@ async def analyze_lab_result(
     try:
         logger.info(f"Analyzing lab result '{request.test_name}' for user {current_user.user_id}")
         
-        # Create the event data
+        
         event_data = {
             "lab_test": request.test_name,
             "value": request.value,
@@ -191,10 +191,10 @@ async def analyze_lab_result(
             "reference_range": request.reference_range
         }
         
-        # Initialize services
+        
         ai_service = MedicalAIService(db)
         
-        # Run comprehensive analysis
+        
         start_time = datetime.now()
         notifications = await ai_service.analyze_medical_event(
             user_id=str(current_user.user_id),
@@ -203,7 +203,7 @@ async def analyze_lab_result(
         )
         processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
         
-        # Create notifications in background
+       
         if notifications:
             notification_service = NotificationService(db)
             background_tasks.add_task(
@@ -212,14 +212,14 @@ async def analyze_lab_result(
                 notifications
             )
         
-        # Generate response
+       
         summary = f"Analyzed lab result '{request.test_name}' ({request.value} {request.unit}) and found {len(notifications)} potential correlations."
         
         return AnalysisResponse(
             analysis_id=f"lab_{current_user.user_id}_{int(datetime.now().timestamp())}",
             correlations_found=len(notifications),
             notifications_created=len(notifications),
-            confidence=0.8,  # TODO: Calculate from actual analysis
+            confidence=0.8, 
             summary=summary,
             processing_time_ms=processing_time
         )
@@ -241,10 +241,10 @@ async def comprehensive_analysis(
     try:
         logger.info(f"Running comprehensive analysis for trigger '{request.trigger_type}' for user {current_user.user_id}")
         
-        # Initialize services
+        
         ai_service = MedicalAIService(db)
         
-        # Run comprehensive analysis
+       
         start_time = datetime.now()
         notifications = await ai_service.analyze_medical_event(
             user_id=str(current_user.user_id),
@@ -253,7 +253,7 @@ async def comprehensive_analysis(
         )
         processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
         
-        # Create notifications in background
+       
         if notifications:
             notification_service = NotificationService(db)
             background_tasks.add_task(
@@ -262,14 +262,14 @@ async def comprehensive_analysis(
                 notifications
             )
         
-        # Generate response
+        
         summary = f"Comprehensive analysis for '{request.trigger_type}' found {len(notifications)} correlations."
         
         return AnalysisResponse(
             analysis_id=f"comprehensive_{current_user.user_id}_{int(datetime.now().timestamp())}",
             correlations_found=len(notifications),
             notifications_created=len(notifications),
-            confidence=0.8,  # TODO: Calculate from actual analysis
+            confidence=0.8,  
             summary=summary,
             processing_time_ms=processing_time
         )
@@ -289,7 +289,7 @@ async def get_user_medical_profile(
     try:
         ai_service = MedicalAIService(db)
         
-        # Build medical profile (this will be used internally for analysis)
+        
         medical_profile = await ai_service._build_medical_profile(str(current_user.user_id), {})
         
         if not medical_profile:
@@ -302,9 +302,9 @@ async def get_user_medical_profile(
                 "profile_completeness": 0.0
             }
         
-        # Calculate profile completeness
+        
         completeness = 0.0
-        total_categories = 4
+        
         
         if medical_profile.get("medications"):
             completeness += 0.25
@@ -334,13 +334,13 @@ async def trigger_analysis_for_all_data(
     try:
         logger.info(f"Triggering comprehensive analysis for all data for user {current_user.user_id}")
         
-        # Get all user's medical data
+        
         medications = db.query(Medication).filter(Medication.user_id == current_user.user_id).all()
         symptoms = db.query(Symptom).filter(Symptom.user_id == current_user.user_id).all()
         lab_results = db.query(HealthReading).filter(HealthReading.user_id == current_user.user_id).all()
         conditions = db.query(HealthCondition).filter(HealthCondition.user_id == current_user.user_id).all()
         
-        # Create comprehensive event data
+        
         event_data = {
             "analysis_type": "comprehensive_review",
             "medication_count": len(medications),
@@ -349,10 +349,10 @@ async def trigger_analysis_for_all_data(
             "condition_count": len(conditions)
         }
         
-        # Initialize services
+        
         ai_service = MedicalAIService(db)
         
-        # Run comprehensive analysis
+       
         start_time = datetime.now()
         notifications = await ai_service.analyze_medical_event(
             user_id=str(current_user.user_id),
@@ -361,7 +361,7 @@ async def trigger_analysis_for_all_data(
         )
         processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
         
-        # Create notifications in background
+        
         if notifications:
             notification_service = NotificationService(db)
             background_tasks.add_task(
@@ -386,7 +386,7 @@ async def trigger_analysis_for_all_data(
         logger.error(f"Comprehensive data analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail="Analysis failed")
 
-# Background task function
+
 async def create_notifications_background(
     notification_service: NotificationService,
     notifications: List[Dict[str, Any]]

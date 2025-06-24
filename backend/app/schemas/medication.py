@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 
 from app.models.medication import MedicationFrequency, MedicationStatus
 
-# Base schema for common medication attributes
+
 class MedicationBase(BaseModel):
     name: str = Field(..., description="Name of the medication")
     dosage: Optional[str] = Field(None, description="Dosage of the medication (e.g., 10mg)")
@@ -22,11 +22,11 @@ class MedicationBase(BaseModel):
     related_document_id: Optional[uuid.UUID] = Field(None, description="ID of a related document (e.g., prescription)")
     tags: Optional[List[str]] = Field(None, description="List of tags or categories for this medication")
 
-# Schema for creating a medication (input)
+
 class MedicationCreate(MedicationBase):
     status: MedicationStatus = Field(default=MedicationStatus.ACTIVE, description="Current status of the medication")
 
-# Schema for updating a medication (input)
+
 class MedicationUpdate(BaseModel):
     name: Optional[str] = Field(None, description="Name of the medication")
     dosage: Optional[str] = Field(None, description="Dosage of the medication (e.g., 10mg)")
@@ -44,7 +44,7 @@ class MedicationUpdate(BaseModel):
     related_document_id: Optional[uuid.UUID] = Field(None, description="ID of a related document (e.g., prescription)")
     tags: Optional[List[str]] = Field(None, description="List of tags or categories for this medication")
 
-# Schema for reading a medication (output)
+
 class MedicationResponse(MedicationBase):
     medication_id: uuid.UUID = Field(..., description="Unique identifier for the medication")
     user_id: uuid.UUID = Field(..., description="Identifier of the user who owns the medication")
@@ -53,4 +53,4 @@ class MedicationResponse(MedicationBase):
     updated_at: datetime = Field(..., description="Timestamp when the medication was last updated")
 
     class Config:
-        from_attributes = True # Compatibility with SQLAlchemy models 
+        from_attributes = True 

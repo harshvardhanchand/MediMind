@@ -17,7 +17,7 @@ class MedicalNormalizer:
     """
     
     def __init__(self):
-        # Drug name aliases and variations
+        
         self.drug_aliases = {
             "paracetamol": "acetaminophen",
             "tylenol": "acetaminophen",
@@ -60,7 +60,7 @@ class MedicalNormalizer:
             "chronic_cough": "cough"
         }
         
-        # FDA medical terminology mapping
+        
         self.fda_symptom_terms = {
             "dizziness": ["dizziness", "vertigo", "lightheadedness"],
             "fatigue": ["fatigue", "asthenia", "weakness"],
@@ -74,7 +74,7 @@ class MedicalNormalizer:
             "confusion": ["confusion", "mental status changes"]
         }
         
-        # Common drug suffixes to remove
+        
         self.drug_suffixes = ["er", "xl", "cr", "sr", "la", "xr", "mg", "mcg", "g"]
     
     @lru_cache(maxsize=2000)
@@ -85,60 +85,59 @@ class MedicalNormalizer:
         if not drug_name:
             return ""
         
-        # Convert to lowercase and strip
+        
         normalized = drug_name.lower().strip()
         
-        # Remove parenthetical information like "(brand name)"
+       
         normalized = re.sub(r'\([^)]*\)', '', normalized).strip()
         
-        # Handle dosage information in multiple passes
         
-        # Pass 1: Standard dosage patterns with numbers and spaces
+        
+        
         normalized = re.sub(r'\b\d+\s*(mg|mcg|g|ml|units?)\b', '', normalized)
         
-        # Pass 2: Numbers directly attached to units (e.g., "20mg", "500mg")
+        
         normalized = re.sub(r'\d+(mg|mcg|g|ml|units?)\b', '', normalized)
         
-        # Pass 3: Standalone units with whitespace
+        
         normalized = re.sub(r'\s+(mg|mcg|g|ml|units?)\b', '', normalized)
         
-        # Pass 4: Units with clear separators (hyphens, underscores)
+        
         normalized = re.sub(r'[-_](mg|mcg|g|ml|units?)$', '', normalized)
         
-        # Pass 5: Handle edge case like "atorvastatinmg" where unit is directly attached
-        # Only do this if the word ends with a unit AND the remaining part is long enough to be a drug name
+       
         for unit in ['mg', 'mcg', 'ml', 'units', 'unit']:
             if normalized.endswith(unit) and len(normalized) > len(unit) + 3:
-                # Check if removing the unit leaves us with a plausible drug name
+                
                 candidate = normalized[:-len(unit)]
-                # Only remove unit if the remaining part doesn't end with common letter combos that aren't units
+               
                 if not any(candidate.endswith(ending) for ending in ['ing', 'ling', 'ring', 'ding', 'ping']):
                     normalized = candidate
                     break
         
-        # Clean up multiple spaces
+        
         normalized = re.sub(r'\s+', ' ', normalized).strip()
         
-        # Check for direct aliases first (before suffix removal)
+        
         if normalized in self.drug_aliases:
             return self.drug_aliases[normalized]
         
-        # More careful suffix removal - only if followed by word boundary or end of string
+        
         original_normalized = normalized
         for suffix in self.drug_suffixes:
-            # Use word boundary to avoid partial matches
+            
             pattern = rf'\b{re.escape(suffix)}$'
             if re.search(pattern, normalized):
                 candidate = re.sub(pattern, '', normalized).strip()
-                if candidate and len(candidate) > 2:  # Don't create too-short drug names
+                if candidate and len(candidate) > 2:  
                     normalized = candidate
                     break
         
-        # Check aliases again after suffix removal
+        
         if normalized in self.drug_aliases:
             return self.drug_aliases[normalized]
         
-        # If we made the name too short or empty, revert to original
+       
         if len(normalized) < 3 and len(original_normalized) >= 3:
             normalized = original_normalized
         
@@ -152,21 +151,21 @@ class MedicalNormalizer:
         if not symptom_name:
             return ""
         
-        # Convert to lowercase, replace spaces with underscores
+        
         normalized = symptom_name.lower().replace(" ", "_").strip()
         
-        # Remove common prefixes
+        
         prefixes_to_remove = ["feeling_", "experiencing_", "having_"]
         for prefix in prefixes_to_remove:
             if normalized.startswith(prefix):
                 normalized = normalized[len(prefix):]
                 break
         
-        # Check direct mapping
+        
         if normalized in self.symptom_mappings:
             return self.symptom_mappings[normalized]
         
-        # Try without underscores
+        
         without_underscores = normalized.replace("_", "")
         if without_underscores in self.symptom_mappings:
             return self.symptom_mappings[without_underscores]
@@ -177,20 +176,20 @@ class MedicalNormalizer:
         """
         Check if reported symptom matches known drug effect
         """
-        # Normalize both symptoms
+       
         norm_reported = self.normalize_symptom_name(reported_symptom)
         norm_known = self.normalize_symptom_name(known_effect)
         
-        # Direct match
+        
         if norm_reported == norm_known:
             return True
         
-        # Partial matches for common variations
+        
         partial_matches = [
             ("muscle", "muscle"),
             ("stomach", "stomach"),
             ("nausea", "nausea"),
-            ("dizz", "dizz"),  # dizziness variations
+            ("dizz", "dizz"), 
             ("fatigue", "tired"),
             ("tired", "fatigue"),
             ("cough", "cough"),
@@ -213,11 +212,11 @@ class MedicalNormalizer:
         """
         normalized = self.normalize_symptom_name(symptom_name)
         
-        # Check if we have FDA terms for this symptom
+        
         if normalized in self.fda_symptom_terms:
             return self.fda_symptom_terms[normalized]
         
-        # Fallback to the normalized symptom name
+        
         return [normalized, symptom_name.lower()]
     
     def fuzzy_match_drug(self, drug_name: str, known_drugs: List[str], threshold: float = 0.8) -> Optional[str]:
@@ -237,11 +236,11 @@ class MedicalNormalizer:
         for known_drug in known_drugs:
             normalized_known = self.normalize_drug_name(known_drug)
             
-            # Multiple similarity metrics
+            
             jaccard_score = self._calculate_jaccard_similarity(normalized_input, normalized_known)
             levenshtein_score = self._calculate_levenshtein_similarity(normalized_input, normalized_known)
             
-            # Weighted combination
+            
             combined_score = (jaccard_score * 0.6) + (levenshtein_score * 0.4)
             
             if combined_score > best_score and combined_score >= threshold:

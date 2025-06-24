@@ -1,7 +1,6 @@
 import logging
 import uuid
-from datetime import datetime
-from typing import Optional
+
 
 from app.utils.ai_processors import process_document_with_docai, structure_text_with_gemini
 from app.utils.storage import get_gcs_uri
@@ -34,7 +33,7 @@ def process_document_background(
         gemini_api_key: API key for Gemini AI
     """
     try:
-        # 1. Get document from database
+        
         doc_repo = DocumentRepository(Document)
         document = doc_repo.get_document(db=db_session, document_id=document_id)
         
@@ -42,16 +41,14 @@ def process_document_background(
             logger.error(f"Document not found: {document_id}")
             return
         
-        # 2. Document starts at PENDING, proceed with processing
         
-        # 3. Get GCS URI for the document
         gcs_uri = get_gcs_uri(document.storage_path)
         if not gcs_uri:
             logger.error(f"Failed to generate GCS URI for document: {document_id}")
             doc_repo.update_status(db=db_session, document_id=document_id, status=ProcessingStatus.FAILED)
             return
         
-        # 4. Process document with Document AI
+        
         logger.info(f"Processing document with Document AI: {document_id}")
         processed_document = process_document_with_docai(
             project_id=project_id,
@@ -66,10 +63,10 @@ def process_document_background(
             doc_repo.update_status(db=db_session, document_id=document_id, status=ProcessingStatus.FAILED)
             return
         
-        # 5. Store raw text in ExtractedData
+       
         extracted_data_repo = ExtractedDataRepository(ExtractedData)
         
-        # Check if an ExtractedData record already exists
+        
         extracted_data = extracted_data_repo.get_by_document_id(db=db_session, document_id=document_id)
         if not extracted_data:
             # Create initial record with empty content
@@ -79,14 +76,14 @@ def process_document_background(
                 doc_repo.update_status(db=db_session, document_id=document_id, status=ProcessingStatus.FAILED)
                 return
         
-        # Update with OCR text and set status to OCR_COMPLETED
+        
         extracted_data_repo.update_raw_text(db=db_session, document_id=document_id, raw_text=processed_document.text)
         doc_repo.update_status(db=db_session, document_id=document_id, status=ProcessingStatus.OCR_COMPLETED)
         
-        # 6. Process text with Gemini LLM
+       
         logger.info(f"Processing OCR text with Gemini AI: {document_id}")
         
-        # Retry wrapper to prevent silent failures
+        
         structured_json = None
         for attempt in range(3):
             try:
@@ -107,13 +104,13 @@ def process_document_background(
             doc_repo.update_status(db=db_session, document_id=document_id, status=ProcessingStatus.FAILED)
             return
         
-        # 7. Parse and store structured JSON
+        
         try:
             import json
             structured_content = json.loads(structured_json)
             extracted_data_repo.update_structured_content(db=db_session, document_id=document_id, content=structured_content)
             
-            # 8. Update document status to REVIEW_REQUIRED
+            
             doc_repo.update_status(db=db_session, document_id=document_id, status=ProcessingStatus.REVIEW_REQUIRED)
             logger.info(f"Document processing completed successfully: {document_id}")
             
@@ -124,8 +121,8 @@ def process_document_background(
     except Exception as e:
         logger.error(f"Error processing document {document_id}: {e}", exc_info=True)
         try:
-            # Try to update document status if possible
+           
             doc_repo = DocumentRepository(Document)
             doc_repo.update_status(db=db_session, document_id=document_id, status=ProcessingStatus.FAILED)
         except Exception:
-            pass  # If this fails too, just continue 
+            pass  

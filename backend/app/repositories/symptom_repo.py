@@ -7,7 +7,7 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, desc, asc
+from sqlalchemy import and_, desc
 
 from app.models.symptom import Symptom, SymptomSeverity
 from app.repositories.base import CRUDBase
@@ -30,7 +30,7 @@ class SymptomRepository(CRUDBase[Symptom, SymptomCreate, SymptomUpdate]):
         """Get symptoms for a specific user with optional filters"""
         query = db.query(self.model).filter(self.model.user_id == user_id)
         
-        # Apply filters
+       
         if severity:
             query = query.filter(self.model.severity == severity)
         
@@ -109,7 +109,7 @@ class SymptomRepository(CRUDBase[Symptom, SymptomCreate, SymptomUpdate]):
         """Get symptom statistics for a user"""
         total_symptoms = db.query(self.model).filter(self.model.user_id == user_id).count()
         
-        # Recent symptoms (last 30 days)
+       
         recent_cutoff = datetime.utcnow() - timedelta(days=30)
         recent_symptoms = db.query(self.model).filter(
             and_(
@@ -118,7 +118,7 @@ class SymptomRepository(CRUDBase[Symptom, SymptomCreate, SymptomUpdate]):
             )
         ).count()
         
-        # Severity breakdown
+        
         severity_stats = {}
         for severity in SymptomSeverity:
             count = db.query(self.model).filter(
@@ -194,5 +194,5 @@ class SymptomRepository(CRUDBase[Symptom, SymptomCreate, SymptomUpdate]):
         return True
 
 
-# Create singleton instance
+
 symptom_repo = SymptomRepository(Symptom) 

@@ -32,18 +32,18 @@ from app.middleware.rate_limit import limiter, get_client_ip
 from app.db.session import SessionLocal
 from sqlalchemy import text
 
-# Standardized error response schema
+
 class ErrorResponse(BaseModel):
     error: str
     message: str
     correlation_id: str
     details: Optional[Dict[str, Any]] = None
 
-# Set up logging
+
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# APPLICATION LIFESPAN HANDLER
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application startup and shutdown."""
@@ -52,8 +52,8 @@ async def lifespan(app: FastAPI):
     
     try:
         logger.info("📋 Environment check:")
-        logger.info(f"  DATABASE_URL: {'✅ Set' if settings.DATABASE_URL else '❌ Missing'}")
-        logger.info(f"  SUPABASE_URL: {'✅ Set' if settings.SUPABASE_URL else '❌ Missing'}")
+        logger.info(f"  DATABASE_URL: {' Set' if settings.DATABASE_URL else ' Missing'}")
+        logger.info(f"  SUPABASE_URL: {' Set' if settings.SUPABASE_URL else ' Missing'}")
         logger.info(f"  ENVIRONMENT: {settings.ENVIRONMENT}")
         
         logger.info("🔌 Testing database connection...")
@@ -61,11 +61,11 @@ async def lifespan(app: FastAPI):
         from sqlalchemy import text
         db = SessionLocal()
         result = db.execute(text("SELECT 1"))
-        logger.info(f"✅ Database query result: {result.fetchone()}")
+        logger.info(f" Database query result: {result.fetchone()}")
         db.close()
-        logger.info("✅ Database connection verified")
+        logger.info(" Database connection verified")
         
-        logger.info("🤖 Testing ML libraries...")
+        logger.info(" Testing ML libraries...")
         try:
             import torch
             import transformers
@@ -80,21 +80,21 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Application startup completed successfully")
         
     except Exception as e:
-        logger.error(f"❌ Startup failed: {str(e)}", exc_info=True)
+        logger.error(f" Startup failed: {str(e)}", exc_info=True)
         raise
     
     yield
     
     # Shutdown
-    logger.info("🛑 Shutting down MediMind Backend...")
+    logger.info("Shutting down MediMind Backend...")
     
     try:
        
         
-        logger.info("✅ Application shutdown completed successfully")
+        logger.info(" Application shutdown completed successfully")
         
     except Exception as e:
-        logger.error(f"❌ Shutdown error: {str(e)}", exc_info=True)
+        logger.error(f" Shutdown error: {str(e)}", exc_info=True)
 
 
 app = FastAPI(
@@ -131,7 +131,8 @@ async def add_correlation_id_middleware(request: Request, call_next):
     
     response = await call_next(request)
     
-    
+    # Ensure correlation_id is properly set
+    correlation_id = getattr(request.state, 'correlation_id', str(uuid.uuid4()))
     response.headers["X-Correlation-ID"] = correlation_id
     
     return response

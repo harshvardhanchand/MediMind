@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 
 from app.models.document import DocumentType, ProcessingStatus
 
-# Base schema for common document attributes
+
 class DocumentBase(BaseModel):
     original_filename: str = Field(..., description="Original filename of the uploaded document")
     document_type: DocumentType = Field(..., description="Type of the medical document")
@@ -17,12 +17,11 @@ class DocumentBase(BaseModel):
     user_added_tags: Optional[List[str]] = Field(None, description="List of user-added tags")
     related_to_health_goal_or_episode: Optional[str] = Field(None, description="Link to a health goal or episode")
 
-# Schema for creating a document (input)
-# Note: user_id and storage_path will be set internally
+
 class DocumentCreate(DocumentBase):
     pass
 
-# Schema for reading a document (output)
+
 class DocumentRead(DocumentBase):
     document_id: uuid.UUID = Field(..., description="Unique identifier for the document")
     user_id: uuid.UUID = Field(..., description="Identifier of the user who owns the document")
@@ -33,10 +32,9 @@ class DocumentRead(DocumentBase):
     metadata_overrides: Optional[Dict[str, Any]] = Field(None, description="User-provided overrides for metadata fields")
 
     class Config:
-        from_attributes = True # Compatibility with SQLAlchemy models
+        from_attributes = True 
 
-# Schema specifically for PATCHing/updating metadata fields by the user
-# Contains only the fields the user is allowed to override
+
 class DocumentMetadataUpdate(BaseModel):
     document_date: Optional[date] = Field(None, description="User-set actual date on the report/prescription")
     source_name: Optional[str] = Field(None, description="User-set doctor, lab, hospital name")

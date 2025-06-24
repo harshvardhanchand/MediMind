@@ -62,12 +62,12 @@ class TemporalMedicalContext:
     def is_medication_active(self, medication_data: Dict[str, Any]) -> bool:
         """Check if a medication is currently active/relevant"""
         try:
-            # Check explicit status
+            
             status = medication_data.get('status', '').lower()
             if status in ['discontinued', 'completed', 'expired']:
                 return False
             
-            # Check end date
+            
             end_date_str = medication_data.get('end_date')
             if end_date_str:
                 try:
@@ -77,14 +77,14 @@ class TemporalMedicalContext:
                 except:
                     pass
             
-            # Check duration-based expiry (e.g., "14 days")
+           
             duration = medication_data.get('duration') or medication_data.get('frequency_details', '')
             start_date_str = medication_data.get('start_date')
             
             if duration and start_date_str and 'day' in duration.lower():
                 try:
                     start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00')).date()
-                    # Extract days from duration (e.g., "14 days" -> 14)
+                    
                     import re
                     days_match = re.search(r'(\d+)\s*days?', duration.lower())
                     if days_match:
@@ -99,7 +99,7 @@ class TemporalMedicalContext:
             
         except Exception as e:
             logger.warning(f"Error checking medication activity: {e}")
-            return True  # Default to active if uncertain
+            return True  
     
     def get_medical_relevance_score(self, item_data: Dict[str, Any], item_type: str) -> float:
         """Calculate relevance score (0.0 to 1.0) for medical data"""
@@ -107,18 +107,18 @@ class TemporalMedicalContext:
             base_score = 1.0
             
             if item_type == 'medication':
-                # Active medications get full score
+               
                 if not self.is_medication_active(item_data):
-                    # Recently expired: 0.3, long expired: 0.1
+                    
                     base_score = 0.3
                     
-                    # Further reduce for very old data
+                    
                     end_date_str = item_data.get('end_date') or item_data.get('start_date')
                     if end_date_str:
                         try:
                             end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00')).date()
                             days_expired = (self.clock.today() - end_date).days
-                            if days_expired > 90:  # More than 3 months
+                            if days_expired > 90:  
                                 base_score = 0.1
                         except:
                             pass
@@ -151,7 +151,7 @@ class TemporalMedicalContext:
             
         except Exception as e:
             logger.warning(f"Error calculating relevance score: {e}")
-            return 1.0  # Default to full relevance
+            return 1.0  
 
 class CRUDOperationHandler:
     """Handles CRUD operations with intelligent reprocessing"""
@@ -163,8 +163,8 @@ class CRUDOperationHandler:
     
     async def handle_crud_operation(
         self,
-        operation_type: str,  # 'create', 'update', 'delete', 'status_change'
-        data_type: str,      # 'medication', 'symptom', 'lab_result', 'health_reading'
+        operation_type: str,  
+        data_type: str,      
         item_data: Dict[str, Any],
         user_id: str,
         affected_documents: List[str] = None

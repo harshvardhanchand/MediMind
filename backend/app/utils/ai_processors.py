@@ -166,8 +166,7 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
     try:
         genai.configure(api_key=api_key)
         
-        # For safety settings, we might need to adjust them if responses are getting blocked.
-        # Starting with more permissive settings for now, can be tightened later.
+       
         safety_settings = [
             {
                 "category": "HARM_CATEGORY_HARASSMENT",
@@ -192,8 +191,8 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
             system_instruction=SYSTEM_PROMPT_MEDICAL_STRUCTURING,
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.1, # Lower temperature for more deterministic, structured output
-                response_mime_type="application/json" # Force JSON output directly
+                temperature=0.1, 
+                response_mime_type="application/json" 
             )
         )
         
@@ -203,9 +202,9 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
             llm_output = response.text
             logger.info(f"Received response from Gemini Flash (length: {len(llm_output)}) for structuring.")
             
-            # Basic check: Should be a JSON object now, not potentially a list
+            
             if llm_output.strip().startswith("{") and llm_output.strip().endswith("}"):
-                # Deeper validation (optional but recommended): Check for required keys
+                
                 try:
                     parsed_output = json.loads(llm_output)
                     if 'extracted_metadata' in parsed_output and 'medical_events' in parsed_output:
@@ -219,19 +218,19 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
                     return None # Invalid JSON
             else:
                 logger.warning(f"Gemini output does not appear to be a valid JSON object. Output: {llm_output[:500]}...")
-                # Fallback: attempt to extract JSON object from markdown code blocks
+                
                 json_content = None
                 
-                # Try multiple patterns for extracting JSON
+                
                 if "```json" in llm_output:
                     try:
-                        # Extract content between ```json and ```
+                        
                         json_content = llm_output.split("```json")[1].split("```")[0].strip()
                     except IndexError:
                         logger.warning("Found ```json marker but could not extract content")
                 elif "```" in llm_output and "{" in llm_output:
                     try:
-                        # Look for any code block that contains JSON
+                       
                         parts = llm_output.split("```")
                         for part in parts:
                             if part.strip().startswith("{") and part.strip().endswith("}"):
@@ -240,7 +239,7 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
                     except Exception:
                         pass
                 
-                # If we found potential JSON content, validate it
+                
                 if json_content and json_content.startswith("{") and json_content.endswith("}"):
                     try:
                         parsed_output = json.loads(json_content)
@@ -256,7 +255,7 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
                         return None
                 
                 logger.warning("Could not extract valid JSON from Gemini response")
-                return None # Output wasn't a JSON object
+                return None 
         else:
             logger.warning("Gemini response has no parts or text for structuring.")
             if response.prompt_feedback:
@@ -267,31 +266,31 @@ def structure_text_with_gemini(api_key: str, raw_text: str) -> Optional[str]:
         logger.error(f"Exception during Gemini API call: {e}", exc_info=True)
         return None
 
-# --- Test Block Updated for Document AI & Gemini --- 
+
 if __name__ == '__main__':
     from dotenv import load_dotenv
-    load_dotenv() # Load environment variables from .env file
+    load_dotenv() 
 
-    # Ensure GOOGLE_APPLICATION_CREDENTIALS for Document AI is set
+   
     if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
         print("ERROR: GOOGLE_APPLICATION_CREDENTIALS environment variable not set for Document AI.")
         exit(1)
     
-    # --- Configuration from Environment Variables ---
+    
     gcp_project_id = os.getenv("GCP_PROJECT_ID")
     doc_ai_location = os.getenv("DOC_AI_LOCATION", "us")
     doc_ai_processor_id = os.getenv("DOC_AI_PROCESSOR_ID")
     test_input_gcs_uri = os.getenv("TEST_GCS_INPUT_URI")
     test_mime_type = os.getenv("TEST_MIME_TYPE", "application/pdf")
-    gemini_api_key = os.getenv("GEMINI_API_KEY") # <--- New: For Gemini API
-    # --- End Configuration ---
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+   
 
-    # --- Validate Essential Configuration ---
+   
     required_env_vars = {
         "GCP_PROJECT_ID": gcp_project_id,
         "DOC_AI_PROCESSOR_ID": doc_ai_processor_id,
         "TEST_GCS_INPUT_URI": test_input_gcs_uri,
-        "GEMINI_API_KEY": gemini_api_key # <--- New: Check for Gemini API key
+        "GEMINI_API_KEY": gemini_api_key 
     }
     missing_vars = [var_name for var_name, value in required_env_vars.items() if not value]
     if missing_vars:
@@ -365,8 +364,7 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
         return None
     if not json_data_context.strip():
         logger.warning("Received empty JSON data context for answering. Skipping.")
-        # Or, alternatively, could try to answer without context if that's ever desired.
-        # For now, assume context is required.
+        
         return "I don't have any of your medical data to search through. Please upload your documents first."
 
     system_prompt = f"""
@@ -406,13 +404,12 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
         ]
 
-        # For very long prompts that include a lot of data, it's common to put the entire prompt
-        # (system instructions + user query + data context) directly into the content generation call.
+        
         model = genai.GenerativeModel(
             model_name='gemini-2.0-flash', 
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.2 # Slightly higher temp for more natural language, but still fairly factual
+                temperature=0.2 
             )
         )
         
@@ -422,7 +419,7 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
             answer = response.text
             logger.info(f"Received answer from Gemini (length: {len(answer)}).")
             logger.debug(f"Raw LLM answer: {answer}")
-            return answer.strip() # Return the natural language answer
+            return answer.strip() 
         else:
             logger.warning("Gemini response for answering query has no parts or text.")
             if response.prompt_feedback:
@@ -433,7 +430,7 @@ async def answer_query_from_context(api_key: str, query_text: str, json_data_con
         logger.error(f"Exception during Gemini API call for answering query: {e}", exc_info=True)
         return "I'm sorry, but I encountered an error while trying to process your request." 
 
-# --- New Function for Query Filter Extraction (LLM Call 2) ---
+
 async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Optional[str]:
     """
     Analyzes a natural language query to extract structured filter parameters 
@@ -449,10 +446,9 @@ async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Op
     """
     if not query_text.strip():
         logger.warning("Received empty query text for filter extraction. Returning no filters.")
-        return "{}" # Return empty JSON object
+        return "{}" 
 
-    # Define the filterable fields from the Document model
-    # Keep this updated if the Document model changes
+    
     filterable_fields_context = {
         "description": "Extract filter parameters based on these Document metadata fields:",
         "fields": [
@@ -527,17 +523,15 @@ async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Op
 
         model = genai.GenerativeModel(
             model_name='gemini-2.0-flash',
-            system_instruction=system_prompt, # Pass prompt via system_instruction
+            system_instruction=system_prompt,
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.1, # Low temperature for deterministic JSON output
-                response_mime_type="application/json" # Request JSON output explicitly
+                temperature=0.1, 
+                response_mime_type="application/json"
             )
         )
         
-        # Pass empty content as the prompt is in system_instruction now for Gemini 1.5
-        # Or pass the query again if system_instruction doesn't fully take complex prompts.
-        # Let's try passing the query again in the content for clarity.
+        
         response = await model.generate_content_async(query_text,generation_config = {
     "response_mime_type": "application/json"
 })
@@ -545,12 +539,12 @@ async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Op
         if response.parts:
             filter_json_str = response.text
             logger.info(f"Received filter parameters from Gemini: {filter_json_str}")
-            # Validate if it looks like JSON
+            
             if filter_json_str.strip().startswith("{") and filter_json_str.strip().endswith("}"):
                 return filter_json_str
             else:
                 logger.warning(f"LLM output for filter extraction does not appear to be valid JSON: {filter_json_str[:500]}")
-                # Attempt extraction from markdown, although mime_type should prevent it.
+                
                 if "```json" in filter_json_str:
                     try:
                         json_block = filter_json_str.split("```json")[1].split("```")[0].strip()
@@ -560,18 +554,18 @@ async def extract_query_filters_with_gemini(api_key: str, query_text: str) -> Op
                     except IndexError:
                        logger.warning("Could not extract JSON filters from markdown block.")
                 logger.warning("Returning empty filters due to invalid JSON format from LLM.")
-                return "{}" # Return empty JSON if parsing failed or format is wrong
+                return "{}" 
         else:
             logger.warning("Gemini response for filter extraction has no parts or text.")
             if response.prompt_feedback:
                 logger.warning(f"Prompt Feedback for filter extraction: {response.prompt_feedback}")
-            return None # Indicate failure
+            return None 
 
     except Exception as e:
         logger.error(f"Exception during Gemini API call for filter extraction: {e}", exc_info=True)
         return None 
 
-# System Prompt for Answering Questions based on Filtered Context (LLM Call 3)
+
 SYSTEM_PROMPT_ANSWER_FROM_FILTERED_CONTEXT = '''
 You are a helpful AI assistant. Your task is to answer the user's question based *solely* on the provided JSON context.
 The JSON context contains a list of "medical_events" extracted from relevant medical documents. Each event has details like type, description, value, units, date, etc.
@@ -624,18 +618,7 @@ async def answer_query_with_filtered_context_gemini(api_key: str, query_text: st
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
         ]
 
-        # Format the full prompt including the user's query and the context
-        # We'll pass the system prompt as a system_instruction and the combined user query + context as the main content.
-        # The prompt template approach is better handled by f-string for this model's API.
         
-        # The user's "turn" or prompt to the model will be the question plus the context.
-        # The system prompt will guide its overall behavior.
-        # The `SYSTEM_PROMPT_ANSWER_FROM_FILTERED_CONTEXT` is a bit meta here, as it describes the whole interaction.
-        # A more direct system instruction for Gemini would be:
-        # "You are a helpful AI assistant. Answer the user's question based *solely* on the provided JSON context..."
-        # And then the user content would be:
-        # "User's Question: {query_text}\n\nJSON Context:\n```json\n{json_data_context}\n```"
-
         system_instruction = (
             "You are a helpful AI assistant. Your task is to answer the user's question based "
             "*solely* on the provided JSON context. The JSON context contains a list of 'medical_events' "
@@ -648,15 +631,15 @@ async def answer_query_with_filtered_context_gemini(api_key: str, query_text: st
         prompt_content = f"User's Question: {query_text}\\n\\nJSON Context:\\n```json\\n{json_data_context}\\n```"
 
         model = genai.GenerativeModel(
-            model_name='gemini-2.0-flash', # Using 1.5 flash for potentially better reasoning
+            model_name='gemini-2.0-flash', 
             system_instruction=system_instruction,
             safety_settings=safety_settings,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.2 # Slightly higher for more natural language answers, but still grounded
+                temperature=0.2 
             )
         )
         
-        response = await model.generate_content_async(prompt_content) # Use async version
+        response = await model.generate_content_async(prompt_content) 
         
         if response.parts:
             answer = response.text

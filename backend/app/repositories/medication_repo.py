@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import List, Optional
-from datetime import date
+
 
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import select, and_, or_, desc
