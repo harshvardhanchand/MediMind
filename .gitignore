@@ -21,6 +21,7 @@ var/
 *.egg
 venv/
 .env
+.env.local
 .venv
 .pytest_cache/
 .coverage
