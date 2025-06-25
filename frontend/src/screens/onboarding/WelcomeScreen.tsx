@@ -3,7 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { OnboardingStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
@@ -33,15 +33,15 @@ const WelcomeScreen = () => {
           </StyledView>
 
           {/* Welcome Text */}
-          <StyledText 
-            variant="h1" 
+          <StyledText
+            variant="h1"
             tw="text-white text-4xl font-bold text-center mb-4"
           >
             Welcome to MediMind
           </StyledText>
 
-          <StyledText 
-            variant="h2" 
+          <StyledText
+            variant="h2"
             tw="text-white text-xl font-medium text-center mb-8"
           >
             Your AI-Powered Health Companion
@@ -65,8 +65,8 @@ const WelcomeScreen = () => {
               </StyledView>
             </StyledView>
 
-            <StyledText 
-              variant="body1" 
+            <StyledText
+              variant="body1"
               tw="text-white text-center text-lg leading-relaxed"
               style={{ opacity: 0.9 }}
             >
@@ -82,8 +82,8 @@ const WelcomeScreen = () => {
             style={{ elevation: 5 }}
           >
             <StyledView className="flex-row items-center">
-              <StyledText 
-                variant="body1" 
+              <StyledText
+                variant="body1"
                 tw="text-purple-600 font-bold text-lg mr-2"
               >
                 Get Started

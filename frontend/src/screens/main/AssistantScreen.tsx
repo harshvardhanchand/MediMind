@@ -3,7 +3,7 @@ import { View, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, TextI
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';
@@ -21,9 +21,9 @@ const AssistantScreen = () => {
   const navigation = useNavigation<AssistantScreenNavigationProp>();
   const { colors } = useTheme();
   const [messages, setMessages] = useState<Message[]>([
-    { 
-      id: '1', 
-      text: "Hello! I'm your health assistant. I can help you understand your medical data, track symptoms, and answer health-related questions. How can I assist you today?", 
+    {
+      id: '1',
+      text: "Hello! I'm your health assistant. I can help you understand your medical data, track symptoms, and answer health-related questions. How can I assist you today?",
       sender: 'assistant',
       timestamp: new Date()
     },
@@ -34,23 +34,23 @@ const AssistantScreen = () => {
 
   const handleSendMessage = () => {
     if (inputText.trim() === '') return;
-    
+
     const newUserMessage: Message = {
       id: Date.now().toString(),
       text: inputText,
       sender: 'user',
       timestamp: new Date()
     };
-    
+
     setMessages(prev => [...prev, newUserMessage]);
     setInputText('');
     setIsTyping(true);
-    
+
     // Scroll to bottom after sending message
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
-    
+
     setTimeout(() => {
       setIsTyping(false);
       const assistantResponse: Message = {
@@ -86,14 +86,13 @@ const AssistantScreen = () => {
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
-    
+
     return (
       <StyledView className={`mb-4 px-4 ${isUser ? 'items-end' : 'items-start'}`}>
-        <StyledView className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-          isUser 
-            ? 'bg-blue-500 rounded-br-md' 
-            : 'bg-gray-100 rounded-bl-md'
-        }`}>
+        <StyledView className={`max-w-[85%] rounded-2xl px-4 py-3 ${isUser
+          ? 'bg-blue-500 rounded-br-md'
+          : 'bg-gray-100 rounded-bl-md'
+          }`}>
           {!isUser && (
             <StyledView className="flex-row items-center mb-1">
               <Ionicons name="sparkles-outline" size={14} color={colors.accentPrimary} />
@@ -102,17 +101,17 @@ const AssistantScreen = () => {
               </StyledText>
             </StyledView>
           )}
-          <StyledText 
-            variant="body1" 
-            style={{ 
+          <StyledText
+            variant="body1"
+            style={{
               lineHeight: 20,
               color: isUser ? 'white' : colors.textPrimary
             }}
           >
             {item.text}
           </StyledText>
-          <StyledText 
-            variant="caption" 
+          <StyledText
+            variant="caption"
             style={{
               color: isUser ? 'rgba(255,255,255,0.7)' : colors.textSecondary,
               marginTop: 4
@@ -141,7 +140,7 @@ const AssistantScreen = () => {
       </StyledView>
 
       {/* Chat Area */}
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
         keyboardVerticalOffset={0}
@@ -152,7 +151,7 @@ const AssistantScreen = () => {
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={renderMessage}
-            contentContainerStyle={{ 
+            contentContainerStyle={{
               paddingTop: 16,
               paddingBottom: 20,
               flexGrow: 1
@@ -160,7 +159,7 @@ const AssistantScreen = () => {
             showsVerticalScrollIndicator={false}
             style={{ flex: 1 }}
           />
-          
+
           {/* Typing Indicator */}
           {isTyping && (
             <StyledView className="mb-4 px-4 items-start">
@@ -178,9 +177,9 @@ const AssistantScreen = () => {
         </StyledView>
 
         {/* Input Area - Fixed at bottom */}
-        <StyledView 
+        <StyledView
           className="flex-row items-end px-4 py-3 bg-white border-t border-gray-200"
-          style={{ 
+          style={{
             paddingBottom: Platform.OS === 'ios' ? 34 : 16 // Safe area for iPhone home indicator
           }}
         >
@@ -204,17 +203,16 @@ const AssistantScreen = () => {
               blurOnSubmit={false}
             />
           </StyledView>
-          
+
           <StyledTouchableOpacity
             onPress={handleSendMessage}
             disabled={inputText.trim() === ''}
-            className={`w-10 h-10 rounded-full items-center justify-center ${
-              inputText.trim() === '' ? 'bg-gray-300' : 'bg-blue-500'
-            }`}
+            className={`w-10 h-10 rounded-full items-center justify-center ${inputText.trim() === '' ? 'bg-gray-300' : 'bg-blue-500'
+              }`}
           >
-            <Ionicons 
-              name="arrow-up" 
-              size={20} 
+            <Ionicons
+              name="arrow-up"
+              size={20}
               color="white"
             />
           </StyledTouchableOpacity>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Modal, FlatList, Pressable } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 
@@ -37,7 +37,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
     setLoading(true);
     try {
       const response = await notificationServices.getNotifications({ limit: 5 });
-      
+
       // If API returns empty, use dummy data for demo
       if (response.data && response.data.length > 0) {
         setRecentNotifications(response.data);
@@ -88,13 +88,13 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await notificationServices.markNotificationsAsRead({ 
-        notification_ids: [notificationId] 
+      await notificationServices.markNotificationsAsRead({
+        notification_ids: [notificationId]
       });
-      
-      setRecentNotifications(prev => 
-        prev.map(n => 
-          n.notification_id === notificationId 
+
+      setRecentNotifications(prev =>
+        prev.map(n =>
+          n.notification_id === notificationId
             ? { ...n, is_read: true, read_at: new Date().toISOString() }
             : n
         )
@@ -117,7 +117,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
         </StyledText>
         <StyledView className="flex-row items-center">
           {!item.is_read && (
-            <StyledView 
+            <StyledView
               className="w-2 h-2 rounded-full mr-2"
               style={{ backgroundColor: colors.accentPrimary }}
             />
@@ -127,11 +127,11 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
           </StyledText>
         </StyledView>
       </StyledView>
-      
+
       <StyledText variant="caption" color="textSecondary" numberOfLines={2} tw="mb-2">
         {item.message}
       </StyledText>
-      
+
       {!item.is_read && (
         <StyledTouchableOpacity onPress={() => handleMarkAsRead(item.notification_id)}>
           <StyledText variant="caption" color="accentPrimary" tw="font-medium">
@@ -144,25 +144,25 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
 
   return (
     <>
-      <StyledTouchableOpacity 
+      <StyledTouchableOpacity
         onPress={handleBellPress}
         className="relative p-2"
         style={{ marginRight: -8 }} // Adjust positioning
       >
-        <Ionicons 
-          name="notifications-outline" 
-          size={24} 
-          color={colors.textPrimary} 
+        <Ionicons
+          name="notifications-outline"
+          size={24}
+          color={colors.textPrimary}
         />
-        
+
         {/* Unread Badge */}
         {unreadCount > 0 && (
-          <StyledView 
+          <StyledView
             className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full items-center justify-center"
             style={{ backgroundColor: colors.error }}
           >
-            <StyledText 
-              variant="caption" 
+            <StyledText
+              variant="caption"
               tw="text-white text-xs font-bold"
               style={{ fontSize: 10 }}
             >
@@ -179,12 +179,12 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
         animationType="fade"
         onRequestClose={() => setIsDropdownVisible(false)}
       >
-        <Pressable 
+        <Pressable
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }}
           onPress={() => setIsDropdownVisible(false)}
         >
           <StyledView className="flex-1 justify-start items-end pt-16 pr-4">
-            <StyledView 
+            <StyledView
               className="w-80 max-h-96 rounded-lg shadow-lg"
               style={{ backgroundColor: colors.backgroundPrimary }}
             >
@@ -216,7 +216,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
                     style={{ maxHeight: 250 }}
                     showsVerticalScrollIndicator={false}
                   />
-                  
+
                   {/* Footer */}
                   <StyledView className="p-3 border-t border-gray-200">
                     <StyledButton
@@ -230,10 +230,10 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
                 </>
               ) : (
                 <StyledView className="p-8 items-center">
-                  <Ionicons 
-                    name="notifications-outline" 
-                    size={32} 
-                    color={colors.textMuted} 
+                  <Ionicons
+                    name="notifications-outline"
+                    size={32}
+                    color={colors.textMuted}
                   />
                   <StyledText variant="body2" color="textMuted" tw="mt-2 text-center">
                     No notifications

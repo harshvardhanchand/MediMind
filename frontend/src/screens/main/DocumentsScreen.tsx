@@ -3,7 +3,7 @@ import { View, FlatList, ListRenderItem, TouchableOpacity, Modal, Pressable, Ref
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator } from 'react-native-paper';
 
 import { MainAppStackParamList } from '../../navigation/types';
@@ -50,7 +50,7 @@ const documentFilterOptions = [
 const DocumentsScreen = () => {
   const navigation = useNavigation<DocumentsScreenNavigationProp>();
   const { colors } = useTheme();
-  
+
   const [apiDocuments, setApiDocuments] = useState<DocumentRead[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [errorApi, setErrorApi] = useState<string | null>(null);
@@ -111,11 +111,11 @@ const DocumentsScreen = () => {
     setIsLoadingApi(true);
     setErrorApi(null);
     setUsingDummyData(false);
-    
+
     try {
       console.log('Trying to fetch real documents from API...');
-      const response = await documentServices.getDocuments(); 
-      
+      const response = await documentServices.getDocuments();
+
       if (response.data && response.data.length > 0) {
         console.log(`Loaded ${response.data.length} real documents from API`);
         setApiDocuments(response.data);
@@ -148,7 +148,7 @@ const DocumentsScreen = () => {
 
     if (searchQuery.trim() !== '') {
       const lowercasedQuery = searchQuery.toLowerCase();
-      docsToFilter = docsToFilter.filter(doc => 
+      docsToFilter = docsToFilter.filter(doc =>
         doc.original_filename?.toLowerCase().includes(lowercasedQuery) ||
         doc.document_type?.toString().toLowerCase().includes(lowercasedQuery) ||
         (doc.document_date && new Date(doc.document_date).toLocaleDateString().toLowerCase().includes(lowercasedQuery)) ||
@@ -194,8 +194,8 @@ const DocumentsScreen = () => {
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText 
-            variant="body1" 
+          <StyledText
+            variant="body1"
             tw="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
@@ -238,8 +238,8 @@ const DocumentsScreen = () => {
   // ✅ Render empty state for no search/filter results
   if (filteredDocuments.length === 0 && (searchQuery || selectedDocType !== 'All')) {
     const isSearching = searchQuery.trim() !== '';
-    const emptyStateConfig = isSearching 
-      ? EMPTY_STATE_MESSAGES.NO_SEARCH_RESULTS 
+    const emptyStateConfig = isSearching
+      ? EMPTY_STATE_MESSAGES.NO_SEARCH_RESULTS
       : EMPTY_STATE_MESSAGES.NO_FILTERED_RESULTS;
 
     return (
@@ -254,7 +254,7 @@ const DocumentsScreen = () => {
             rightIconName={searchQuery ? "close-outline" : undefined}
             onRightIconPress={searchQuery ? clearSearch : undefined}
           />
-          
+
           <StyledView className="flex-row justify-between items-center mt-3">
             <StyledButton
               variant="filledSecondary"
@@ -263,7 +263,7 @@ const DocumentsScreen = () => {
             >
               {selectedDocType === 'All' ? 'Filter' : selectedDocType.replace('_', ' ')}
             </StyledButton>
-            
+
             {(searchQuery || selectedDocType !== 'All') && (
               <StyledButton
                 variant="textPrimary"
@@ -296,30 +296,30 @@ const DocumentsScreen = () => {
     );
   } else if (filteredDocuments.length === 0 && !usingDummyData) {
     mainContent = (
-        <StyledView className="flex-1 items-center justify-center">
-            <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
-            <StyledText variant="h4" color="textMuted" tw="mt-4">No Documents Found</StyledText>
-            <StyledText color="textMuted" tw="text-center mt-1 mx-8">
-                Try adjusting your search or filter criteria, or upload a new document.
-            </StyledText>
-        </StyledView>
+      <StyledView className="flex-1 items-center justify-center">
+        <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
+        <StyledText variant="h4" color="textMuted" tw="mt-4">No Documents Found</StyledText>
+        <StyledText color="textMuted" tw="text-center mt-1 mx-8">
+          Try adjusting your search or filter criteria, or upload a new document.
+        </StyledText>
+      </StyledView>
     );
   } else {
     mainContent = (
-        <FlatList<DocumentRead>
-            data={filteredDocuments}
-            keyExtractor={(item) => item.document_id}
-            renderItem={renderDocumentItem}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
-            ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-14" />}
-            refreshControl={
-                <RefreshControl
-                    refreshing={isLoadingApi}
-                    onRefresh={loadDocumentsFromApi}
-                />
-            }
-        />
+      <FlatList<DocumentRead>
+        data={filteredDocuments}
+        keyExtractor={(item) => item.document_id}
+        renderItem={renderDocumentItem}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+        ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-14" />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoadingApi}
+            onRefresh={loadDocumentsFromApi}
+          />
+        }
+      />
     );
   }
 
@@ -331,7 +331,7 @@ const DocumentsScreen = () => {
           <StyledText variant="body1" color="textSecondary" tw="mt-1">
             Manage your lab results, prescriptions, and records.
           </StyledText>
-          
+
           {usingDummyData && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
               <StyledText tw="text-yellow-800 text-sm text-center">
@@ -340,10 +340,10 @@ const DocumentsScreen = () => {
             </StyledView>
           )}
         </StyledView>
-        
+
         {mainContent}
       </StyledView>
-      
+
       <StyledTouchableOpacity
         className="absolute bottom-6 right-6 bg-accentPrimary rounded-full p-4 shadow-lg"
         onPress={() => navigation.navigate('Upload' as any)}
@@ -359,7 +359,7 @@ const DocumentsScreen = () => {
         onRequestClose={() => setFilterModalVisible(false)}
       >
         <StyledView className="flex-1 justify-end bg-black/50">
-          <StyledPressable 
+          <StyledPressable
             className="flex-1"
             onPress={() => setFilterModalVisible(false)}
           />
@@ -367,16 +367,16 @@ const DocumentsScreen = () => {
             <StyledView className="p-4 border-b border-gray-200">
               <StyledText variant="h3" tw="font-semibold text-center">Filter by Type</StyledText>
             </StyledView>
-            
+
             {documentFilterOptions.map((item, index) => (
               <StyledTouchableOpacity
                 key={item.label}
                 className={`p-4 flex-row items-center justify-between ${index < documentFilterOptions.length - 1 ? 'border-b border-gray-100' : ''}`}
                 onPress={() => applyDocTypeFilter(item.value)}
               >
-                <StyledText 
-                  variant="body1" 
-                  style={selectedDocType === item.value ? {color: colors.accentPrimary, fontWeight: '600'} : {}}
+                <StyledText
+                  variant="body1"
+                  style={selectedDocType === item.value ? { color: colors.accentPrimary, fontWeight: '600' } : {}}
                 >
                   {item.label}
                 </StyledText>
@@ -385,11 +385,11 @@ const DocumentsScreen = () => {
                 )}
               </StyledTouchableOpacity>
             ))}
-            
+
             <StyledView className="p-4 border-t border-gray-200">
-              <StyledButton 
-                variant="filledPrimary" 
-                onPress={() => setFilterModalVisible(false)} 
+              <StyledButton
+                variant="filledPrimary"
+                onPress={() => setFilterModalVisible(false)}
                 tw="w-full"
               >
                 Close

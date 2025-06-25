@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
@@ -22,7 +22,7 @@ const StyledScrollView = styled(ScrollView);
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  
+
   // Data states
   const [documents, setDocuments] = useState<DocumentRead[]>([]);
   const [medications, setMedications] = useState<MedicationResponse[]>([]);
@@ -104,9 +104,9 @@ const HomeScreen = () => {
     try {
       setLoading(true);
       setUsingDummyData(false);
-      
+
       console.log('Fetching dashboard data...');
-      
+
       // Fetch all data in parallel
       const [docsResult, medsResult, healthResult] = await Promise.allSettled([
         documentServices.getDocuments({ limit: 5 }),
@@ -147,7 +147,7 @@ const HomeScreen = () => {
       }
 
       setUsingDummyData(!hasRealData);
-      
+
     } catch (err: any) {
       console.log('Dashboard API calls failed, using dummy data:', err.message);
       setDocuments(dummyDocuments);
@@ -162,7 +162,7 @@ const HomeScreen = () => {
   // Generate key metrics from health readings
   const getKeyMetrics = () => {
     const metrics = [];
-    
+
     // Find latest readings
     const latestBP = healthReadings.find(r => r.reading_type === 'blood_pressure' || (r as any).reading_type === 'blood_pressure');
     const latestHR = healthReadings.find(r => r.reading_type === 'heart_rate' || (r as any).reading_type === 'heart_rate');
@@ -239,7 +239,7 @@ const HomeScreen = () => {
         return 'document-text-outline';
     }
   };
-  
+
   // Updated Mock data for Quick Actions to use iconNameLeft
   const quickActions = [
     { id: 'upload', label: 'Upload Document', iconNameLeft: 'cloud-upload-outline', screen: 'Upload', variant: 'filledPrimary' as const, fullWidth: true },
@@ -250,23 +250,23 @@ const HomeScreen = () => {
 
   // Mock data for Health Insights - now using real notification data
   const { stats: notificationStats } = useNotifications();
-  
+
   const healthInsights = React.useMemo(() => {
     const insights = [];
-    
+
     // Add notification-based insights
     if (notificationStats && notificationStats.unread_count > 0) {
       insights.push({
         id: 'notifications',
         iconName: 'notifications-outline',
-        iconColor: notificationStats.by_severity?.critical > 0 ? colors.error : 
-                   notificationStats.by_severity?.high > 0 ? colors.warning : colors.info,
+        iconColor: notificationStats.by_severity?.critical > 0 ? colors.error :
+          notificationStats.by_severity?.high > 0 ? colors.warning : colors.info,
         title: `${notificationStats.unread_count} New Alert${notificationStats.unread_count > 1 ? 's' : ''}`,
-        description: notificationStats.by_severity?.critical > 0 
+        description: notificationStats.by_severity?.critical > 0
           ? 'You have critical health alerts that need attention.'
           : notificationStats.by_severity?.high > 0
-          ? 'You have important health notifications to review.'
-          : 'New health insights and reminders are available.',
+            ? 'You have important health notifications to review.'
+            : 'New health insights and reminders are available.',
         onPress: () => navigation.navigate('NotificationScreen'),
       });
     }
@@ -308,7 +308,7 @@ const HomeScreen = () => {
             </StyledView>
             <HeaderNotifications />
           </StyledView>
-          
+
           {usingDummyData && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
               <StyledText tw="text-yellow-800 text-sm text-center">
@@ -365,7 +365,7 @@ const HomeScreen = () => {
               <ListItem
                 key={doc.id}
                 iconLeft={getDocIconName(doc.type)}
-                iconLeftColor={colors.accentPrimary} 
+                iconLeftColor={colors.accentPrimary}
                 label={doc.name}
                 subtitle={doc.date}
                 onPress={() => navigation.navigate('DocumentDetail', { documentId: doc.id })}
@@ -376,13 +376,13 @@ const HomeScreen = () => {
             <StyledText color="textMuted" tw="py-4 text-center">No recent activity.</StyledText>
           )}
           {recentDocuments.length > 3 && (
-              <StyledButton
-                  variant="textPrimary"
-                  onPress={() => navigation.navigate('DocumentsTab' as any)} 
-                  tw="mt-3 self-center pb-1"
-              >
-                  View All Documents
-              </StyledButton>
+            <StyledButton
+              variant="textPrimary"
+              onPress={() => navigation.navigate('DocumentsTab' as any)}
+              tw="mt-3 self-center pb-1"
+            >
+              View All Documents
+            </StyledButton>
           )}
         </Card>
 
@@ -405,14 +405,14 @@ const HomeScreen = () => {
             <StyledText color="textMuted" tw="py-4 text-center">No upcoming medications.</StyledText>
           )}
           {upcomingMedications.length > 0 && (
-              <StyledButton
-                  variant="textPrimary"
-                  // onPress={() => navigation.navigate('MedicationsTab')} // TODO: Update to correct tab/screen name
-                  onPress={() => navigation.navigate('MedicationsScreen')}
-                  tw="mt-3 self-center pb-1"
-              >
-                  Manage Medications
-              </StyledButton>
+            <StyledButton
+              variant="textPrimary"
+              // onPress={() => navigation.navigate('MedicationsTab')} // TODO: Update to correct tab/screen name
+              onPress={() => navigation.navigate('MedicationsScreen')}
+              tw="mt-3 self-center pb-1"
+            >
+              Manage Medications
+            </StyledButton>
           )}
         </Card>
 
@@ -433,29 +433,29 @@ const HomeScreen = () => {
           ) : (
             <StyledText color="textMuted" tw="py-4 text-center">No new insights at the moment.</StyledText>
           )}
-           {/* Optionally, add a 'View More' if there are many insights */}
+          {/* Optionally, add a 'View More' if there are many insights */}
         </Card>
 
         {/* Section: Quick Actions - Using grid-like layout */}
         <Card title="Quick Actions" withShadow={true} tw="mb-6">
-            <StyledView className="flex-row flex-wrap -m-1.5">
-                {quickActions.map((action) => (
-                    <StyledView 
-                        key={action.id} 
-                        className={`${action.fullWidth ? 'w-full' : 'w-1/2'} p-1.5`}
-                    >
-                        <StyledButton
-                            variant={action.variant}
-                            onPress={() => navigation.navigate(action.screen)}
-                            tw="w-full" // Button takes full width of its cell
-                            iconNameLeft={action.iconNameLeft} // Use new prop
-                            // iconSize can be set here if needed, defaults to 18
-                        >
-                            {action.label} 
-                        </StyledButton>
-                    </StyledView>
-                ))}
-            </StyledView>
+          <StyledView className="flex-row flex-wrap -m-1.5">
+            {quickActions.map((action) => (
+              <StyledView
+                key={action.id}
+                className={`${action.fullWidth ? 'w-full' : 'w-1/2'} p-1.5`}
+              >
+                <StyledButton
+                  variant={action.variant}
+                  onPress={() => navigation.navigate(action.screen)}
+                  tw="w-full" // Button takes full width of its cell
+                  iconNameLeft={action.iconNameLeft} // Use new prop
+                // iconSize can be set here if needed, defaults to 18
+                >
+                  {action.label}
+                </StyledButton>
+              </StyledView>
+            ))}
+          </StyledView>
         </Card>
 
       </StyledScrollView>

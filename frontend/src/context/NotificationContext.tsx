@@ -26,15 +26,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [stats, setStats] = useState<NotificationStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [pushToken, setPushToken] = useState<string | null>(null);
-  
-  const pushService = PushNotificationService.getInstance();
+
+  const pushService = PushNotificationService;
   const deepLinkService = DeepLinkingService.getInstance();
 
   const refreshStats = useCallback(async () => {
     try {
       setLoading(true);
       console.log('📊 Fetching notification stats...');
-      
+
       const response = await notificationServices.getNotificationStats();
       setStats(response.data);
       console.log('📊 Notification stats updated:', response.data);
@@ -64,12 +64,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         (response: any) => {
           console.log('Notification tapped:', response);
           const data = response.notification?.request?.content?.data || response.userInfo || response.data || {};
-          
+
           if (data && typeof data === 'object') {
             // Handle deep linking
             deepLinkService.handleNotificationNavigation(data as any);
           }
-          
+
           // Refresh stats
           refreshStats();
         }
@@ -82,8 +82,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   };
 
   const scheduleMedicationReminder = async (
-    medicationName: string, 
-    dosage: string, 
+    medicationName: string,
+    dosage: string,
     time: Date
   ): Promise<string | null> => {
     try {
@@ -93,11 +93,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         time,
         true // repeat daily
       );
-      
+
       if (notificationId) {
         console.log(`Scheduled medication reminder for ${medicationName}: ${notificationId}`);
       }
-      
+
       return notificationId;
     } catch (error) {
       console.error('Failed to schedule medication reminder:', error);
@@ -117,16 +117,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   useEffect(() => {
     // Initialize notification services immediately since user is authenticated
     console.log('✅ Initializing notification services for authenticated user');
-    
+
     // Initial fetch
     refreshStats();
-    
+
     // Initialize push notifications
     initializePushNotifications();
-    
+
     // Poll for updates every 30 seconds
     const interval = setInterval(refreshStats, 30000);
-    
+
     return () => {
       clearInterval(interval);
       // Clean up notification listeners

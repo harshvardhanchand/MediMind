@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { styled } from 'nativewind';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import StyledText from './StyledText';
 import StyledButton from './StyledButton';
@@ -30,29 +30,29 @@ const ErrorState: React.FC<ErrorStateProps> = ({
 
   return (
     <StyledView className="flex-1 justify-center items-center px-8 py-12">
-      <Ionicons 
-        name={icon} 
-        size={64} 
-        color={colors.error} 
+      <Ionicons
+        name={icon as any}
+        size={64}
+        color={colors.error}
         style={{ marginBottom: 16 }}
       />
-      
-      <StyledText 
-        variant="h3" 
+
+      <StyledText
+        variant="h3"
         tw="text-center mb-2"
         style={{ color: colors.textPrimary }}
       >
         {title}
       </StyledText>
-      
-      <StyledText 
-        variant="body1" 
+
+      <StyledText
+        variant="body1"
         tw="text-center mb-6 leading-6"
         style={{ color: colors.textSecondary }}
       >
         {message}
       </StyledText>
-      
+
       {showRetry && onRetry && (
         <StyledButton
           variant="filledPrimary"

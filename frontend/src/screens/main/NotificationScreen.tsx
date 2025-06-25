@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { styled } from 'nativewind';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
@@ -10,11 +10,11 @@ import NotificationCard from '../../components/common/NotificationCard';
 import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { notificationServices } from '../../api/services';
-import { 
-  NotificationResponse, 
-  NotificationStatsResponse, 
-  NotificationType, 
-  NotificationSeverity 
+import {
+  NotificationResponse,
+  NotificationStatsResponse,
+  NotificationType,
+  NotificationSeverity
 } from '../../types/api';
 import { crashReporting } from '../../services/crashReporting';
 import { FilterOption } from '../../types/interfaces';
@@ -31,7 +31,7 @@ const NotificationScreen = () => {
   const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [criticalError, setCriticalError] = useState<string | null>(null);
-  
+
   // ✅ Memoized filter options - only created once
   const typeFilters = useMemo<FilterOption[]>(() => [
     { label: 'All', value: null },
@@ -62,13 +62,13 @@ const NotificationScreen = () => {
     try {
       setError(null);
       crashReporting.addBreadcrumb('Fetching notifications', 'api-request', 'info');
-      
+
       const params: any = { limit: 50 };
       if (selectedFilter) params.notification_type = selectedFilter;
       if (selectedSeverity) params.severity = selectedSeverity;
-      
+
       const response = await notificationServices.getNotifications(params);
-      
+
       // If API returns empty array, use dummy data for demo
       if (response.data && response.data.length > 0) {
         setNotifications(response.data);
@@ -79,17 +79,17 @@ const NotificationScreen = () => {
       }
     } catch (apiError: any) {
       console.error('Failed to fetch notifications:', apiError);
-      
+
       const errorMessage = apiError.response?.data?.detail || 'Failed to load notifications. Please try again.';
       setError(errorMessage);
-      
+
       crashReporting.captureException(apiError, {
         context: 'notification_fetch',
         errorType: 'notification_api_error',
         statusCode: apiError.response?.status,
         filters: { selectedFilter, selectedSeverity },
       });
-      
+
       // Use dummy data for demo
       setNotifications(generateDummyNotifications());
     } finally {
@@ -103,13 +103,13 @@ const NotificationScreen = () => {
       setStats(response.data);
     } catch (statsError: any) {
       console.error('Failed to fetch notification stats:', statsError);
-      
+
       crashReporting.captureException(statsError, {
         context: 'notification_stats_fetch',
         errorType: 'notification_stats_error',
         statusCode: statsError.response?.status,
       });
-      
+
       // Use dummy stats
       setStats({
         total_count: 12,
@@ -212,29 +212,29 @@ const NotificationScreen = () => {
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       crashReporting.addBreadcrumb('Marking notification as read', 'user-action', 'info');
-      
-      await notificationServices.markNotificationsAsRead({ 
-        notification_ids: [notificationId] 
+
+      await notificationServices.markNotificationsAsRead({
+        notification_ids: [notificationId]
       });
-      
-      setNotifications(prev => 
-        prev.map(n => 
-          n.notification_id === notificationId 
+
+      setNotifications(prev =>
+        prev.map(n =>
+          n.notification_id === notificationId
             ? { ...n, is_read: true, read_at: new Date().toISOString() }
             : n
         )
       );
-      
+
       // Update stats
       if (stats) {
         setStats(prev => prev ? { ...prev, unread_count: prev.unread_count - 1 } : null);
       }
     } catch (markReadError: any) {
       console.error('Failed to mark notification as read:', markReadError);
-      
+
       const errorMessage = markReadError.response?.data?.detail || 'Failed to mark notification as read. Please try again.';
       Alert.alert('Error', errorMessage);
-      
+
       crashReporting.captureException(markReadError, {
         context: 'notification_mark_read',
         notificationId: notificationId,
@@ -256,7 +256,7 @@ const NotificationScreen = () => {
             try {
               await notificationServices.deleteNotification(notificationId);
               setNotifications(prev => prev.filter(n => n.notification_id !== notificationId));
-              
+
               // Update stats
               if (stats) {
                 const notification = notifications.find(n => n.notification_id === notificationId);
@@ -279,14 +279,14 @@ const NotificationScreen = () => {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationServices.markAllNotificationsAsRead();
-      setNotifications(prev => 
-        prev.map(n => ({ 
-          ...n, 
-          is_read: true, 
-          read_at: n.read_at || new Date().toISOString() 
+      setNotifications(prev =>
+        prev.map(n => ({
+          ...n,
+          is_read: true,
+          read_at: n.read_at || new Date().toISOString()
         }))
       );
-      
+
       if (stats) {
         setStats(prev => prev ? { ...prev, unread_count: 0 } : null);
       }
@@ -324,8 +324,8 @@ const NotificationScreen = () => {
       ]}
       onPress={onPress}
     >
-      <StyledText 
-        variant="caption" 
+      <StyledText
+        variant="caption"
         style={{ color: isActive ? 'white' : colors.textSecondary }}
       >
         {option.label}
@@ -417,7 +417,7 @@ const NotificationScreen = () => {
               showsHorizontalScrollIndicator={false}
               data={typeFilters}
               keyExtractor={(item) => item.value || 'all'}
-              renderItem={({ item }) => 
+              renderItem={({ item }) =>
                 renderFilterButton(
                   item,
                   selectedFilter === item.value,
@@ -437,7 +437,7 @@ const NotificationScreen = () => {
               showsHorizontalScrollIndicator={false}
               data={severityFilters}
               keyExtractor={(item) => item.value || 'all'}
-              renderItem={({ item }) => 
+              renderItem={({ item }) =>
                 renderFilterButton(
                   item,
                   selectedSeverity === item.value,
@@ -459,10 +459,10 @@ const NotificationScreen = () => {
           contentContainerStyle={{ padding: 16 }}
           ListEmptyComponent={
             <StyledView className="flex-1 justify-center items-center py-20">
-              <Ionicons 
-                name="notifications-outline" 
-                size={64} 
-                color={colors.textMuted} 
+              <Ionicons
+                name="notifications-outline"
+                size={64}
+                color={colors.textMuted}
               />
               <StyledText variant="h4" color="textMuted" tw="mt-4 mb-2">
                 No notifications

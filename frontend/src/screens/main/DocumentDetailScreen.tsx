@@ -3,7 +3,7 @@ import { ScrollView, View, TouchableOpacity, Alert, Dimensions, Platform, Activi
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import Pdf from 'react-native-pdf';
 
 
@@ -88,7 +88,7 @@ const DocumentDetailScreen = () => {
       'Are you sure you want to delete this document? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
+        {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
@@ -130,16 +130,16 @@ const DocumentDetailScreen = () => {
   useLayoutEffect(() => {
     if (document) {
       navigation.setOptions({
-        headerTitle: document.original_filename || 'Document Details', 
+        headerTitle: document.original_filename || 'Document Details',
         headerRight: () => (
           <StyledView tw="flex-row">
-            <StyledTouchableOpacity 
+            <StyledTouchableOpacity
               onPress={() => alert(`TODO: Edit ${document.original_filename}`)}
               tw="p-1.5"
             >
               <StyledText style={{ color: colors.accentPrimary, fontSize: 17 }}>Edit</StyledText>
             </StyledTouchableOpacity>
-            <StyledTouchableOpacity 
+            <StyledTouchableOpacity
               onPress={handleDeleteDocument}
               tw="p-1.5"
             >
@@ -159,8 +159,8 @@ const DocumentDetailScreen = () => {
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText 
-            variant="body1" 
+          <StyledText
+            variant="body1"
             tw="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
@@ -235,7 +235,7 @@ const DocumentDetailScreen = () => {
         <StyledText variant="h3" tw="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
           {document.original_filename || 'Document Details'}
         </StyledText>
-        <StyledTouchableOpacity 
+        <StyledTouchableOpacity
           onPress={handleDeleteDocument}
           className="p-1 ml-2"
         >
@@ -262,7 +262,7 @@ const DocumentDetailScreen = () => {
 
           {/* View Original Document Card */}
           <Card title="Original Document" tw="mb-6">
-            <ListItem 
+            <ListItem
               label={document.original_filename || 'Document'}
               subtitle={`Uploaded ${new Date(document.upload_timestamp).toLocaleDateString()}`}
               iconLeft="document"
@@ -274,14 +274,14 @@ const DocumentDetailScreen = () => {
                   openImageViewer(documentViewUrl);
                 } else {
                   Alert.alert(
-                    'Document Type Not Supported', 
+                    'Document Type Not Supported',
                     'Only PDF and image files are currently supported for viewing.',
                     [{ text: 'OK' }]
                   );
                 }
               }}
             />
-            
+
             {/* PDF Viewer */}
             {showPdfViewer && documentType === 'pdf' && (
               <StyledView tw="mt-4 h-96 bg-backgroundSecondary rounded-lg overflow-hidden">
@@ -291,20 +291,20 @@ const DocumentDetailScreen = () => {
                     <MaterialIcons name="close" size={24} color={colors.textSecondary} />
                   </StyledTouchableOpacity>
                 </StyledView>
-                
+
                 {isLoadingPdf && (
                   <StyledView tw="absolute inset-0 justify-center items-center bg-backgroundPrimary/80 z-10">
                     <ActivityIndicator size="large" color={colors.accentPrimary} />
                     <StyledText tw="mt-2" color="textSecondary">Loading PDF...</StyledText>
                   </StyledView>
                 )}
-                
+
                 {pdfError ? (
                   <StyledView tw="flex-1 justify-center items-center p-4">
                     <MaterialIcons name="error-outline" size={48} color={colors.error} />
                     <StyledText tw="mt-2 text-center" color="error">{pdfError}</StyledText>
-                    <StyledButton 
-                      variant="filledPrimary" 
+                    <StyledButton
+                      variant="filledPrimary"
                       tw="mt-4"
                       onPress={() => {
                         setPdfError(null);
@@ -387,30 +387,30 @@ const DocumentDetailScreen = () => {
                         )}
 
                         {/* Lab Results - look for any numeric medical values */}
-                        {extractedData.content.filter((event: any) => 
-                          event.event_type === 'LabResult' || 
+                        {extractedData.content.filter((event: any) =>
+                          event.event_type === 'LabResult' ||
                           (event.value && event.units && event.event_type !== 'Medication')
                         ).length > 0 && (
-                          <StyledView className="mb-4">
-                            <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Lab Results</StyledText>
-                            {extractedData.content
-                              .filter((event: any) => 
-                                event.event_type === 'LabResult' || 
-                                (event.value && event.units && event.event_type !== 'Medication')
-                              )
-                              .map((result: any, index: number) => (
-                                <ListItem
-                                  key={index}
-                                  label={result.description || result.test_name || 'Lab Test'}
-                                  value={`${result.value || ''} ${result.units || ''}`.trim()}
-                                  showBottomBorder={index < extractedData.content.filter((e: any) => 
-                                    e.event_type === 'LabResult' || 
-                                    (e.value && e.units && e.event_type !== 'Medication')
-                                  ).length - 1}
-                                />
-                              ))}
-                          </StyledView>
-                        )}
+                            <StyledView className="mb-4">
+                              <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Lab Results</StyledText>
+                              {extractedData.content
+                                .filter((event: any) =>
+                                  event.event_type === 'LabResult' ||
+                                  (event.value && event.units && event.event_type !== 'Medication')
+                                )
+                                .map((result: any, index: number) => (
+                                  <ListItem
+                                    key={index}
+                                    label={result.description || result.test_name || 'Lab Test'}
+                                    value={`${result.value || ''} ${result.units || ''}`.trim()}
+                                    showBottomBorder={index < extractedData.content.filter((e: any) =>
+                                      e.event_type === 'LabResult' ||
+                                      (e.value && e.units && e.event_type !== 'Medication')
+                                    ).length - 1}
+                                  />
+                                ))}
+                            </StyledView>
+                          )}
 
                         {/* Diagnoses */}
                         {extractedData.content.filter((event: any) => event.event_type === 'Diagnosis').length > 0 && (
@@ -431,23 +431,23 @@ const DocumentDetailScreen = () => {
                         )}
 
                         {/* Instructions/Notes */}
-                        {extractedData.content.filter((event: any) => 
-                          event.event_type === 'PatientInstruction' || 
+                        {extractedData.content.filter((event: any) =>
+                          event.event_type === 'PatientInstruction' ||
                           event.event_type === 'Note'
                         ).length > 0 && (
-                          <StyledView className="mb-4">
-                            <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Notes</StyledText>
-                            <StyledText variant="body1" color="textSecondary">
-                              {extractedData.content
-                                .filter((event: any) => 
-                                  event.event_type === 'PatientInstruction' || 
-                                  event.event_type === 'Note'
-                                )
-                                .map((note: any) => note.description)
-                                .join('. ')}
-                            </StyledText>
-                          </StyledView>
-                        )}
+                            <StyledView className="mb-4">
+                              <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Notes</StyledText>
+                              <StyledText variant="body1" color="textSecondary">
+                                {extractedData.content
+                                  .filter((event: any) =>
+                                    event.event_type === 'PatientInstruction' ||
+                                    event.event_type === 'Note'
+                                  )
+                                  .map((note: any) => note.description)
+                                  .join('. ')}
+                              </StyledText>
+                            </StyledView>
+                          )}
                       </StyledView>
                     ) : (
                       /* Handle dictionary structure if it exists */
@@ -469,7 +469,7 @@ const DocumentDetailScreen = () => {
                         {extractedData.content.medications && (
                           <StyledView className="mb-4">
                             <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Medications</StyledText>
-                            {Array.isArray(extractedData.content.medications) ? 
+                            {Array.isArray(extractedData.content.medications) ?
                               extractedData.content.medications.map((med: any, index: number) => (
                                 <ListItem
                                   key={index}
@@ -503,15 +503,15 @@ const DocumentDetailScreen = () => {
               </StyledView>
             ) : (
               <StyledText color="textMuted" tw="py-4 text-center">
-                {document.processing_status === ProcessingStatus.PENDING ? 
+                {document.processing_status === ProcessingStatus.PENDING ?
                   'Document is being processed. Extracted data will appear here once processing is complete.' :
                   'No extracted data available yet.'
                 }
               </StyledText>
             )}
 
-            <StyledButton 
-              variant="filledPrimary" 
+            <StyledButton
+              variant="filledPrimary"
               tw="mt-4"
               onPress={() => navigation.navigate('DataReview', { documentId })}
               iconNameLeft="checkmark-circle"
@@ -534,9 +534,9 @@ const DocumentDetailScreen = () => {
             <StyledPressable className="absolute top-10 right-5 z-10 p-2" onPress={closeImageViewer}>
               <MaterialIcons name="close" size={32} color="white" />
             </StyledPressable>
-            <Image 
+            <Image
               source={{ uri: imageUriForModal }}
-              style={{ width: '90%', height: '80%'}}
+              style={{ width: '90%', height: '80%' }}
               resizeMode="contain"
             />
           </StyledView>

@@ -26,7 +26,7 @@ type CreateProfileScreenNavigationProp = NativeStackNavigationProp<OnboardingSta
 const CreateProfileScreen = () => {
   const navigation = useNavigation<CreateProfileScreenNavigationProp>();
   const { colors } = useTheme();
-  
+
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
     dateOfBirth: null,
@@ -35,7 +35,7 @@ const CreateProfileScreen = () => {
     gender: '',
     medicalConditions: [],
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showConditionModal, setShowConditionModal] = useState(false);
@@ -66,7 +66,7 @@ const CreateProfileScreen = () => {
       };
 
       await userServices.updateProfile(updateData);
-      
+
       // Navigate to main app
       navigation.reset({
         index: 0,
@@ -121,9 +121,9 @@ const CreateProfileScreen = () => {
       return;
     }
 
-    setProfile(prev => ({ 
-      ...prev, 
-      medicalConditions: [...prev.medicalConditions, newCondition] 
+    setProfile(prev => ({
+      ...prev,
+      medicalConditions: [...prev.medicalConditions, newCondition]
     }));
     setShowConditionModal(false);
   };
@@ -216,16 +216,14 @@ const CreateProfileScreen = () => {
                     <StyledTouchableOpacity
                       key={genderOption}
                       onPress={() => setProfile(prev => ({ ...prev, gender: genderOption as any }))}
-                      className={`flex-1 py-3 px-4 rounded-lg border ${
-                        profile.gender === genderOption 
-                          ? 'bg-blue-500 border-blue-500' 
-                          : 'bg-white border-gray-300'
-                      }`}
-                    >
-                      <StyledText 
-                        tw={`text-center font-medium capitalize ${
-                          profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                      className={`flex-1 py-3 px-4 rounded-lg border ${profile.gender === genderOption
+                        ? 'bg-blue-500 border-blue-500'
+                        : 'bg-white border-gray-300'
                         }`}
+                    >
+                      <StyledText
+                        tw={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                          }`}
                       >
                         {genderOption}
                       </StyledText>
@@ -300,7 +298,7 @@ const CreateProfileScreen = () => {
                           <StyledText tw="font-semibold text-gray-900 mb-1">
                             {condition.condition_name}
                           </StyledText>
-                          
+
                           <StyledView className="flex-row items-center space-x-2 mb-2">
                             <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
                               <StyledText tw="text-xs font-medium capitalize">
@@ -321,14 +319,14 @@ const CreateProfileScreen = () => {
                               Doctor: {condition.diagnosing_doctor}
                             </StyledText>
                           )}
-                          
+
                           {condition.notes && (
                             <StyledText tw="text-sm text-gray-600">
                               {condition.notes}
                             </StyledText>
                           )}
                         </StyledView>
-                        
+
                         <StyledTouchableOpacity
                           onPress={() => handleDeleteCondition(index)}
                           className="p-2"
@@ -349,9 +347,8 @@ const CreateProfileScreen = () => {
           <StyledTouchableOpacity
             onPress={handleCreateProfile}
             disabled={loading || !profile.name.trim()}
-            className={`rounded-lg py-4 shadow-lg ${
-              !profile.name.trim() ? 'bg-gray-400' : 'bg-blue-500'
-            }`}
+            className={`rounded-lg py-4 shadow-lg ${!profile.name.trim() ? 'bg-gray-400' : 'bg-blue-500'
+              }`}
             style={{ elevation: 3 }}
           >
             {loading ? (
@@ -422,16 +419,14 @@ const CreateProfileScreen = () => {
                   <StyledTouchableOpacity
                     key={status}
                     onPress={() => setNewCondition(prev => ({ ...prev, status: status as any }))}
-                    className={`px-3 py-2 rounded-lg border ${
-                      newCondition.status === status 
-                        ? 'bg-blue-500 border-blue-500' 
-                        : 'bg-white border-gray-300'
-                    }`}
-                  >
-                    <StyledText 
-                      tw={`font-medium capitalize ${
-                        newCondition.status === status ? 'text-white' : 'text-gray-700'
+                    className={`px-3 py-2 rounded-lg border ${newCondition.status === status
+                      ? 'bg-blue-500 border-blue-500'
+                      : 'bg-white border-gray-300'
                       }`}
+                  >
+                    <StyledText
+                      tw={`font-medium capitalize ${newCondition.status === status ? 'text-white' : 'text-gray-700'
+                        }`}
                     >
                       {status}
                     </StyledText>
@@ -449,16 +444,14 @@ const CreateProfileScreen = () => {
                   <StyledTouchableOpacity
                     key={severity}
                     onPress={() => setNewCondition(prev => ({ ...prev, severity: severity as any }))}
-                    className={`px-3 py-2 rounded-lg border ${
-                      newCondition.severity === severity 
-                        ? 'bg-blue-500 border-blue-500' 
-                        : 'bg-white border-gray-300'
-                    }`}
-                  >
-                    <StyledText 
-                      tw={`font-medium capitalize ${
-                        newCondition.severity === severity ? 'text-white' : 'text-gray-700'
+                    className={`px-3 py-2 rounded-lg border ${newCondition.severity === severity
+                      ? 'bg-blue-500 border-blue-500'
+                      : 'bg-white border-gray-300'
                       }`}
+                  >
+                    <StyledText
+                      tw={`font-medium capitalize ${newCondition.severity === severity ? 'text-white' : 'text-gray-700'
+                        }`}
                     >
                       {severity}
                     </StyledText>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { NotificationResponse, NotificationType, NotificationSeverity } from '../../types/api';
 import StyledText from './StyledText';
@@ -64,7 +64,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInHours < 24) return `${diffInHours}h ago`;
     if (diffInDays < 7) return `${diffInDays}d ago`;
-    
+
     return date.toLocaleDateString();
   };
 
@@ -85,7 +85,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
             color={getSeverityColor(notification.severity)}
           />
         </View>
-        
+
         <View style={styles.headerText}>
           <StyledText variant="label" tw="font-semibold" numberOfLines={1}>
             {notification.title}
@@ -100,9 +100,9 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
         )}
       </View>
 
-      <StyledText 
-        variant="body2" 
-        color="textSecondary" 
+      <StyledText
+        variant="body2"
+        color="textSecondary"
         tw="mt-2"
         numberOfLines={3}
       >

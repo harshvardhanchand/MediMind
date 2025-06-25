@@ -3,7 +3,7 @@ import { View, ScrollView, Dimensions, TouchableOpacity, Alert } from 'react-nat
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { OnboardingStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
@@ -106,7 +106,7 @@ const FeaturesScreen = () => {
   const renderFeature = (feature: Feature) => (
     <StyledView key={feature.id} style={{ width: screenWidth }} className="flex-1 justify-center items-center px-8">
       {/* Feature Icon */}
-      <StyledView 
+      <StyledView
         className="mb-8 rounded-full p-8 shadow-lg"
         style={{ backgroundColor: feature.color }}
       >
@@ -114,16 +114,16 @@ const FeaturesScreen = () => {
       </StyledView>
 
       {/* Feature Title */}
-      <StyledText 
-        variant="h1" 
+      <StyledText
+        variant="h1"
         tw="text-gray-900 text-3xl font-bold text-center mb-6"
       >
         {feature.title}
       </StyledText>
 
       {/* Feature Description */}
-      <StyledText 
-        variant="body1" 
+      <StyledText
+        variant="body1"
         tw="text-gray-600 text-lg text-center leading-relaxed px-4"
       >
         {feature.description}
@@ -139,19 +139,18 @@ const FeaturesScreen = () => {
           <StyledTouchableOpacity onPress={handleSkip}>
             <StyledText tw="text-gray-500 font-medium">Skip</StyledText>
           </StyledTouchableOpacity>
-          
+
           {/* Progress Dots */}
           <StyledView className="flex-row space-x-2">
             {features.map((_, index) => (
               <StyledView
                 key={index}
-                className={`w-2 h-2 rounded-full ${
-                  index === currentIndex ? 'bg-blue-500' : 'bg-gray-300'
-                }`}
+                className={`w-2 h-2 rounded-full ${index === currentIndex ? 'bg-blue-500' : 'bg-gray-300'
+                  }`}
               />
             ))}
           </StyledView>
-          
+
           <StyledView style={{ width: 40 }} />
         </StyledView>
 

@@ -3,7 +3,7 @@ import { ScrollView, View, TextInput, TouchableOpacity, Alert, ActivityIndicator
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { MainAppStackParamList } from '../../navigation/types';
@@ -28,7 +28,7 @@ type EditProfileScreenNavigationProp = NativeStackNavigationProp<MainAppStackPar
 const EditProfileScreen = () => {
   const navigation = useNavigation<EditProfileScreenNavigationProp>();
   const { colors } = useTheme();
-  
+
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
     email: '',
@@ -39,7 +39,7 @@ const EditProfileScreen = () => {
     medicalConditions: [],
     createdAt: null,
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +62,7 @@ const EditProfileScreen = () => {
         setError(null);
         const response = await userServices.getMe();
         const userData: UserResponse = response.data;
-        
+
         setProfile({
           name: userData.name || '',
           email: userData.email || '',
@@ -98,7 +98,7 @@ const EditProfileScreen = () => {
       };
 
       await userServices.updateProfile(updateData);
-      
+
       Alert.alert('Success', SUCCESS_MESSAGES.PROFILE_UPDATED, [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
@@ -119,7 +119,7 @@ const EditProfileScreen = () => {
         setError(null);
         const response = await userServices.getMe();
         const userData: UserResponse = response.data;
-        
+
         setProfile({
           name: userData.name || '',
           email: userData.email || '',
@@ -190,7 +190,7 @@ const EditProfileScreen = () => {
     }
 
     const updatedConditions = [...profile.medicalConditions];
-    
+
     if (editingConditionIndex !== null) {
       updatedConditions[editingConditionIndex] = newCondition;
     } else {
@@ -246,8 +246,8 @@ const EditProfileScreen = () => {
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText 
-            variant="body1" 
+          <StyledText
+            variant="body1"
             tw="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
@@ -278,7 +278,7 @@ const EditProfileScreen = () => {
       <StyledScrollView className="flex-1 bg-gray-50">
         {/* Header */}
         <StyledView className="flex-row items-center px-4 pt-12 pb-6 bg-white">
-          <StyledTouchableOpacity 
+          <StyledTouchableOpacity
             onPress={() => navigation.goBack()}
             className="mr-4"
           >
@@ -287,7 +287,7 @@ const EditProfileScreen = () => {
           <StyledText variant="h1" tw="font-bold text-xl flex-1">
             Edit Profile
           </StyledText>
-          <StyledTouchableOpacity 
+          <StyledTouchableOpacity
             onPress={handleSave}
             disabled={loading}
             className="px-4 py-2 bg-blue-500 rounded-lg"
@@ -395,16 +395,14 @@ const EditProfileScreen = () => {
                     <StyledTouchableOpacity
                       key={genderOption}
                       onPress={() => setProfile(prev => ({ ...prev, gender: genderOption as any }))}
-                      className={`flex-1 py-3 px-4 rounded-lg border ${
-                        profile.gender === genderOption 
-                          ? 'bg-blue-500 border-blue-500' 
-                          : 'bg-white border-gray-300'
-                      }`}
-                    >
-                      <StyledText 
-                        tw={`text-center font-medium capitalize ${
-                          profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                      className={`flex-1 py-3 px-4 rounded-lg border ${profile.gender === genderOption
+                        ? 'bg-blue-500 border-blue-500'
+                        : 'bg-white border-gray-300'
                         }`}
+                    >
+                      <StyledText
+                        tw={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                          }`}
                       >
                         {genderOption}
                       </StyledText>
@@ -452,7 +450,7 @@ const EditProfileScreen = () => {
                           <StyledText tw="font-semibold text-gray-900 mb-1">
                             {condition.condition_name}
                           </StyledText>
-                          
+
                           <StyledView className="flex-row items-center space-x-2 mb-2">
                             <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
                               <StyledText tw="text-xs font-medium capitalize">
@@ -473,13 +471,13 @@ const EditProfileScreen = () => {
                               Diagnosed: {new Date(condition.diagnosed_date).toLocaleDateString()}
                             </StyledText>
                           )}
-                          
+
                           {condition.diagnosing_doctor && (
                             <StyledText tw="text-sm text-gray-600 mb-1">
                               Doctor: {condition.diagnosing_doctor}
                             </StyledText>
                           )}
-                          
+
                           {condition.notes && (
                             <StyledText tw="text-sm text-gray-600 italic">
                               {condition.notes}
@@ -585,16 +583,14 @@ const EditProfileScreen = () => {
                   <StyledTouchableOpacity
                     key={status}
                     onPress={() => setNewCondition(prev => ({ ...prev, status: status as any }))}
-                    className={`px-3 py-2 rounded-lg border ${
-                      newCondition.status === status 
-                        ? 'bg-blue-500 border-blue-500' 
-                        : 'bg-white border-gray-300'
-                    }`}
-                  >
-                    <StyledText 
-                      tw={`font-medium capitalize ${
-                        newCondition.status === status ? 'text-white' : 'text-gray-700'
+                    className={`px-3 py-2 rounded-lg border ${newCondition.status === status
+                      ? 'bg-blue-500 border-blue-500'
+                      : 'bg-white border-gray-300'
                       }`}
+                  >
+                    <StyledText
+                      tw={`font-medium capitalize ${newCondition.status === status ? 'text-white' : 'text-gray-700'
+                        }`}
                     >
                       {status}
                     </StyledText>
@@ -612,20 +608,18 @@ const EditProfileScreen = () => {
                 {['mild', 'moderate', 'severe', 'critical'].map((severity) => (
                   <StyledTouchableOpacity
                     key={severity}
-                    onPress={() => setNewCondition(prev => ({ 
-                      ...prev, 
-                      severity: prev.severity === severity ? undefined : severity as any 
+                    onPress={() => setNewCondition(prev => ({
+                      ...prev,
+                      severity: prev.severity === severity ? undefined : severity as any
                     }))}
-                    className={`px-3 py-2 rounded-lg border ${
-                      newCondition.severity === severity 
-                        ? 'bg-blue-500 border-blue-500' 
-                        : 'bg-white border-gray-300'
-                    }`}
-                  >
-                    <StyledText 
-                      tw={`font-medium capitalize ${
-                        newCondition.severity === severity ? 'text-white' : 'text-gray-700'
+                    className={`px-3 py-2 rounded-lg border ${newCondition.severity === severity
+                      ? 'bg-blue-500 border-blue-500'
+                      : 'bg-white border-gray-300'
                       }`}
+                  >
+                    <StyledText
+                      tw={`font-medium capitalize ${newCondition.severity === severity ? 'text-white' : 'text-gray-700'
+                        }`}
                     >
                       {severity}
                     </StyledText>

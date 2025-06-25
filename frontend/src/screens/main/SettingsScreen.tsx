@@ -1,9 +1,9 @@
 import React from 'react';
-import { ScrollView, View,  Alert, Switch } from 'react-native';
+import { ScrollView, View, Alert, Switch } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
@@ -12,7 +12,7 @@ import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { supabaseClient } from '../../services/supabase';
 import { MainAppStackParamList } from '../../navigation/types';
-import { ERROR_MESSAGES} from '../../constants/messages';
+import { ERROR_MESSAGES } from '../../constants/messages';
 import { SettingItem } from '../../types/interfaces';
 import { crashReporting } from '../../services/crashReporting';
 
@@ -35,8 +35,8 @@ const SettingsScreen = () => {
       'Are you sure you want to log out?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Log Out', 
+        {
+          text: 'Log Out',
           style: 'destructive',
           onPress: performLogout
         }
@@ -47,12 +47,12 @@ const SettingsScreen = () => {
   const performLogout = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       crashReporting.addBreadcrumb('User initiated logout', 'user-action', 'info');
-      
+
       const { error: signOutError } = await supabaseClient.auth.signOut();
-      
+
       if (signOutError) {
         console.error("Error during sign out:", signOutError);
         setError(ERROR_MESSAGES.LOGOUT_ERROR);
@@ -76,13 +76,13 @@ const SettingsScreen = () => {
   const handleExportData = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       crashReporting.addBreadcrumb('User requested data export', 'user-action', 'info');
-      
+
       // Simulate data export process
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       Alert.alert(
         'Export Initiated',
         'Your data export has been initiated. You will receive an email with download instructions within 24 hours.',
@@ -103,15 +103,15 @@ const SettingsScreen = () => {
   const handleNotificationToggle = async (enabled: boolean) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Simulate notification settings update
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       setNotificationsEnabled(enabled);
       crashReporting.addBreadcrumb(
-        `Notifications ${enabled ? 'enabled' : 'disabled'}`, 
-        'user-action', 
+        `Notifications ${enabled ? 'enabled' : 'disabled'}`,
+        'user-action',
         'info'
       );
     } catch (notificationError: any) {
@@ -146,61 +146,61 @@ const SettingsScreen = () => {
   }
 
   const accountSettings: SettingItem[] = [
-    { 
-      id: 'profile', 
-      label: 'Edit Profile', 
-      iconName: 'person-circle-outline', 
+    {
+      id: 'profile',
+      label: 'Edit Profile',
+      iconName: 'person-circle-outline',
       navigateTo: 'EditProfile'
     },
-    { 
-      id: 'security', 
-      label: 'Security & Privacy', 
-      iconName: 'shield-checkmark-outline', 
-      action: () => Alert.alert('Coming Soon', 'Security settings will be available in a future update.') 
+    {
+      id: 'security',
+      label: 'Security & Privacy',
+      iconName: 'shield-checkmark-outline',
+      action: () => Alert.alert('Coming Soon', 'Security settings will be available in a future update.')
     },
-    { 
-      id: 'notifications', 
-      label: 'Notifications', 
-      iconName: 'notifications-outline', 
-      isToggle: true, 
-      value: notificationsEnabled, 
-      action: () => handleNotificationToggle(!notificationsEnabled) 
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      iconName: 'notifications-outline',
+      isToggle: true,
+      value: notificationsEnabled,
+      action: () => handleNotificationToggle(!notificationsEnabled)
     },
   ];
 
   const dataSettings: SettingItem[] = [
-    { 
-      id: 'export', 
-      label: 'Export My Data', 
-      iconName: 'download-outline', 
-      action: handleExportData 
+    {
+      id: 'export',
+      label: 'Export My Data',
+      iconName: 'download-outline',
+      action: handleExportData
     },
   ];
-  
+
   const aboutSettings: SettingItem[] = [
-    { 
-      id: 'help', 
-      label: 'Help Center', 
-      iconName: 'help-circle-outline', 
-      action: () => Alert.alert('Help Center', 'Help documentation will be available soon.') 
+    {
+      id: 'help',
+      label: 'Help Center',
+      iconName: 'help-circle-outline',
+      action: () => Alert.alert('Help Center', 'Help documentation will be available soon.')
     },
-    { 
-      id: 'contact', 
-      label: 'Contact Support', 
-      iconName: 'mail-outline', 
-      action: () => Alert.alert('Contact Support', 'Support contact information will be available soon.') 
+    {
+      id: 'contact',
+      label: 'Contact Support',
+      iconName: 'mail-outline',
+      action: () => Alert.alert('Contact Support', 'Support contact information will be available soon.')
     },
-    { 
-      id: 'terms', 
-      label: 'Terms of Service', 
-      iconName: 'document-text-outline', 
-      action: () => Alert.alert('Terms of Service', 'Terms of service will be available soon.') 
+    {
+      id: 'terms',
+      label: 'Terms of Service',
+      iconName: 'document-text-outline',
+      action: () => Alert.alert('Terms of Service', 'Terms of service will be available soon.')
     },
-    { 
-      id: 'privacy', 
-      label: 'Privacy Policy', 
-      iconName: 'lock-closed-outline', 
-      action: () => Alert.alert('Privacy Policy', 'Privacy policy will be available soon.') 
+    {
+      id: 'privacy',
+      label: 'Privacy Policy',
+      iconName: 'lock-closed-outline',
+      action: () => Alert.alert('Privacy Policy', 'Privacy policy will be available soon.')
     },
   ];
 
@@ -216,9 +216,9 @@ const SettingsScreen = () => {
               {item.label}
             </StyledText>
           </StyledView>
-          <Switch 
-            value={item.value} 
-            onValueChange={item.action} 
+          <Switch
+            value={item.value}
+            onValueChange={item.action}
             trackColor={{ false: colors.borderSubtle, true: colors.accentPrimary }}
             thumbColor={colors.backgroundSecondary}
             disabled={loading}
@@ -230,7 +230,7 @@ const SettingsScreen = () => {
 
     const handlePress = () => {
       if (loading) return; // Prevent actions while loading
-      
+
       if (item.navigateTo) {
         navigation.navigate(item.navigateTo);
       } else if (item.action) {
@@ -275,7 +275,7 @@ const SettingsScreen = () => {
             Account
           </StyledText>
           <StyledView className="bg-white mx-4 rounded-lg overflow-hidden">
-            {accountSettings.map((item, index) => 
+            {accountSettings.map((item, index) =>
               renderSettingItem(item, index === accountSettings.length - 1)
             )}
           </StyledView>
@@ -287,7 +287,7 @@ const SettingsScreen = () => {
             Data Management
           </StyledText>
           <StyledView className="bg-white mx-4 rounded-lg overflow-hidden">
-            {dataSettings.map((item, index) => 
+            {dataSettings.map((item, index) =>
               renderSettingItem(item, index === dataSettings.length - 1)
             )}
           </StyledView>
@@ -299,10 +299,10 @@ const SettingsScreen = () => {
             About
           </StyledText>
           <StyledView className="bg-white mx-4 rounded-lg overflow-hidden">
-            {aboutSettings.map((item, index) => 
+            {aboutSettings.map((item, index) =>
               renderSettingItem(item, index === aboutSettings.length - 1)
             )}
-            
+
             {/* App Version */}
             <StyledView className="flex-row items-center px-4 py-3">
               <StyledView className="w-6 h-6 items-center justify-center mr-3">
@@ -314,7 +314,7 @@ const SettingsScreen = () => {
             </StyledView>
           </StyledView>
         </StyledView>
-        
+
         {/* Logout Button */}
         <StyledView className="mt-6 mx-4 mb-8">
           <StyledView className="bg-white rounded-lg overflow-hidden">

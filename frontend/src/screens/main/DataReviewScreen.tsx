@@ -3,7 +3,7 @@ import { ScrollView, View, TouchableOpacity, Alert, RefreshControl, ActivityIndi
 import { styled } from 'nativewind';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
@@ -14,15 +14,15 @@ import Card from '../../components/common/Card';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
-import {ExtractedDataResponse } from '../../types/api';
+import { ExtractedDataResponse } from '../../types/api';
 import { documentServices, extractedDataServices } from '../../api/services';
-import {  LOADING_MESSAGES} from '../../constants/messages';
-import { 
-  ExtractedField, 
-  MedicationContent, 
-  FormattedExtractedContent, 
-  ReviewDocument, 
-  ChangedField 
+import { LOADING_MESSAGES } from '../../constants/messages';
+import {
+  ExtractedField,
+  MedicationContent,
+  FormattedExtractedContent,
+  ReviewDocument,
+  ChangedField
 } from '../../types/interfaces';
 
 const StyledView = styled(View);
@@ -122,8 +122,8 @@ const DataReviewScreen = () => {
 
   const handleInputChange = (
     section: 'medications' | 'lab_results' | 'notes',
-    index: number | null, 
-    fieldKey: string, 
+    index: number | null,
+    fieldKey: string,
     subFieldKeyOrValueType: 'value' | 'unit' | null,
     text: string
   ) => {
@@ -207,19 +207,19 @@ const DataReviewScreen = () => {
       const med = data.medications[index];
       return `Medication: ${med.name.value} ${med.dosage.value}${med.dosage.unit} ${med.frequency.value}`;
     }
-    
+
     if (section === 'lab_results' && typeof index === 'number' && data.lab_results?.[index]) {
       const lab = data.lab_results[index];
       return `Lab Result: ${lab.label} ${lab.value} ${lab.unit}`;
     }
-    
+
     if (section === 'notes') {
       return `Patient Instructions: ${data.notes || ''}`;
     }
-    
+
     return '';
   };
-  
+
   const handleSave = async () => {
     if (!editedData || !extractedData) {
       Alert.alert("Error", "No data available to save.");
@@ -240,16 +240,16 @@ const DataReviewScreen = () => {
       });
 
       Alert.alert(
-        "Success", 
-        changedFields.length > 0 
-          ? "Your corrections have been saved and selective AI reprocessing has started for changed fields." 
-          : "Your corrections have been saved and the review status has been updated.", 
+        "Success",
+        changedFields.length > 0
+          ? "Your corrections have been saved and selective AI reprocessing has started for changed fields."
+          : "Your corrections have been saved and the review status has been updated.",
         [{ text: "OK", onPress: () => navigation.goBack() }]
       );
     } catch (err: any) {
       console.error('Failed to save corrections:', err);
       Alert.alert(
-        "Error", 
+        "Error",
         err.response?.data?.detail || err.message || "Failed to save corrections. Please try again."
       );
     } finally {
@@ -302,8 +302,8 @@ const DataReviewScreen = () => {
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText 
-            variant="body1" 
+          <StyledText
+            variant="body1"
             tw="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
@@ -353,19 +353,19 @@ const DataReviewScreen = () => {
           tw="mb-3"
         />
         <StyledView className="flex-row mb-3">
-            <StyledInput
-                label={med.dosage.label}
-                value={String(editedData?.medications?.[medIndex]?.dosage.value || '')}
-                onChangeText={(text) => handleInputChange('medications', medIndex, 'dosage', 'value', text)}
-                tw="flex-1 mr-2"
-                keyboardType="numeric"
-            />
-            <StyledInput
-                label="Unit"
-                value={String(editedData?.medications?.[medIndex]?.dosage.unit || '')}
-                onChangeText={(text) => handleInputChange('medications', medIndex, 'dosage', 'unit', text)}
-                tw="w-1/3"
-            />
+          <StyledInput
+            label={med.dosage.label}
+            value={String(editedData?.medications?.[medIndex]?.dosage.value || '')}
+            onChangeText={(text) => handleInputChange('medications', medIndex, 'dosage', 'value', text)}
+            tw="flex-1 mr-2"
+            keyboardType="numeric"
+          />
+          <StyledInput
+            label="Unit"
+            value={String(editedData?.medications?.[medIndex]?.dosage.unit || '')}
+            onChangeText={(text) => handleInputChange('medications', medIndex, 'dosage', 'unit', text)}
+            tw="w-1/3"
+          />
         </StyledView>
         <StyledInput
           label={med.frequency.label}
@@ -387,16 +387,16 @@ const DataReviewScreen = () => {
         <StyledText variant="h3" tw="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
           Review: {String(document?.name || 'Document')}
         </StyledText>
-        <StyledView className="w-8" /> 
+        <StyledView className="w-8" />
       </StyledView>
 
-      <StyledScrollView 
-        className="flex-1" 
+      <StyledScrollView
+        className="flex-1"
         contentContainerStyle={{ padding: 16 }}
         refreshControl={
-          <RefreshControl 
-            refreshing={isLoading} 
-            onRefresh={loadDocumentData} 
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={loadDocumentData}
             tintColor={colors.accentPrimary}
           />
         }
@@ -406,28 +406,28 @@ const DataReviewScreen = () => {
         )}
 
         {editedData.lab_results && editedData.lab_results.length > 0 && (
-            <Card title="Lab Results" tw="mb-4">
-                {editedData.lab_results.map((labField, labIndex) => (
-                    <StyledView key={`lab-${labIndex}-${String(labField.label || 'lab')}`} className="mb-3">
-                        <StyledText variant="label" color="textSecondary" tw="mb-1">{String(labField.label || 'Lab Test')}</StyledText>
-                        <StyledView className="flex-row items-center">
-                            <StyledInput
-                                value={String(labField.value || '')}
-                                onChangeText={(text) => handleInputChange('lab_results', labIndex, 'value', null, text)}
-                                tw="flex-2 mr-2"
-                                keyboardType="numeric"
-                                placeholder={`Value for ${String(labField.label || 'test')}`}
-                            />
-                            <StyledInput
-                                value={String(labField.unit || '')}
-                                onChangeText={(text) => handleInputChange('lab_results', labIndex, 'unit', null, text)}
-                                tw="flex-1"
-                                placeholder="Unit"
-                            />
-                        </StyledView>
-                    </StyledView>
-                ))}
-            </Card>
+          <Card title="Lab Results" tw="mb-4">
+            {editedData.lab_results.map((labField, labIndex) => (
+              <StyledView key={`lab-${labIndex}-${String(labField.label || 'lab')}`} className="mb-3">
+                <StyledText variant="label" color="textSecondary" tw="mb-1">{String(labField.label || 'Lab Test')}</StyledText>
+                <StyledView className="flex-row items-center">
+                  <StyledInput
+                    value={String(labField.value || '')}
+                    onChangeText={(text) => handleInputChange('lab_results', labIndex, 'value', null, text)}
+                    tw="flex-2 mr-2"
+                    keyboardType="numeric"
+                    placeholder={`Value for ${String(labField.label || 'test')}`}
+                  />
+                  <StyledInput
+                    value={String(labField.unit || '')}
+                    onChangeText={(text) => handleInputChange('lab_results', labIndex, 'unit', null, text)}
+                    tw="flex-1"
+                    placeholder="Unit"
+                  />
+                </StyledView>
+              </StyledView>
+            ))}
+          </Card>
         )}
 
         {editedData.notes !== undefined && (
@@ -435,27 +435,27 @@ const DataReviewScreen = () => {
             <StyledInput
               label="Notes"
               value={editedData.notes || ''}
-              onChangeText={(text) => handleInputChange('notes', null, 'notesText', 'value', text)} 
+              onChangeText={(text) => handleInputChange('notes', null, 'notesText', 'value', text)}
               multiline
               inputStyle={{ height: 120, textAlignVertical: 'top' }}
               tw="h-auto"
             />
           </Card>
         )}
-        
+
         <StyledView className="mt-6 flex-row justify-between">
-            <StyledButton variant="textDestructive" onPress={() => navigation.goBack()} tw="flex-1 mr-2" disabled={isSaving}>
-                <StyledText>Discard Changes</StyledText>
-            </StyledButton>
-            <StyledButton 
-              variant="filledPrimary" 
-              onPress={handleSave} 
-              tw="flex-1 ml-2"
-              disabled={isSaving}
-              loading={isSaving}
-            >
-                {isSaving ? 'Saving...' : 'Save Corrections'}
-            </StyledButton>
+          <StyledButton variant="textDestructive" onPress={() => navigation.goBack()} tw="flex-1 mr-2" disabled={isSaving}>
+            <StyledText>Discard Changes</StyledText>
+          </StyledButton>
+          <StyledButton
+            variant="filledPrimary"
+            onPress={handleSave}
+            tw="flex-1 ml-2"
+            disabled={isSaving}
+            loading={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Corrections'}
+          </StyledButton>
         </StyledView>
       </StyledScrollView>
     </ScreenContainer>

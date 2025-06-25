@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { TouchableOpacity, View, ViewStyle, TextStyle, ActivityIndicator, StyleProp } from 'react-native';
 import { styled } from 'nativewind';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../theme';
 
@@ -24,7 +24,7 @@ interface StyledButtonProps {
   iconNameRight?: string;
   iconSize?: number;
   // Keep existing ReactNode icon props for full customization if needed, but prioritize iconName*
-  iconLeft?: ReactNode; 
+  iconLeft?: ReactNode;
   iconRight?: ReactNode;
 }
 
@@ -85,7 +85,7 @@ const StyledButton: React.FC<StyledButtonProps> = ({
     if (node) return node; // Prioritize custom ReactNode icon
     if (!name) return null;
     const marginClass = side === 'left' && children ? 'mr-2' : (side === 'right' && children ? 'ml-2' : '');
-          return <Ionicons name={name as any} size={iconSize} color={determinedIconColor} className={marginClass} />;
+    return <Ionicons name={name as any} size={iconSize} color={determinedIconColor} className={marginClass} />;
   };
 
   return (
@@ -101,8 +101,8 @@ const StyledButton: React.FC<StyledButtonProps> = ({
       ) : (
         <>
           {renderIcon(iconNameLeft, iconLeft, 'left')}
-          <StyledText 
-            tw={`${textBaseTw}`.trim()} 
+          <StyledText
+            tw={`${textBaseTw}`.trim()}
             style={[{ color: determinedTextColor }, textStyle]} // Apply color directly via style to ensure override
           >
             {children}

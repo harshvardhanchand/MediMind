@@ -78,7 +78,7 @@ const LabResultDetailScreen = () => {
       headerTitle: testTypeName,
       headerLeft: () => (
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1.5 ml-[-8px]">
-            <Ionicons name="chevron-back-outline" size={28} color={colors.accentPrimary} />
+          <Ionicons name="chevron-back-outline" size={28} color={colors.accentPrimary} />
         </StyledTouchableOpacity>
       ),
       headerStyle: { backgroundColor: colors.backgroundSecondary },
@@ -96,7 +96,7 @@ const LabResultDetailScreen = () => {
     />
   );
 
-  const chartLabels = labHistory.length > 0 
+  const chartLabels = labHistory.length > 0
     ? labHistory.map(entry => new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).slice(-7)
     : ['N/A'];
   const chartDatasetData = labHistory.length > 0
@@ -108,7 +108,7 @@ const LabResultDetailScreen = () => {
     datasets: [
       {
         data: chartDatasetData,
-        color: (opacity = 1) => colors.accentPrimary || `rgba(0, 122, 255, ${opacity})`, 
+        color: (opacity = 1) => colors.accentPrimary || `rgba(0, 122, 255, ${opacity})`,
         strokeWidth: 2,
       },
     ],
@@ -121,8 +121,8 @@ const LabResultDetailScreen = () => {
       {isLoading ? (
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText 
-            variant="body1" 
+          <StyledText
+            variant="body1"
             tw="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
@@ -173,15 +173,15 @@ const LabResultDetailScreen = () => {
                     style={{ borderRadius: 16 }}
                     yAxisLabel={labHistory[0]?.unit ? '' : ''}
                     yAxisSuffix={labHistory[0]?.unit ? ` ${labHistory[0].unit}` : ''}
-                    yAxisInterval={1} 
-                    segments={Platform.OS === 'android' && chartDatasetData.length > 0 && Math.max(...chartDatasetData) - Math.min(...chartDatasetData) < 4 ? Math.max(...chartDatasetData) - Math.min(...chartDatasetData) +1 : undefined}
+                    yAxisInterval={1}
+                    segments={Platform.OS === 'android' && chartDatasetData.length > 0 && Math.max(...chartDatasetData) - Math.min(...chartDatasetData) < 4 ? Math.max(...chartDatasetData) - Math.min(...chartDatasetData) + 1 : undefined}
                   />
                 ) : (
                   <StyledView className="flex-1 items-center justify-center p-4">
-                      <Ionicons name="analytics-outline" size={48} color={colors.textMuted} />
-                      <StyledText color="textMuted" tw="mt-2 text-center">
-                          {labHistory.length === 1 ? 'Not enough data to plot a trend. At least two data points are needed.' : 'No data available for chart.'}
-                      </StyledText>
+                    <Ionicons name="analytics-outline" size={48} color={colors.textMuted} />
+                    <StyledText color="textMuted" tw="mt-2 text-center">
+                      {labHistory.length === 1 ? 'Not enough data to plot a trend. At least two data points are needed.' : 'No data available for chart.'}
+                    </StyledText>
                   </StyledView>
                 )}
               </Card>

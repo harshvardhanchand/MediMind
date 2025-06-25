@@ -20,8 +20,9 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@babel/runtime": "^7.27.6",
     "@expo/metro-runtime": "~5.0.4",
-    "@expo/vector-icons": "^14.0.4",
+    "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "8.3.0",
     "@react-native/virtualized-lists": "^0.80.0",
@@ -63,7 +64,6 @@
     "react-native-paper": "^5.12.3",
     "react-native-pdf": "^6.7.7",
     "react-native-polyfill-globals": "^3.1.0",
-    "react-native-push-notification": "^8.1.1",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.10.0",
     "react-native-svg": "15.11.2",

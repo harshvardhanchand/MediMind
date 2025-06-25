@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TextInputProps, StyleProp, ViewStyle, TextStyle, Platform, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../theme';
 
@@ -15,10 +15,10 @@ interface StyledInputProps extends Omit<TextInputProps, 'style' | 'placeholderTe
   label?: string;
   error?: string;
   variant?: 'default' | 'formListItem';
-  tw?: string; // Tailwind for the outer container
-  inputTw?: string; // Tailwind for the TextInput itself (use sparingly, prefer variants)
-  inputStyle?: StyleProp<TextStyle>; // Custom style for the TextInput
-  containerStyle?: StyleProp<ViewStyle>; // Custom style for the outer container
+  tw?: string;
+  inputTw?: string;
+  inputStyle?: StyleProp<TextStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
   leftIconName?: string;
   rightIconName?: string;
   iconSize?: number;
@@ -70,13 +70,13 @@ const StyledInput: React.FC<StyledInputProps> = ({
     inputBgTw = 'bg-transparent'; // Input itself is transparent
     currentBorderColor = showBottomBorder ? colors.borderSubtle : 'transparent'; // Default border for form list item
     if (error && showBottomBorder) {
-        currentBorderColor = colors.accentDestructive;
+      currentBorderColor = colors.accentDestructive;
     } else if (isFocused && showBottomBorder) {
-        currentBorderColor = colors.accentPrimary;
+      currentBorderColor = colors.accentPrimary;
     }
     // For formListItem, border width comes from 'border-b' (1px) or is none.
   }
-  
+
   const finalTextInputTw = `${textInputBaseTw} ${inputTw}`.trim();
   const finalContainerTw = variant === 'formListItem' ? containerOuterBaseTw : `${containerOuterBaseTw} ${tw}`.trim();
   const finalInputWrapperTw = `${inputWrapperBaseTw}`.trim();
@@ -86,23 +86,23 @@ const StyledInput: React.FC<StyledInputProps> = ({
   return (
     <StyledView className={finalContainerTw} style={containerStyle}>
       {label && (
-        <StyledText 
-          variant="label" 
-          color="textSecondary" 
+        <StyledText
+          variant="label"
+          color="textSecondary"
           tw={variant === 'formListItem' ? 'mb-1' : 'mb-1.5'}
         >
           {label}
         </StyledText>
       )}
-      <StyledView 
+      <StyledView
         className={finalInputWrapperTw}
-        style={{ borderColor: currentBorderColor }} 
+        style={{ borderColor: currentBorderColor }}
       >
         {leftIconName && (
-          <Ionicons 
-            name={leftIconName} 
-            size={iconSize} 
-            color={isFocused ? colors.accentPrimary : colors.textMuted} 
+          <Ionicons
+            name={leftIconName as any}
+            size={iconSize}
+            color={isFocused ? colors.accentPrimary : colors.textMuted}
             className={`pr-2 ${variant === 'formListItem' ? 'pl-0' : 'pl-3'}`}
           />
         )}
@@ -123,10 +123,10 @@ const StyledInput: React.FC<StyledInputProps> = ({
         />
         {rightIconName && (
           <StyledIconTouchableOpacity onPress={onRightIconPress} tw={`pr-2 ${variant === 'formListItem' ? 'pr-0' : 'pl-2'}`}>
-            <Ionicons 
-              name={rightIconName} 
-              size={iconSize} 
-              color={isFocused ? colors.accentPrimary : colors.textMuted} 
+            <Ionicons
+              name={rightIconName as any}
+              size={iconSize}
+              color={isFocused ? colors.accentPrimary : colors.textMuted}
             />
           </StyledIconTouchableOpacity>
         )}
