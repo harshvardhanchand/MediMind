@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DeviceInfo from 'react-native-device-info';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 
 interface AnalyticsEvent {
   event: string;
@@ -46,8 +47,8 @@ class SimpleAnalytics {
       event,
       properties: {
         ...properties,
-        platform: DeviceInfo.getSystemName(),
-        version: DeviceInfo.getVersion(),
+        platform: Device.osName || 'unknown',
+        version: Constants.nativeAppVersion || 'unknown',
       },
       timestamp: Date.now(),
       userId: this.userId,

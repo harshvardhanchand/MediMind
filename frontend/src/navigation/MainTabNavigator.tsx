@@ -1,18 +1,18 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
-// Import your screens
+
 import DocumentsScreen from '../screens/main/DocumentsScreen';
-import HealthDataScreen from '../screens/main/HealthDataScreen'; // The placeholder we created
+import HealthDataScreen from '../screens/main/HealthDataScreen';
 import AssistantScreen from '../screens/main/AssistantScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
-import { colors } from '../theme/colors'; // Your new color palette
+import { colors } from '../theme/colors';
 
-import DashboardStackNavigator from './DashboardStackNavigator'; // Import the new stack navigator
+import DashboardStackNavigator from './DashboardStackNavigator';
 
-// Wrap tab screens with error boundaries
+
 const DocumentsScreenWithErrorBoundary = () => (
   <ErrorBoundary level="screen" context="DocumentsScreen">
     <DocumentsScreen />
@@ -53,56 +53,56 @@ const MainTabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-                      let iconName = 'home-outline';
+          let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
 
           if (route.name === 'DashboardTab') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'DocumentsTab') {
-            iconName = focused ? 'documents' : 'documents-outline';
+            iconName = focused ? 'document' : 'document-outline';
           } else if (route.name === 'DataTab') {
             iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           } else if (route.name === 'AssistantTab') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+            iconName = focused ? 'chatbubble' : 'chatbubble-outline';
           } else if (route.name === 'SettingsTab') {
             iconName = focused ? 'settings' : 'settings-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: colors.accentPrimary, 
-        tabBarInactiveTintColor: colors.textSecondary, 
+        tabBarActiveTintColor: colors.accentPrimary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: colors.backgroundSecondary, 
-          borderTopColor: colors.borderSubtle,      
+          backgroundColor: colors.backgroundSecondary,
+          borderTopColor: colors.borderSubtle,
         },
-        headerShown: false, 
+        headerShown: false,
         tabBarLabelStyle: {
           fontSize: 10,
         },
       })}
     >
-      <Tab.Screen 
-        name="DashboardTab" 
+      <Tab.Screen
+        name="DashboardTab"
         component={DashboardStackNavigator}
         options={{ tabBarLabel: 'Dashboard' }}
       />
-      <Tab.Screen 
-        name="DocumentsTab" 
-        component={DocumentsScreenWithErrorBoundary} 
+      <Tab.Screen
+        name="DocumentsTab"
+        component={DocumentsScreenWithErrorBoundary}
         options={{ tabBarLabel: 'Documents' }}
       />
-      <Tab.Screen 
-        name="DataTab" 
-        component={HealthDataScreenWithErrorBoundary} 
+      <Tab.Screen
+        name="DataTab"
+        component={HealthDataScreenWithErrorBoundary}
         options={{ tabBarLabel: 'Data' }}
       />
-      <Tab.Screen 
-        name="AssistantTab" 
-        component={AssistantScreenWithErrorBoundary} 
+      <Tab.Screen
+        name="AssistantTab"
+        component={AssistantScreenWithErrorBoundary}
         options={{ tabBarLabel: 'Assistant' }}
       />
-      <Tab.Screen 
-        name="SettingsTab" 
-        component={SettingsScreenWithErrorBoundary} 
+      <Tab.Screen
+        name="SettingsTab"
+        component={SettingsScreenWithErrorBoundary}
         options={{ tabBarLabel: 'Settings' }}
       />
     </Tab.Navigator>
