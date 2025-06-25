@@ -87,10 +87,10 @@ const LoginScreen = () => {
     }
 
     try {
-      
+
       const resetPasswordURL = 'medimind://ResetPassword';
-      
-      
+
+
       const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: resetPasswordURL,
       });
@@ -113,11 +113,11 @@ const LoginScreen = () => {
 
   return (
     <ScreenContainer withPadding>
-      <StyledText variant="h1" color="primary" tw="mb-4 text-center">Welcome Back!</StyledText>
-      <StyledText variant="body1" color="textSecondary" tw="mb-8 text-center">
+      <StyledText variant="h1" color="primary" className="mb-4 text-center">Welcome Back!</StyledText>
+      <StyledText variant="body1" color="textSecondary" className="mb-8 text-center">
         Sign in to access your health dashboard.
       </StyledText>
-      
+
       <StyledInput
         label="Email"
         value={email}
@@ -126,7 +126,7 @@ const LoginScreen = () => {
         autoComplete="username"
         textContentType="emailAddress"
         autoCapitalize="none"
-        tw="mb-4"
+        className="mb-4"
         editable={!isLoading}
       />
       <StyledInput
@@ -138,49 +138,49 @@ const LoginScreen = () => {
         textContentType="password"
         autoCorrect={false}
         spellCheck={false}
-        tw="mb-6"
+        className="mb-6"
         editable={!isLoading}
       />
 
       {error && (
-        <StyledText variant="caption" color="error" tw="text-center mb-4">
+        <StyledText variant="caption" color="error" className="text-center mb-4">
           {error}
         </StyledText>
       )}
 
-      <StyledButton 
+      <StyledButton
         variant="filledPrimary"
-        onPress={handleLogin} 
-        tw="w-full mb-4"
+        onPress={handleLogin}
+        className="w-full mb-4"
         disabled={isLoading}
         loading={loadingLogin}
       >
         Log In
       </StyledButton>
-      
-      <StyledButton 
+
+      <StyledButton
         variant="textPrimary"
-        onPress={handleForgotPassword} 
-        tw="w-full mb-4"
+        onPress={handleForgotPassword}
+        className="w-full mb-4"
         disabled={isLoading}
       >
         Forgot Password?
       </StyledButton>
-      
-      <StyledButton 
+
+      <StyledButton
         variant="textPrimary"
-        onPress={() => navigation.navigate('SignUp')} 
-        tw="w-full mb-4"
+        onPress={() => navigation.navigate('SignUp')}
+        className="w-full mb-4"
         disabled={isLoading}
       >
         Don't have an account? Sign Up
       </StyledButton>
 
       {__DEV__ && (
-        <StyledButton 
+        <StyledButton
           variant="filledSecondary"
-          onPress={handleDevLogin} 
-          tw="w-full mt-4"
+          onPress={handleDevLogin}
+          className="w-full mt-4"
           disabled={isLoading}
           loading={loadingDevLogin}
         >

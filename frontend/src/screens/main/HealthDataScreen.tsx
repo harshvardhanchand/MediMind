@@ -30,9 +30,9 @@ const HealthDataScreen = () => {
   return (
     <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundTertiary}>
       <StyledScrollView className="flex-1">
-        <StyledText variant="h1" tw="px-6 pt-8 pb-6 font-bold text-2xl">Browse Health Data</StyledText>
+        <StyledText variant="h1" className="px-6 pt-8 pb-6 font-bold text-2xl">Browse Health Data</StyledText>
         
-        <Card tw="mx-4 mb-6" noPadding>
+        <Card className="mx-4 mb-6" noPadding>
           {healthCategories.map((category, index) => (
             <ListItem
               key={category.id}
@@ -41,7 +41,7 @@ const HealthDataScreen = () => {
               iconLeft={category.iconName}
               iconLeftColor={colors.accentPrimary}
               iconLeftSize={26}
-              tw="px-5 py-4"
+              className="px-5 py-4"
               onPress={() => navigation.navigate(category.navigateTo as any)}
               showBottomBorder={index < healthCategories.length - 1}
             />

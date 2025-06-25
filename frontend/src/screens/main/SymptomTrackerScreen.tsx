@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator} from 'react-native';
+import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Plus, AlertCircle,ChevronRight} from 'lucide-react-native';
+import { Plus, AlertCircle, ChevronRight } from 'lucide-react-native';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
@@ -14,7 +14,7 @@ import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import { useTheme } from '../../theme';
 import { symptomServices, SymptomCreate } from '../../api/services/symptomServices';
-import {  ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
+import { ERROR_MESSAGES, LOADING_MESSAGES } from '../../constants/messages';
 import { SymptomEntry } from '../../types/interfaces';
 
 const StyledView = styled(View);
@@ -32,7 +32,7 @@ const SymptomTrackerScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [usingDummyData, setUsingDummyData] = useState(false);
   const [apiConnected, setApiConnected] = useState(false);
-  
+
   const [newSymptom, setNewSymptom] = useState('');
   const [severity, setSeverity] = useState('3');
   const [showForm, setShowForm] = useState(false);
@@ -75,15 +75,15 @@ const SymptomTrackerScreen = () => {
       setError(null);
       setUsingDummyData(false);
       setApiConnected(false);
-      
+
       console.log('Fetching symptoms from API...');
-      
+
       // Call the real API
       const response = await symptomServices.getSymptoms({ limit: 50 });
-      
+
       if (response.data && response.data.symptoms) {
         setApiConnected(true);
-        
+
         // Convert API response to display format
         const formattedSymptoms: SymptomEntry[] = response.data.symptoms.map(symptom => {
           const formatted = symptomServices.formatSymptomForDisplay(symptom);
@@ -96,7 +96,7 @@ const SymptomTrackerScreen = () => {
             color: formatted.color
           };
         });
-        
+
         // If API returns empty list, show mock data instead of empty state
         if (formattedSymptoms.length === 0) {
           console.log('✅ API connected but no symptoms found - showing mock data');
@@ -109,7 +109,7 @@ const SymptomTrackerScreen = () => {
       } else {
         throw new Error('Invalid response format');
       }
-      
+
     } catch (err: any) {
       console.log('API call failed, falling back to dummy data:', err.message);
       setSymptoms(dummySymptoms);
@@ -123,20 +123,20 @@ const SymptomTrackerScreen = () => {
 
   const handleAddSymptom = async () => {
     if (newSymptom.trim() === '') return;
-    
+
     const newSeverity = parseInt(severity) || 3;
-    
+
     // Map numeric severity to API severity
     const severityMap: { [key: number]: 'mild' | 'moderate' | 'severe' | 'critical' } = {
       1: 'mild',
-      2: 'mild', 
+      2: 'mild',
       3: 'moderate',
       4: 'severe',
       5: 'critical'
     };
-    
+
     const apiSeverity = severityMap[newSeverity] || 'moderate';
-    
+
     const symptomData: SymptomCreate = {
       symptom: newSymptom.trim(),
       severity: apiSeverity,
@@ -147,7 +147,7 @@ const SymptomTrackerScreen = () => {
       if (apiConnected) {
         console.log("Adding symptom via API:", symptomData);
         const response = await symptomServices.createSymptom(symptomData);
-        
+
         if (response.data) {
           // Refresh the list to get the new symptom
           await fetchSymptoms();
@@ -163,15 +163,15 @@ const SymptomTrackerScreen = () => {
           notes: undefined,
           color: newSeverity >= 4 ? colors.error : (newSeverity === 3 ? colors.warning : colors.info)
         };
-        
+
         console.log("Adding symptom locally (API not connected):", entry);
         setSymptoms(prev => [entry, ...prev]);
       }
-      
+
       setNewSymptom('');
       setSeverity('3');
       setShowForm(false);
-      
+
     } catch (error: any) {
       console.error("Failed to add symptom:", error.message);
       // Fallback to local addition on error
@@ -183,7 +183,7 @@ const SymptomTrackerScreen = () => {
         notes: undefined,
         color: newSeverity >= 4 ? colors.error : (newSeverity === 3 ? colors.warning : colors.info)
       };
-      
+
       setSymptoms(prev => [entry, ...prev]);
       setNewSymptom('');
       setSeverity('3');
@@ -215,13 +215,13 @@ const SymptomTrackerScreen = () => {
   }, []);
 
   const renderSymptomItem: ListRenderItem<SymptomEntry> = ({ item }) => (
-    <StyledTouchableOpacity tw="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
-      <StyledView tw="flex-row justify-between items-start">
-        <StyledView tw="flex-1">
-          <StyledText variant="h4" tw="text-gray-900 mb-1">{item.symptom}</StyledText>
-          <StyledView tw="flex-row items-center mb-2">
+    <StyledTouchableOpacity className="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
+      <StyledView className="flex-row justify-between items-start">
+        <StyledView className="flex-1">
+          <StyledText variant="h4" className="text-gray-900 mb-1">{item.symptom}</StyledText>
+          <StyledView className="flex-row items-center mb-2">
             <StyledView tw={`px-2 py-1 rounded-full ${getSeverityColor(item.severity)} mr-2`}>
-              <StyledText tw={`text-xs font-medium ${getSeverityTextColor(item.severity)}`}>
+              <StyledText className={`text-xs font-medium ${getSeverityTextColor(item.severity)}`}>
                 Severity {item.severity}
               </StyledText>
             </StyledView>
@@ -230,7 +230,7 @@ const SymptomTrackerScreen = () => {
             </StyledText>
           </StyledView>
           {item.notes && (
-            <StyledText variant="body2" color="textSecondary" tw="mt-1">
+            <StyledText variant="body2" color="textSecondary" className="mt-1">
               {item.notes}
             </StyledText>
           )}
@@ -246,9 +246,9 @@ const SymptomTrackerScreen = () => {
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText 
-            variant="body1" 
-            tw="mt-4 text-center"
+          <StyledText
+            variant="body1"
+            className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
             {LOADING_MESSAGES.GENERIC_LOADING}
@@ -289,32 +289,32 @@ const SymptomTrackerScreen = () => {
 
   return (
     <ScreenContainer scrollable={false} withPadding>
-      <StyledView tw="pt-2 pb-4 flex-row items-center justify-between">
+      <StyledView className="pt-2 pb-4 flex-row items-center justify-beclassNameeen">
         <StyledView>
           <StyledText variant="h1" color="primary">Symptom Tracker</StyledText>
-          <StyledText variant="body2" color="textSecondary" tw="mt-1">
+          <StyledText variant="body2" color="textSecondary" className="mt-1">
             Record and monitor your symptoms over time
           </StyledText>
-          
+
           {usingDummyData && !apiConnected && (
-            <StyledView tw="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-              <StyledText tw="text-yellow-800 text-sm text-center">
+            <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+              <StyledText className="text-yellow-800 text-sm text-center">
                 📱 API connection failed - Showing sample data
               </StyledText>
             </StyledView>
           )}
-          
+
           {usingDummyData && apiConnected && (
-            <StyledView tw="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
-              <StyledText tw="text-blue-800 text-sm text-center">
+            <StyledView className="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
+              <StyledText className="text-blue-800 text-sm text-center">
                 📋 No symptoms logged yet - Showing sample data
               </StyledText>
             </StyledView>
           )}
-          
+
           {!usingDummyData && apiConnected && symptoms.length > 0 && (
-            <StyledView tw="mt-3 p-2 bg-green-100 rounded border border-green-300">
-              <StyledText tw="text-green-800 text-sm text-center">
+            <StyledView className="mt-3 p-2 bg-green-100 rounded border border-green-300">
+              <StyledText className="text-green-800 text-sm text-center">
                 ✅ Connected to API - Real data loaded
               </StyledText>
             </StyledView>
@@ -323,72 +323,72 @@ const SymptomTrackerScreen = () => {
       </StyledView>
 
       {showForm ? (
-        <StyledView tw="bg-gray-50 p-4 rounded-lg mb-4">
-          <StyledText variant="h4" tw="mb-3">Log New Symptom</StyledText>
-          
+        <StyledView className="bg-gray-50 p-4 rounded-lg mb-4">
+          <StyledText variant="h4" className="mb-3">Log New Symptom</StyledText>
+
           <StyledInput
             placeholder="Describe your symptom..."
             value={newSymptom}
             onChangeText={setNewSymptom}
-            tw="mb-3"
+            className="mb-3"
           />
-          
-          <StyledText variant="body2" tw="mb-2 text-gray-700">Severity Level (1-5)</StyledText>
-          <StyledView tw="flex-row justify-between mb-4">
+
+          <StyledText variant="body2" className="mb-2 text-gray-700">Severity Level (1-5)</StyledText>
+          <StyledView className="flex-row justify-between mb-4">
             {[1, 2, 3, 4, 5].map((level) => (
               <StyledTouchableOpacity
                 key={level}
                 tw={`flex-1 mx-1 py-2 rounded ${severity === level.toString() ? getSeverityColor(level) : 'bg-gray-200'}`}
                 onPress={() => setSeverity(level.toString())}
               >
-                <StyledText tw={`text-center font-medium ${severity === level.toString() ? getSeverityTextColor(level) : 'text-gray-600'}`}>
+                <StyledText className={`text-center font-medium ${severity === level.toString() ? getSeverityTextColor(level) : 'text-gray-600'}`}>
                   {level}
                 </StyledText>
               </StyledTouchableOpacity>
             ))}
           </StyledView>
-          
-          <StyledView tw="flex-row space-x-2">
-            <StyledButton 
-              variant="filledPrimary" 
-              onPress={handleAddSymptom} 
-              tw="flex-1"
+
+          <StyledView className="flex-row space-x-2">
+            <StyledButton
+              variant="filledPrimary"
+              onPress={handleAddSymptom}
+              className="flex-1"
               disabled={!newSymptom.trim()}
             >
               Add Symptom
             </StyledButton>
-            <StyledButton 
-              variant="textPrimary" 
-              onPress={() => setShowForm(false)} 
-              tw="flex-1"
+            <StyledButton
+              variant="textPrimary"
+              onPress={() => setShowForm(false)}
+              className="flex-1"
             >
               Cancel
             </StyledButton>
           </StyledView>
         </StyledView>
       ) : (
-        <StyledButton 
+        <StyledButton
           variant="filledPrimary"
           iconLeft={<Plus size={18} color={colors.onPrimary} />}
-          onPress={() => setShowForm(true)} 
-          tw="mb-4"
+          onPress={() => setShowForm(true)}
+          className="mb-4"
           style={{ borderRadius: 10 }}
         >
           Log New Symptom
         </StyledButton>
       )}
-      
-      <StyledView tw="flex-1">
+
+      <StyledView className="flex-1">
         <FlatList<SymptomEntry>
           data={symptoms}
           keyExtractor={(item) => item.id}
           renderItem={renderSymptomItem}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <StyledView tw="flex items-center justify-center p-6 mt-10">
+            <StyledView className="flex items-center justify-center p-6 mt-10">
               <AlertCircle size={40} color={colors.textMuted} />
-              <StyledText variant="h4" tw="mt-3 text-gray-700">No Symptoms Logged Yet</StyledText>
-              <StyledText variant="body2" color="textSecondary" tw="text-center mt-1">
+              <StyledText variant="h4" className="mt-3 text-gray-700">No Symptoms Logged Yet</StyledText>
+              <StyledText variant="body2" color="textSecondary" className="text-center mt-1">
                 Tap the button above to log your first symptom.
               </StyledText>
             </StyledView>

@@ -24,7 +24,7 @@ interface ListItemProps {
   iconRight?: string; // Ionicon name for chevron or other indicators
   iconRightColor?: string;
   iconRightSize?: number;
-  tw?: string; // Tailwind classes for the main container
+  className?: string; // Tailwind classes for the main container
   style?: StyleProp<ViewStyle>;
   showBottomBorder?: boolean;
   children?: ReactNode; // Alternative to `value` for more complex right-side content
@@ -44,7 +44,7 @@ const ListItem: React.FC<ListItemProps> = ({
   iconRight = 'chevron-forward-outline', // Default to chevron if onPress is present
   iconRightColor,
   iconRightSize = 20,
-  tw = '',
+  className = '',
   style,
   showBottomBorder = false,
   children,
@@ -64,7 +64,7 @@ const ListItem: React.FC<ListItemProps> = ({
   return (
     <ContainerComponent
       onPress={onPress}
-      className={`${containerBaseTw} ${tw}`.trim()}
+      className={`${containerBaseTw} ${className}`.trim()}
       style={style}
       activeOpacity={onPress ? 0.6 : 1}
     >
@@ -77,11 +77,11 @@ const ListItem: React.FC<ListItemProps> = ({
         />
       )}
       <StyledView className="flex-1">
-        <StyledText variant="body1" color="textPrimary" style={labelStyle} tw="font-medium">
+        <StyledText variant="body1" color="textPrimary" style={labelStyle} className="font-medium">
           {label}
         </StyledText>
         {subtitle && (
-          <StyledText variant="caption" color="textSecondary" style={subtitleStyle} tw="mt-0.5">
+          <StyledText variant="caption" color="textSecondary" style={subtitleStyle} className="mt-0.5">
             {subtitle}
           </StyledText>
         )}
@@ -90,11 +90,11 @@ const ListItem: React.FC<ListItemProps> = ({
         children // Render custom children for the right side if provided
       ) : value !== undefined ? (
         typeof value === 'string' ? (
-          <StyledText variant="body1" color="textSecondary" style={valueStyle} tw="ml-2">
+          <StyledText variant="body1" color="textSecondary" style={valueStyle} className="ml-2">
             {value}
           </StyledText>
         ) : (
-          <StyledView tw="ml-2">
+          <StyledView className="ml-2">
             {value}
           </StyledView>
         )

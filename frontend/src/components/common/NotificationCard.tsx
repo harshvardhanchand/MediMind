@@ -87,7 +87,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
         </View>
 
         <View style={styles.headerText}>
-          <StyledText variant="label" tw="font-semibold" numberOfLines={1}>
+          <StyledText variant="label" className="font-semibold" numberOfLines={1}>
             {notification.title}
           </StyledText>
           <StyledText variant="caption" color="textMuted">
@@ -103,7 +103,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
       <StyledText
         variant="body2"
         color="textSecondary"
-        tw="mt-2"
+        className="mt-2"
         numberOfLines={3}
       >
         {notification.message}
@@ -111,11 +111,11 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
 
       {notification.metadata?.recommendations && (
         <View style={styles.recommendations}>
-          <StyledText variant="caption" color="textMuted" tw="mb-1">
+          <StyledText variant="caption" color="textMuted" className="mb-1">
             Recommendations:
           </StyledText>
           {notification.metadata.recommendations.slice(0, 2).map((rec, index) => (
-            <StyledText key={index} variant="caption" color="textSecondary" tw="ml-2">
+            <StyledText key={index} variant="caption" color="textSecondary" className="ml-2">
               • {rec}
             </StyledText>
           ))}
@@ -133,7 +133,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
               }}
             >
               <Ionicons name="checkmark-outline" size={16} color={colors.success} />
-              <StyledText variant="caption" color="success" tw="ml-1">
+              <StyledText variant="caption" color="success" className="ml-1">
                 Mark Read
               </StyledText>
             </TouchableOpacity>
@@ -148,7 +148,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
               }}
             >
               <Ionicons name="trash-outline" size={16} color={colors.error} />
-              <StyledText variant="caption" color="error" tw="ml-1">
+              <StyledText variant="caption" color="error" className="ml-1">
                 Delete
               </StyledText>
             </TouchableOpacity>

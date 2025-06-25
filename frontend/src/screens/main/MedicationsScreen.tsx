@@ -3,7 +3,7 @@ import { View, FlatList, TouchableOpacity, ListRenderItem, ActivityIndicator } f
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pill,Plus,ChevronRight } from 'lucide-react-native';
+import { Pill, Plus, ChevronRight } from 'lucide-react-native';
 
 import { MainAppStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
@@ -75,15 +75,15 @@ const MedicationsScreen = () => {
       setLoading(true);
       setUsingDummyData(false);
       setApiConnected(false);
-      
+
       console.log('Fetching medications from API...');
-      
+
       // Call the real API
       const response = await medicationServices.getMedications({ limit: 100 });
-      
+
       if (response.data) {
         setApiConnected(true);
-        
+
         // Convert API response to display format
         const formattedMedications: MedicationEntry[] = response.data.map(med => ({
           id: med.medication_id,
@@ -96,7 +96,7 @@ const MedicationsScreen = () => {
           prescribing_doctor: med.prescribing_doctor,
           created_at: med.created_at
         }));
-        
+
         // If API returns empty list, show mock data instead of empty state
         if (formattedMedications.length === 0) {
           console.log('✅ API connected but no medications found - showing mock data');
@@ -109,7 +109,7 @@ const MedicationsScreen = () => {
       } else {
         throw new Error('Invalid response format');
       }
-      
+
     } catch (err: any) {
       console.log('API call failed, falling back to dummy data:', err.message);
       setMedications(dummyMedications);
@@ -161,27 +161,27 @@ const MedicationsScreen = () => {
   }, []);
 
   const renderMedicationItem: ListRenderItem<MedicationEntry> = ({ item }) => (
-    <StyledTouchableOpacity tw="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
-      <StyledView tw="flex-row justify-between items-start">
-        <StyledView tw="flex-1">
-          <StyledText variant="h4" tw="text-gray-900 mb-1">{item.name}</StyledText>
-          <StyledView tw="flex-row items-center mb-2">
+    <StyledTouchableOpacity className="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
+      <StyledView className="flex-row justify-between items-start">
+        <StyledView className="flex-1">
+          <StyledText variant="h4" className="text-gray-900 mb-1">{item.name}</StyledText>
+          <StyledView className="flex-row items-center mb-2">
             <StyledView tw={`px-2 py-1 rounded-full ${getStatusColor(item.status)} mr-2`}>
-              <StyledText tw={`text-xs font-medium ${getStatusTextColor(item.status)}`}>
+              <StyledText className={`text-xs font-medium ${getStatusTextColor(item.status)}`}>
                 {item.status}
               </StyledText>
             </StyledView>
             {item.dosage && (
-              <StyledText variant="caption" color="textSecondary" tw="mr-2">
+              <StyledText variant="caption" color="textSecondary" className="mr-2">
                 {item.dosage}
               </StyledText>
             )}
           </StyledView>
-          <StyledText variant="body2" color="textSecondary" tw="mb-1">
+          <StyledText variant="body2" color="textSecondary" className="mb-1">
             {item.frequency}
           </StyledText>
           {item.reason && (
-            <StyledText variant="body2" color="textSecondary" tw="mb-1">
+            <StyledText variant="body2" color="textSecondary" className="mb-1">
               Reason: {item.reason}
             </StyledText>
           )}
@@ -199,9 +199,9 @@ const MedicationsScreen = () => {
   if (loading) {
     return (
       <ScreenContainer scrollable={false} withPadding>
-        <StyledView tw="flex-1 justify-center items-center">
+        <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" />
-          <StyledText tw="mt-2 text-gray-600">Loading medications...</StyledText>
+          <StyledText className="mt-2 text-gray-600">Loading medications...</StyledText>
         </StyledView>
       </ScreenContainer>
     );
@@ -209,32 +209,32 @@ const MedicationsScreen = () => {
 
   return (
     <ScreenContainer scrollable={false} withPadding>
-      <StyledView tw="pt-2 pb-4 flex-row items-center justify-between">
+      <StyledView className="pt-2 pb-4 flex-row items-center justify-between">
         <StyledView>
           <StyledText variant="h1" color="primary">Medications</StyledText>
-          <StyledText variant="body2" color="textSecondary" tw="mt-1">
+          <StyledText variant="body2" color="textSecondary" className="mt-1">
             Track your medications and schedule
           </StyledText>
-          
+
           {usingDummyData && !apiConnected && (
-            <StyledView tw="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-              <StyledText tw="text-yellow-800 text-sm text-center">
+            <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+              <StyledText className="text-yellow-800 text-sm text-center">
                 📱 API connection failed - Showing sample data
               </StyledText>
             </StyledView>
           )}
-          
+
           {usingDummyData && apiConnected && (
-            <StyledView tw="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
-              <StyledText tw="text-blue-800 text-sm text-center">
+            <StyledView className="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
+              <StyledText className="text-blue-800 text-sm text-center">
                 📋 No medications added yet - Showing sample data
               </StyledText>
             </StyledView>
           )}
-          
+
           {!usingDummyData && apiConnected && medications.length > 0 && (
-            <StyledView tw="mt-3 p-2 bg-green-100 rounded border border-green-300">
-              <StyledText tw="text-green-800 text-sm text-center">
+            <StyledView className="mt-3 p-2 bg-green-100 rounded border border-green-300">
+              <StyledText className="text-green-800 text-sm text-center">
                 ✅ Connected to API - Real data loaded
               </StyledText>
             </StyledView>
@@ -242,17 +242,17 @@ const MedicationsScreen = () => {
         </StyledView>
       </StyledView>
 
-      <StyledButton 
+      <StyledButton
         variant="filledPrimary"
         iconLeft={<Plus size={18} color={colors.onPrimary} />}
-        onPress={() => navigation.navigate('AddMedication')} 
-        tw="mb-4"
+        onPress={() => navigation.navigate('AddMedication')}
+        className="mb-4"
         style={{ borderRadius: 10 }}
       >
         Add New Medication
       </StyledButton>
-      
-      <StyledView tw="flex-1">
+
+      <StyledView className="flex-1">
         <FlatList<MedicationEntry>
           data={medications}
           keyExtractor={(item) => item.id}
@@ -261,10 +261,10 @@ const MedicationsScreen = () => {
           onRefresh={fetchMedications}
           refreshing={loading}
           ListEmptyComponent={
-            <StyledView tw="flex items-center justify-center p-6 mt-10">
+            <StyledView className="flex items-center justify-center p-6 mt-10">
               <Pill size={40} color={colors.textMuted} />
-              <StyledText variant="h4" tw="mt-3 text-gray-700">No Medications Added Yet</StyledText>
-              <StyledText variant="body2" color="textSecondary" tw="text-center mt-1">
+              <StyledText variant="h4" className="mt-3 text-gray-700">No Medications Added Yet</StyledText>
+              <StyledText variant="body2" color="textSecondary" className="text-center mt-1">
                 Tap the button above to add your first medication.
               </StyledText>
             </StyledView>

@@ -365,12 +365,12 @@ const NotificationScreen = () => {
         {/* Header */}
         <StyledView className="px-4 py-6 border-b border-gray-200">
           <StyledView className="flex-row justify-between items-center mb-4">
-            <StyledText variant="h2" tw="font-bold">
+            <StyledText variant="h2" className="font-bold">
               Notifications
             </StyledText>
             {stats && stats.unread_count > 0 && (
               <TouchableOpacity onPress={handleMarkAllAsRead}>
-                <StyledText variant="body2" color="accentPrimary" tw="font-medium">
+                <StyledText variant="body2" color="accentPrimary" className="font-medium">
                   Mark All Read
                 </StyledText>
               </TouchableOpacity>
@@ -381,7 +381,7 @@ const NotificationScreen = () => {
           {stats && (
             <StyledView className="flex-row justify-between mb-4">
               <StyledView className="items-center">
-                <StyledText variant="h3" tw="font-bold">
+                <StyledText variant="h3" className="font-bold">
                   {stats.total_count}
                 </StyledText>
                 <StyledText variant="caption" color="textMuted">
@@ -389,7 +389,7 @@ const NotificationScreen = () => {
                 </StyledText>
               </StyledView>
               <StyledView className="items-center">
-                <StyledText variant="h3" tw="font-bold" color="accentPrimary">
+                <StyledText variant="h3" className="font-bold" color="accentPrimary">
                   {stats.unread_count}
                 </StyledText>
                 <StyledText variant="caption" color="textMuted">
@@ -397,7 +397,7 @@ const NotificationScreen = () => {
                 </StyledText>
               </StyledView>
               <StyledView className="items-center">
-                <StyledText variant="h3" tw="font-bold" color="error">
+                <StyledText variant="h3" className="font-bold" color="error">
                   {stats.by_severity[NotificationSeverity.CRITICAL] || 0}
                 </StyledText>
                 <StyledText variant="caption" color="textMuted">
@@ -409,7 +409,7 @@ const NotificationScreen = () => {
 
           {/* Type Filters */}
           <StyledView className="mb-3">
-            <StyledText variant="label" tw="mb-2 font-medium">
+            <StyledText variant="label" className="mb-2 font-medium">
               Filter by Type
             </StyledText>
             <FlatList
@@ -429,7 +429,7 @@ const NotificationScreen = () => {
 
           {/* Severity Filters */}
           <StyledView>
-            <StyledText variant="label" tw="mb-2 font-medium">
+            <StyledText variant="label" className="mb-2 font-medium">
               Filter by Severity
             </StyledText>
             <FlatList
@@ -464,10 +464,10 @@ const NotificationScreen = () => {
                 size={64}
                 color={colors.textMuted}
               />
-              <StyledText variant="h4" color="textMuted" tw="mt-4 mb-2">
+              <StyledText variant="h4" color="textMuted" className="mt-4 mb-2">
                 No notifications
               </StyledText>
-              <StyledText variant="body2" color="textMuted" tw="text-center">
+              <StyledText variant="body2" color="textMuted" className="text-center">
                 You're all caught up! New notifications will appear here.
               </StyledText>
             </StyledView>

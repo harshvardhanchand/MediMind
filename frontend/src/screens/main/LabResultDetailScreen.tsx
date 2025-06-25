@@ -92,7 +92,7 @@ const LabResultDetailScreen = () => {
       label={item.date} // Show date as primary label
       value={`${item.value} ${item.unit}`}
       subtitle={item.referenceRange ? `Ref: ${item.referenceRange}` : undefined}
-      tw="px-4" // Add horizontal padding to ListItem itself if Card has noPadding
+      className="px-4" // Add horizontal padding to ListItem itself if Card has noPadding
     />
   );
 
@@ -123,7 +123,7 @@ const LabResultDetailScreen = () => {
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <StyledText
             variant="body1"
-            tw="mt-4 text-center"
+            className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
             {LOADING_MESSAGES.GENERIC_LOADING}
@@ -151,8 +151,8 @@ const LabResultDetailScreen = () => {
           ItemSeparatorComponent={() => <StyledView className="h-px bg-borderSubtle ml-4" />}
           ListHeaderComponent={() => (
             <StyledView className="pt-4">
-              <StyledText variant="body1" color="textSecondary" tw="text-center mb-4 px-4">Historical Trend</StyledText>
-              <Card tw="mx-4 mb-6 items-center justify-center h-60 bg-backgroundSecondary p-0 overflow-hidden rounded-xl">
+              <StyledText variant="body1" color="textSecondary" className="text-center mb-4 px-4">Historical Trend</StyledText>
+              <Card className="mx-4 mb-6 items-center justify-center h-60 bg-backgroundSecondary p-0 overflow-hidden rounded-xl">
                 {labHistory.length > 1 ? (
                   <LineChart
                     data={chartData}
@@ -179,13 +179,13 @@ const LabResultDetailScreen = () => {
                 ) : (
                   <StyledView className="flex-1 items-center justify-center p-4">
                     <Ionicons name="analytics-outline" size={48} color={colors.textMuted} />
-                    <StyledText color="textMuted" tw="mt-2 text-center">
+                    <StyledText color="textMuted" className="mt-2 text-center">
                       {labHistory.length === 1 ? 'Not enough data to plot a trend. At least two data points are needed.' : 'No data available for chart.'}
                     </StyledText>
                   </StyledView>
                 )}
               </Card>
-              {labHistory.length > 0 && <StyledText variant="h4" tw="mb-2 font-semibold px-4">History</StyledText>}
+              {labHistory.length > 0 && <StyledText variant="h4" className="mb-2 font-semibold px-4">History</StyledText>}
             </StyledView>
           )}
         />

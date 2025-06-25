@@ -35,14 +35,14 @@ const WelcomeScreen = () => {
           {/* Welcome Text */}
           <StyledText
             variant="h1"
-            tw="text-white text-4xl font-bold text-center mb-4"
+            className="text-white text-4xl font-bold text-center mb-4"
           >
             Welcome to MediMind
           </StyledText>
 
           <StyledText
             variant="h2"
-            tw="text-white text-xl font-medium text-center mb-8"
+            className="text-white text-xl font-medium text-center mb-8"
           >
             Your AI-Powered Health Companion
           </StyledText>
@@ -67,7 +67,7 @@ const WelcomeScreen = () => {
 
             <StyledText
               variant="body1"
-              tw="text-white text-center text-lg leading-relaxed"
+              className="text-white text-center text-lg leading-relaxed"
               style={{ opacity: 0.9 }}
             >
               Take control of your health data with intelligent{'\n'}
@@ -84,7 +84,7 @@ const WelcomeScreen = () => {
             <StyledView className="flex-row items-center">
               <StyledText
                 variant="body1"
-                tw="text-purple-600 font-bold text-lg mr-2"
+                className="text-purple-600 font-bold text-lg mr-2"
               >
                 Get Started
               </StyledText>

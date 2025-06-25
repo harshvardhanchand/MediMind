@@ -151,24 +151,24 @@ const VitalsScreen = () => {
 
     return (
       <StyledTouchableOpacity 
-        tw="p-3 mb-3 bg-white rounded-lg shadow-sm flex-row items-center"
+        className="p-3 mb-3 bg-white rounded-lg shadow-sm flex-row items-center"
         style={{ borderRadius: 12 }}
       >
         <StyledView tw={`${iconBg} p-2 rounded-md mr-3`}>
           {getVitalIcon(item.reading_type, iconColor)}
         </StyledView>
-        <StyledView tw="flex-1">
-          <StyledView tw="flex-row justify-between items-center">
-            <StyledText variant="label" tw="font-semibold text-gray-800">{item.reading_type.replace('_', ' ').toUpperCase()}</StyledText>
+        <StyledView className="flex-1">
+          <StyledView className="flex-row justify-between items-center">
+            <StyledText variant="label" className="font-semibold text-gray-800">{item.reading_type.replace('_', ' ').toUpperCase()}</StyledText>
           </StyledView>
-          <StyledText variant="h4" tw="text-gray-700">{formatReadingValue(item)}</StyledText>
-          <StyledView tw="flex-row items-center mt-1">
+          <StyledText variant="h4" className="text-gray-700">{formatReadingValue(item)}</StyledText>
+          <StyledView className="flex-row items-center mt-1">
             <Calendar size={12} color="#6B7280" />
-            <StyledText variant="caption" color="textSecondary" tw="ml-1">
+            <StyledText variant="caption" color="textSecondary" className="ml-1">
               {new Date(item.reading_date).toLocaleString()}
             </StyledText>
           </StyledView>
-          {item.notes && <StyledText variant="caption" color="textMuted" tw="mt-1">Notes: {item.notes}</StyledText>}
+          {item.notes && <StyledText variant="caption" color="textMuted" className="mt-1">Notes: {item.notes}</StyledText>}
         </StyledView>
       </StyledTouchableOpacity>
     );
@@ -182,7 +182,7 @@ const VitalsScreen = () => {
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <StyledText 
             variant="body1" 
-            tw="mt-4 text-center"
+            className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
             {LOADING_MESSAGES.GENERIC_LOADING}
@@ -226,30 +226,30 @@ const VitalsScreen = () => {
 
   return (
     <ScreenContainer scrollable={false} withPadding>
-      <StyledView tw="pt-2 pb-4 flex-row justify-between items-start">
-        <StyledView tw="flex-1 pr-2">
+      <StyledView className="pt-2 pb-4 flex-row justify-between items-start">
+        <StyledView className="flex-1 pr-2">
           <StyledText variant="h1" color="primary">Vitals</StyledText>
-          <StyledText variant="body2" color="textSecondary" tw="mt-1">
+          <StyledText variant="body2" color="textSecondary" className="mt-1">
             Track your health measurements
           </StyledText>
           
           {usingDummyData && (
-            <StyledView tw="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-              <StyledText tw="text-yellow-800 text-sm text-center">
+            <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+              <StyledText className="text-yellow-800 text-sm text-center">
                 📱 Showing sample data (API not connected)
               </StyledText>
             </StyledView>
           )}
         </StyledView>
-        <StyledButton variant="textPrimary" onPress={loadHealthReadingsFromApi} tw="px-2 py-1 min-w-0">
-            <StyledText variant="caption" color="primary" tw="text-xs">
+        <StyledButton variant="textPrimary" onPress={loadHealthReadingsFromApi} className="px-2 py-1 min-w-0">
+            <StyledText variant="caption" color="primary" className="text-xs">
               Show All
             </StyledText>
         </StyledButton>
       </StyledView>
       
-      <StyledView tw="mb-4 bg-blue-50 p-4 rounded-lg">
-        <StyledText variant="label" tw="font-semibold text-blue-700 mb-1">
+      <StyledView className="mb-4 bg-blue-50 p-4 rounded-lg">
+        <StyledText variant="label" className="font-semibold text-blue-700 mb-1">
           Vitals Overview
         </StyledText>
         <StyledText variant="body2" color="textSecondary">
@@ -257,16 +257,16 @@ const VitalsScreen = () => {
         </StyledText>
       </StyledView>
       
-      <StyledView tw="flex-1">
+      <StyledView className="flex-1">
         {mainContent}
       </StyledView>
       
-      <StyledView tw="pt-3">
+      <StyledView className="pt-3">
         <StyledButton 
           variant="filledPrimary"
           iconLeft={<Plus size={18} color={colors.onPrimary} />}
           onPress={() => navigation.navigate('AddHealthReading')} 
-          tw="w-full"
+          className="w-full"
           style={{ borderRadius: 10 }}
         >
           Add New Vital Reading

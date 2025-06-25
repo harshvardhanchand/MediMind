@@ -1,115 +1,158 @@
-import React, { useState } from 'react';
-import { View, TextInput, TextInputProps, StyleProp, ViewStyle, TextStyle, Platform, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, TextInput, TextInputProps, StyleProp, ViewStyle, TextStyle, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../theme';
-
 import StyledText from './StyledText';
 
 const StyledNativeInput = styled(TextInput);
 const StyledView = styled(View);
-const StyledIconTouchableOpacity = styled(TouchableOpacity);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+
+// Type-safe icon names
+type IoniconName = keyof typeof Ionicons.glyphMap;
 
 interface StyledInputProps extends Omit<TextInputProps, 'style' | 'placeholderTextColor'> {
   label?: string;
   error?: string;
   variant?: 'default' | 'formListItem';
-  tw?: string;
-  inputTw?: string;
+  className?: string; // Renamed from 'tw' for consistency
+  inputClassName?: string; // Renamed from 'inputTw'
   inputStyle?: StyleProp<TextStyle>;
   containerStyle?: StyleProp<ViewStyle>;
-  leftIconName?: string;
-  rightIconName?: string;
+  leftIconName?: IoniconName;
+  rightIconName?: IoniconName;
   iconSize?: number;
   onRightIconPress?: () => void;
-  showBottomBorder?: boolean; // Specific to formListItem variant
+  showBottomBorder?: boolean;
 }
 
 const StyledInput: React.FC<StyledInputProps> = ({
   label,
   error,
   variant = 'default',
-  tw = '',
-  inputTw = '',
+  className = '',
+  inputClassName = '',
   inputStyle,
   containerStyle,
   leftIconName,
   rightIconName,
   iconSize = 20,
   onRightIconPress,
-  showBottomBorder = true, // Default to true for formListItem, can be overridden
+  showBottomBorder = true,
   ...restOfProps
 }) => {
   const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
-  let containerOuterBaseTw = 'w-full';
-  let inputWrapperBaseTw = 'flex-row items-center border'; // Base for wrapper
-  let textInputBaseTw = 'py-3 px-4 text-base text-textPrimary flex-1 h-12 leading-5';
-  let currentBorderColor = colors.accentPrimary; // Default to accent for focused state
-  let inputBgTw = 'bg-backgroundTertiary';
+  // Centralized variant mapping
+  const VARIANTS = {
+    default: {
+      containerTw: 'w-full',
+      wrapperTw: (hasError: boolean, focused: boolean) => [
+        'flex-row items-center rounded-xl bg-background-tertiary',
+        hasError ? 'border-2' : focused ? 'border-2' : 'border-0',
+      ].join(' '),
+      inputTw: 'py-3 px-4 text-base flex-1 h-12 leading-5',
+      borderColor: (hasError: boolean, focused: boolean) =>
+        hasError ? colors.accentDestructive :
+          focused ? colors.accentPrimary :
+            'transparent',
+    },
+    formListItem: {
+      containerTw: className, // For formListItem, use passed className directly
+      wrapperTw: (hasError: boolean, focused: boolean, showBottom: boolean) => [
+        'flex-row items-center px-4 py-4 bg-transparent',
+        showBottom ? 'border-b' : '',
+      ].join(' '),
+      inputTw: 'p-0 h-auto flex-1 text-base bg-transparent leading-5',
+      borderColor: (hasError: boolean, focused: boolean, showBottom: boolean) =>
+        !showBottom ? 'transparent' :
+          hasError ? colors.accentDestructive :
+            focused ? colors.accentPrimary :
+              colors.borderSubtle,
+    },
+  } as const;
 
-  if (variant === 'default') {
-    inputWrapperBaseTw += ' rounded-xl'; // More rounded for search bars
-    if (error) {
-      currentBorderColor = colors.accentDestructive;
-      inputWrapperBaseTw += ' border-2'; // Keep border visible and thicker for error
-    } else if (isFocused) {
-      currentBorderColor = colors.accentPrimary;
-      inputWrapperBaseTw += ' border-2'; // Make border active and thicker on focus
+  const variantConfig = VARIANTS[variant];
+
+  // Memoized computed styles for performance
+  const computedStyles = useMemo(() => {
+    const hasError = !!error;
+
+    let wrapperClass: string;
+    let borderColor: string;
+    let containerClass: string;
+
+    if (variant === 'default') {
+      const config = variantConfig as typeof VARIANTS.default;
+      wrapperClass = config.wrapperTw(hasError, isFocused);
+      borderColor = config.borderColor(hasError, isFocused);
+      containerClass = `${config.containerTw} ${className}`.trim();
     } else {
-      currentBorderColor = 'transparent'; // No visible border when not focused and no error
-      // inputWrapperBaseTw += ' border-borderSubtle'; // Optionally, a very subtle border instead of transparent
+      const config = variantConfig as typeof VARIANTS.formListItem;
+      wrapperClass = config.wrapperTw(hasError, isFocused, showBottomBorder);
+      borderColor = config.borderColor(hasError, isFocused, showBottomBorder);
+      containerClass = config.containerTw;
     }
-    inputWrapperBaseTw += ` ${inputBgTw}`;
-  } else if (variant === 'formListItem') {
-    containerOuterBaseTw = tw; // For formListItem, outer container takes full `tw` from props for its specific layout
-    inputWrapperBaseTw = `flex-row items-center bg-transparent px-4 py-3.5 ${showBottomBorder ? 'border-b' : ''}`;
-    textInputBaseTw = 'p-0 h-auto text-base text-textPrimary flex-1 bg-transparent leading-5';
-    inputBgTw = 'bg-transparent'; // Input itself is transparent
-    currentBorderColor = showBottomBorder ? colors.borderSubtle : 'transparent'; // Default border for form list item
-    if (error && showBottomBorder) {
-      currentBorderColor = colors.accentDestructive;
-    } else if (isFocused && showBottomBorder) {
-      currentBorderColor = colors.accentPrimary;
-    }
-    // For formListItem, border width comes from 'border-b' (1px) or is none.
-  }
 
-  const finalTextInputTw = `${textInputBaseTw} ${inputTw}`.trim();
-  const finalContainerTw = variant === 'formListItem' ? containerOuterBaseTw : `${containerOuterBaseTw} ${tw}`.trim();
-  const finalInputWrapperTw = `${inputWrapperBaseTw}`.trim();
+    const inputClass = `${variantConfig.inputTw} ${inputClassName}`.trim();
 
-  const combinedTextInputStyle: StyleProp<TextStyle> = [{}, inputStyle];
+    return {
+      containerClass,
+      wrapperClass,
+      inputClass,
+      wrapperStyle: { borderColor },
+      inputStyle: [inputStyle],
+    };
+  }, [variant, error, isFocused, showBottomBorder, className, inputClassName, inputStyle, colors, variantConfig]);
+
+  const renderIcon = (iconName?: IoniconName, side: 'left' | 'right' = 'left') => {
+    if (!iconName) return null;
+
+    const iconStyle = {
+      marginRight: side === 'left' ? 8 : 0,
+      marginLeft: side === 'right' ? 8 : variant === 'formListItem' ? 0 : 12,
+    };
+
+    const IconWrapper = side === 'right' && onRightIconPress ? StyledTouchableOpacity : StyledView;
+    const wrapperProps = side === 'right' && onRightIconPress
+      ? { onPress: onRightIconPress, className: "p-1", accessibilityRole: "button" as const }
+      : { className: "" };
+
+    return (
+      <IconWrapper {...wrapperProps}>
+        <Ionicons
+          name={iconName}
+          size={iconSize}
+          color={isFocused ? colors.accentPrimary : colors.textMuted}
+          style={iconStyle}
+        />
+      </IconWrapper>
+    );
+  };
 
   return (
-    <StyledView className={finalContainerTw} style={containerStyle}>
+    <StyledView className={computedStyles.containerClass} style={containerStyle}>
       {label && (
         <StyledText
           variant="label"
           color="textSecondary"
-          tw={variant === 'formListItem' ? 'mb-1' : 'mb-1.5'}
+          className={variant === 'formListItem' ? 'mb-1' : 'mb-1.5'}
         >
           {label}
         </StyledText>
       )}
       <StyledView
-        className={finalInputWrapperTw}
-        style={{ borderColor: currentBorderColor }}
+        className={computedStyles.wrapperClass}
+        style={computedStyles.wrapperStyle}
       >
-        {leftIconName && (
-          <Ionicons
-            name={leftIconName as any}
-            size={iconSize}
-            color={isFocused ? colors.accentPrimary : colors.textMuted}
-            className={`pr-2 ${variant === 'formListItem' ? 'pl-0' : 'pl-3'}`}
-          />
-        )}
+        {renderIcon(leftIconName, 'left')}
         <StyledNativeInput
           {...restOfProps}
-          style={combinedTextInputStyle}
-          className={finalTextInputTw}
+          style={computedStyles.inputStyle}
+          className={computedStyles.inputClass}
           placeholderTextColor={colors.textMuted}
           onFocus={(e) => {
             setIsFocused(true);
@@ -120,19 +163,17 @@ const StyledInput: React.FC<StyledInputProps> = ({
             restOfProps.onBlur?.(e);
           }}
           selectionColor={colors.accentPrimary}
+          // Accessibility improvements
+          accessibilityHint="Input field"
         />
-        {rightIconName && (
-          <StyledIconTouchableOpacity onPress={onRightIconPress} tw={`pr-2 ${variant === 'formListItem' ? 'pr-0' : 'pl-2'}`}>
-            <Ionicons
-              name={rightIconName as any}
-              size={iconSize}
-              color={isFocused ? colors.accentPrimary : colors.textMuted}
-            />
-          </StyledIconTouchableOpacity>
-        )}
+        {renderIcon(rightIconName, 'right')}
       </StyledView>
       {error && (
-        <StyledText variant="caption" style={{ color: colors.accentDestructive }} tw="mt-1">
+        <StyledText
+          variant="caption"
+          style={{ color: colors.accentDestructive }}
+          className="mt-1"
+        >
           {error}
         </StyledText>
       )}

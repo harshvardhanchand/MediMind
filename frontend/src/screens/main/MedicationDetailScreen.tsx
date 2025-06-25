@@ -52,7 +52,7 @@ const MedicationDetailScreen = () => {
                 initialData: medication 
               });
             }}
-            tw="p-1.5"
+            className="p-1.5"
           >
             <StyledText style={{ color: colors.accentPrimary, fontSize: 17 }}>Edit</StyledText>
           </StyledTouchableOpacity>
@@ -89,7 +89,7 @@ const MedicationDetailScreen = () => {
     <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundTertiary}>
       <StyledScrollView className="flex-1">
         {/* Main details card */}
-        <Card tw="mx-4 mt-4 mb-6" noPadding> 
+        <Card className="mx-4 mt-4 mb-6" noPadding> 
           {detailItems.map((item, index) => (
             item.value && (
               <ListItem
@@ -105,12 +105,12 @@ const MedicationDetailScreen = () => {
         </Card>
 
         {medication.notes && (
-          <Card title="Notes" tw="mx-4 mb-6">
+          <Card title="Notes" className="mx-4 mb-6">
             <StyledText variant="body1" color="textSecondary">{medication.notes}</StyledText>
           </Card>
         )}
         
-        <StyledView tw="mx-4 mb-6">
+        <StyledView className="mx-4 mb-6">
             <StyledButton 
                 variant="textDestructive"
                 onPress={() => Alert.alert("Delete Medication?", "This action cannot be undone.", [{text: "Cancel"}, {text: "Delete", style: "destructive", onPress: () => console.log("Deleting medication", medication.id)}])}

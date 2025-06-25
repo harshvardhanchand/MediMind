@@ -93,12 +93,12 @@ const AddMedicationScreen = () => {
     navigation.setOptions({
       headerTitle: isEditMode ? 'Edit Medication' : 'Add New Medication',
       headerLeft: () => (
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} tw="ml-[-8px] p-1.5">
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="ml-[-8px] p-1.5">
           <StyledText style={{ color: colors.accentPrimary, fontSize: 17 }}>Cancel</StyledText>
         </StyledTouchableOpacity>
       ),
       headerRight: () => (
-        <StyledTouchableOpacity onPress={handleSaveOrUpdate} tw="p-1.5">
+        <StyledTouchableOpacity onPress={handleSaveOrUpdate} className="p-1.5">
           <StyledText style={{ color: colors.accentPrimary, fontSize: 17, fontWeight: '600' }}>
             {isEditMode ? 'Update' : 'Save'}
           </StyledText>
@@ -117,7 +117,7 @@ const AddMedicationScreen = () => {
         contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 0 }} // No horizontal padding for full-width cards
         keyboardShouldPersistTaps="handled"
       >
-        <Card tw="mx-4 mb-5" noPadding> 
+        <Card className="mx-4 mb-5" noPadding> 
           <StyledInput
             variant="formListItem"
             label="Medication Name"
@@ -133,7 +133,7 @@ const AddMedicationScreen = () => {
               onChangeText={(text) => handleInputChange('dosageValue', text)}
               placeholder="e.g., 250"
               keyboardType="numeric"
-              tw="flex-2 py-3.5 pr-2"
+              className="flex-2 py-3.5 pr-2"
               showBottomBorder={false}
             />
             <StyledInput
@@ -142,7 +142,7 @@ const AddMedicationScreen = () => {
               value={formData.dosageUnit}
               onChangeText={(text) => handleInputChange('dosageUnit', text)}
               placeholder="e.g., mg, mL"
-              tw="flex-1 py-3.5 pl-2"
+              className="flex-1 py-3.5 pl-2"
               showBottomBorder={false}
             />
           </StyledView>
@@ -155,7 +155,7 @@ const AddMedicationScreen = () => {
           />
         </Card>
 
-        <Card tw="mx-4 mb-5" noPadding>
+        <Card className="mx-4 mb-5" noPadding>
           <StyledInput
             variant="formListItem"
             label="Prescribing Doctor (Optional)"
@@ -180,7 +180,7 @@ const AddMedicationScreen = () => {
           />
         </Card>
 
-        <Card tw="mx-4 mb-5" noPadding>
+        <Card className="mx-4 mb-5" noPadding>
           <StyledInput
             variant="formListItem"
             label="Notes (Optional)"

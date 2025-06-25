@@ -1,115 +1,72 @@
-import React, { ReactNode } from 'react';
-import { Text as RNText, TextProps as RNTextProps, StyleProp, TextStyle } from 'react-native';
+import React, { ReactNode, useMemo } from 'react';
+import { Text as RNText, TextProps, StyleProp, TextStyle } from 'react-native';
 import { styled } from 'nativewind';
 
-import { useTheme } from '../../theme'; // Ensure this path is correct
-import { colors as appColors } from '../../theme/colors'; // Import base colors for keys
+import { useTheme } from '../../theme';
+import { colors as appColors } from '../../theme/colors';
 
 const NativeWindText = styled(RNText);
 
-interface StyledTextProps extends RNTextProps {
+// Centralized variant mapping - single source of truth
+const VARIANT_MAP = {
+  h1: { tw: 'text-4xl font-bold', colorKey: 'textPrimary' as const, accessibilityRole: 'header' as const },
+  h2: { tw: 'text-3xl font-bold', colorKey: 'textPrimary' as const, accessibilityRole: 'header' as const },
+  h3: { tw: 'text-2xl font-semibold', colorKey: 'textPrimary' as const, accessibilityRole: 'header' as const },
+  h4: { tw: 'text-xl font-semibold', colorKey: 'textPrimary' as const, accessibilityRole: 'header' as const },
+  body1: { tw: 'text-base', colorKey: 'textPrimary' as const, accessibilityRole: 'text' as const },
+  body2: { tw: 'text-sm', colorKey: 'textPrimary' as const, accessibilityRole: 'text' as const },
+  label: { tw: 'text-sm font-medium', colorKey: 'textSecondary' as const, accessibilityRole: 'text' as const },
+  caption: { tw: 'text-xs', colorKey: 'textSecondary' as const, accessibilityRole: 'text' as const },
+  subtle: { tw: 'text-sm', colorKey: 'textSecondary' as const, accessibilityRole: 'text' as const },
+  button: { tw: 'text-base font-medium text-center', colorKey: 'textPrimary' as const, accessibilityRole: 'text' as const },
+} as const;
+
+type VariantKey = keyof typeof VARIANT_MAP;
+type ColorKey = keyof typeof appColors;
+
+interface StyledTextProps extends TextProps {
   children: ReactNode;
-  variant?:
-  | 'h1'
-  | 'h2'
-  | 'h3'
-  | 'h4'
-  | 'body1' // Standard body text
-  | 'body2' // Slightly smaller or different weight body text
-  | 'caption'
-  | 'label'   // For form labels or similar
-  | 'button'  // Text style for buttons if not handled by button component itself
-  | 'subtle'; // For less important text
-  color?: keyof typeof appColors | string; // Use keys from our actual colors.ts export or a custom string
-  tw?: string; // For additional ad-hoc Tailwind classes
+  variant?: VariantKey;
+  color?: ColorKey | (string & {});
+  className?: string;
 }
 
 const StyledText: React.FC<StyledTextProps> = ({
   children,
   variant = 'body1',
   color,
-  tw = '',
-  style, // Allow passing custom style prop
+  className = '',
+  style,
   ...props
 }) => {
-  const theme = useTheme(); // This theme includes merged Paper + our appColors
-  let finalTextColor: string;
+  const theme = useTheme();
 
-  if (typeof color === 'string') {
-    // Check if it's a key in our appColors first
-    const colorValue = appColors[color as keyof typeof appColors];
-    if (colorValue && typeof colorValue === 'string') {
-      finalTextColor = colorValue;
-    } else {
-      // Assume it's a custom hex color string
-      finalTextColor = color;
-    }
-  } else {
-    // Default colors based on variant
-    switch (variant) {
-      case 'h1':
-      case 'h2':
-      case 'h3':
-      case 'h4':
-        finalTextColor = theme.colors.textPrimary;
-        break;
-      case 'caption':
-      case 'subtle':
-        finalTextColor = theme.colors.textSecondary;
-        break;
-      case 'label':
-        finalTextColor = theme.colors.textSecondary;
-        break;
-      default: // body1, body2, button, etc.
-        finalTextColor = theme.colors.textPrimary;
-    }
-  }
+  // Memoized computed values for performance
+  const computedStyles = useMemo(() => {
+    const { tw: baseTw, colorKey, accessibilityRole } = VARIANT_MAP[variant];
 
-  // Define styles for variants using Tailwind classes primarily
-  // These can be combined with specific TextStyle props if needed for things Tailwind doesn't cover well (e.g., specific font family if not global)
-  let variantTwClasses = '';
+    // Simplified color resolution
+    const resolvedColor = color && appColors[color as ColorKey]
+      ? appColors[color as ColorKey] as string
+      : color && /^#[0-9A-Fa-f]{6}$/.test(color)
+        ? color
+        : theme.colors[colorKey];
 
-  switch (variant) {
-    case 'h1':
-      variantTwClasses = 'text-4xl font-bold'; // Example: Adjust size as per your design system
-      break;
-    case 'h2':
-      variantTwClasses = 'text-3xl font-bold';
-      break;
-    case 'h3':
-      variantTwClasses = 'text-2xl font-semibold';
-      break;
-    case 'h4':
-      variantTwClasses = 'text-xl font-semibold';
-      break;
-    case 'body1':
-      variantTwClasses = 'text-base';
-      break;
-    case 'body2':
-      variantTwClasses = 'text-sm';
-      break;
-    case 'caption':
-      variantTwClasses = 'text-xs';
-      break;
-    case 'label':
-      variantTwClasses = 'text-sm font-medium';
-      break;
-    case 'button':
-      variantTwClasses = 'text-base font-medium text-center';
-      break;
-    case 'subtle':
-      variantTwClasses = 'text-sm';
-      break;
-    default:
-      variantTwClasses = 'text-base';
-      break;
-  }
+    const combinedClassName = `${baseTw} ${className}`.trim();
+
+    return {
+      className: combinedClassName,
+      accessibilityRole,
+      style: [{ color: resolvedColor }, style] as StyleProp<TextStyle>,
+    };
+  }, [variant, color, className, theme.colors, style]);
 
   return (
     <NativeWindText
       {...props}
-      className={`${variantTwClasses} ${tw}`.trim()}
-      style={[{ color: finalTextColor }, style]} // Apply variant style, then custom color, then passed style
+      className={computedStyles.className}
+      style={computedStyles.style}
+      accessibilityRole={computedStyles.accessibilityRole}
     >
       {children}
     </NativeWindText>

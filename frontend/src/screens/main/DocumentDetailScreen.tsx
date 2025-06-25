@@ -132,16 +132,16 @@ const DocumentDetailScreen = () => {
       navigation.setOptions({
         headerTitle: document.original_filename || 'Document Details',
         headerRight: () => (
-          <StyledView tw="flex-row">
+          <StyledView className="flex-row">
             <StyledTouchableOpacity
               onPress={() => alert(`TODO: Edit ${document.original_filename}`)}
-              tw="p-1.5"
+              className="p-1.5"
             >
               <StyledText style={{ color: colors.accentPrimary, fontSize: 17 }}>Edit</StyledText>
             </StyledTouchableOpacity>
             <StyledTouchableOpacity
               onPress={handleDeleteDocument}
-              tw="p-1.5"
+              className="p-1.5"
             >
               <StyledText style={{ color: colors.error, fontSize: 17 }}>Delete</StyledText>
             </StyledTouchableOpacity>
@@ -161,7 +161,7 @@ const DocumentDetailScreen = () => {
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <StyledText
             variant="body1"
-            tw="mt-4 text-center"
+            className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
             {LOADING_MESSAGES.LOADING_DOCUMENTS}
@@ -232,7 +232,7 @@ const DocumentDetailScreen = () => {
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1 mr-2">
           <MaterialIcons name="chevron-left" size={28} color={colors.accentPrimary} />
         </StyledTouchableOpacity>
-        <StyledText variant="h3" tw="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
+        <StyledText variant="h3" className="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
           {document.original_filename || 'Document Details'}
         </StyledText>
         <StyledTouchableOpacity
@@ -245,7 +245,7 @@ const DocumentDetailScreen = () => {
 
       <StyledScrollView className="flex-1" refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadDocumentData} />}>
         <StyledView className="p-4">
-          <Card title="Document Information" tw="mb-6">
+          <Card title="Document Information" className="mb-6">
             {documentInfoItems.map((item, index) => (
               item.value && (
                 <ListItem
@@ -261,7 +261,7 @@ const DocumentDetailScreen = () => {
           </Card>
 
           {/* View Original Document Card */}
-          <Card title="Original Document" tw="mb-6">
+          <Card title="Original Document" className="mb-6">
             <ListItem
               label={document.original_filename || 'Document'}
               subtitle={`Uploaded ${new Date(document.upload_timestamp).toLocaleDateString()}`}
@@ -284,28 +284,28 @@ const DocumentDetailScreen = () => {
 
             {/* PDF Viewer */}
             {showPdfViewer && documentType === 'pdf' && (
-              <StyledView tw="mt-4 h-96 bg-backgroundSecondary rounded-lg overflow-hidden">
-                <StyledView tw="flex-row justify-between items-center p-3 border-b border-borderSubtle">
-                  <StyledText variant="h4" tw="font-semibold">PDF Viewer</StyledText>
+              <StyledView className="mt-4 h-96 bg-backgroundSecondary rounded-lg overflow-hidden">
+                <StyledView className="flex-row justify-between items-center p-3 border-b border-borderSubtle">
+                  <StyledText variant="h4" className="font-semibold">PDF Viewer</StyledText>
                   <StyledTouchableOpacity onPress={() => setShowPdfViewer(false)}>
                     <MaterialIcons name="close" size={24} color={colors.textSecondary} />
                   </StyledTouchableOpacity>
                 </StyledView>
 
                 {isLoadingPdf && (
-                  <StyledView tw="absolute inset-0 justify-center items-center bg-backgroundPrimary/80 z-10">
+                  <StyledView className="absolute inset-0 justify-center items-center bg-backgroundPrimary/80 z-10">
                     <ActivityIndicator size="large" color={colors.accentPrimary} />
-                    <StyledText tw="mt-2" color="textSecondary">Loading PDF...</StyledText>
+                    <StyledText className="mt-2" color="textSecondary">Loading PDF...</StyledText>
                   </StyledView>
                 )}
 
                 {pdfError ? (
-                  <StyledView tw="flex-1 justify-center items-center p-4">
+                  <StyledView className="flex-1 justify-center items-center p-4">
                     <MaterialIcons name="error-outline" size={48} color={colors.error} />
-                    <StyledText tw="mt-2 text-center" color="error">{pdfError}</StyledText>
+                    <StyledText className="mt-2 text-center" color="error">{pdfError}</StyledText>
                     <StyledButton
                       variant="filledPrimary"
-                      tw="mt-4"
+                      className="mt-4"
                       onPress={() => {
                         setPdfError(null);
                         setIsLoadingPdf(true);
@@ -359,7 +359,7 @@ const DocumentDetailScreen = () => {
             )}
           </Card>
 
-          <Card title="Extracted Data" tw="mb-6">
+          <Card title="Extracted Data" className="mb-6">
             {extractedData ? (
               <StyledView>
                 {extractedData.content ? (
@@ -370,7 +370,7 @@ const DocumentDetailScreen = () => {
                         {/* Group medical events by type */}
                         {extractedData.content.filter((event: any) => event.event_type === 'Medication').length > 0 && (
                           <StyledView className="mb-4">
-                            <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Medications</StyledText>
+                            <StyledText variant="h4" className="font-semibold mb-3 text-textPrimary">Medications</StyledText>
                             {extractedData.content
                               .filter((event: any) => event.event_type === 'Medication')
                               .map((med: any, index: number) => (
@@ -392,7 +392,7 @@ const DocumentDetailScreen = () => {
                           (event.value && event.units && event.event_type !== 'Medication')
                         ).length > 0 && (
                             <StyledView className="mb-4">
-                              <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Lab Results</StyledText>
+                              <StyledText variant="h4" className="font-semibold mb-3 text-textPrimary">Lab Results</StyledText>
                               {extractedData.content
                                 .filter((event: any) =>
                                   event.event_type === 'LabResult' ||
@@ -415,7 +415,7 @@ const DocumentDetailScreen = () => {
                         {/* Diagnoses */}
                         {extractedData.content.filter((event: any) => event.event_type === 'Diagnosis').length > 0 && (
                           <StyledView className="mb-4">
-                            <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Diagnoses</StyledText>
+                            <StyledText variant="h4" className="font-semibold mb-3 text-textPrimary">Diagnoses</StyledText>
                             {extractedData.content
                               .filter((event: any) => event.event_type === 'Diagnosis')
                               .map((diagnosis: any, index: number) => (
@@ -436,7 +436,7 @@ const DocumentDetailScreen = () => {
                           event.event_type === 'Note'
                         ).length > 0 && (
                             <StyledView className="mb-4">
-                              <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Notes</StyledText>
+                              <StyledText variant="h4" className="font-semibold mb-3 text-textPrimary">Notes</StyledText>
                               <StyledText variant="body1" color="textSecondary">
                                 {extractedData.content
                                   .filter((event: any) =>
@@ -454,7 +454,7 @@ const DocumentDetailScreen = () => {
                       <StyledView>
                         {extractedData.content.lab_results && (
                           <StyledView className="mb-4">
-                            <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Lab Results</StyledText>
+                            <StyledText variant="h4" className="font-semibold mb-3 text-textPrimary">Lab Results</StyledText>
                             {Object.entries(extractedData.content.lab_results).map(([key, value], index) => (
                               <ListItem
                                 key={key}
@@ -468,7 +468,7 @@ const DocumentDetailScreen = () => {
 
                         {extractedData.content.medications && (
                           <StyledView className="mb-4">
-                            <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Medications</StyledText>
+                            <StyledText variant="h4" className="font-semibold mb-3 text-textPrimary">Medications</StyledText>
                             {Array.isArray(extractedData.content.medications) ?
                               extractedData.content.medications.map((med: any, index: number) => (
                                 <ListItem
@@ -486,7 +486,7 @@ const DocumentDetailScreen = () => {
 
                         {extractedData.content.notes && (
                           <StyledView className="mb-4">
-                            <StyledText variant="h4" tw="font-semibold mb-3 text-textPrimary">Notes</StyledText>
+                            <StyledText variant="h4" className="font-semibold mb-3 text-textPrimary">Notes</StyledText>
                             <StyledText variant="body1" color="textSecondary">
                               {extractedData.content.notes}
                             </StyledText>
@@ -496,13 +496,13 @@ const DocumentDetailScreen = () => {
                     )}
                   </StyledView>
                 ) : (
-                  <StyledText color="textMuted" tw="py-4 text-center">
+                  <StyledText color="textMuted" className="py-4 text-center">
                     No structured content extracted yet.
                   </StyledText>
                 )}
               </StyledView>
             ) : (
-              <StyledText color="textMuted" tw="py-4 text-center">
+              <StyledText color="textMuted" className="py-4 text-center">
                 {document.processing_status === ProcessingStatus.PENDING ?
                   'Document is being processed. Extracted data will appear here once processing is complete.' :
                   'No extracted data available yet.'
@@ -512,7 +512,7 @@ const DocumentDetailScreen = () => {
 
             <StyledButton
               variant="filledPrimary"
-              tw="mt-4"
+              className="mt-4"
               onPress={() => navigation.navigate('DataReview', { documentId })}
               iconNameLeft="checkmark-circle"
             >

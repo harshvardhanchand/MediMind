@@ -212,7 +212,7 @@ const SettingsScreen = () => {
             <StyledView className="w-6 h-6 items-center justify-center mr-3">
               <Ionicons name={item.iconName as any} size={22} color={colors.textSecondary} />
             </StyledView>
-            <StyledText variant="body1" tw="flex-1">
+            <StyledText variant="body1" className="flex-1">
               {item.label}
             </StyledText>
           </StyledView>
@@ -257,12 +257,12 @@ const SettingsScreen = () => {
       <StyledScrollView className="flex-1 bg-gray-50">
         {/* Header */}
         <StyledView className="px-4 pt-12 pb-6 bg-white">
-          <StyledText variant="h1" tw="font-bold text-3xl">
+          <StyledText variant="h1" className="font-bold text-3xl">
             Settings
           </StyledText>
           {error && (
             <StyledView className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-              <StyledText variant="caption" color="error" tw="text-center">
+              <StyledText variant="caption" color="error" className="text-center">
                 {error}
               </StyledText>
             </StyledView>
@@ -271,7 +271,7 @@ const SettingsScreen = () => {
 
         {/* Account Section */}
         <StyledView className="mt-6">
-          <StyledText variant="h4" tw="px-4 pb-2 font-semibold text-gray-600 uppercase text-sm">
+          <StyledText variant="h4" className="px-4 pb-2 font-semibold text-gray-600 uppercase text-sm">
             Account
           </StyledText>
           <StyledView className="bg-white mx-4 rounded-lg overflow-hidden">
@@ -283,7 +283,7 @@ const SettingsScreen = () => {
 
         {/* Data Management Section */}
         <StyledView className="mt-6">
-          <StyledText variant="h4" tw="px-4 pb-2 font-semibold text-gray-600 uppercase text-sm">
+          <StyledText variant="h4" className="px-4 pb-2 font-semibold text-gray-600 uppercase text-sm">
             Data Management
           </StyledText>
           <StyledView className="bg-white mx-4 rounded-lg overflow-hidden">
@@ -295,7 +295,7 @@ const SettingsScreen = () => {
 
         {/* About Section */}
         <StyledView className="mt-6">
-          <StyledText variant="h4" tw="px-4 pb-2 font-semibold text-gray-600 uppercase text-sm">
+          <StyledText variant="h4" className="px-4 pb-2 font-semibold text-gray-600 uppercase text-sm">
             About
           </StyledText>
           <StyledView className="bg-white mx-4 rounded-lg overflow-hidden">

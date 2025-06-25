@@ -242,10 +242,10 @@ const HomeScreen = () => {
 
   // Updated Mock data for Quick Actions to use iconNameLeft
   const quickActions = [
-    { id: 'upload', label: 'Upload Document', iconNameLeft: 'cloud-upload-outline', screen: 'Upload', variant: 'filledPrimary' as const, fullWidth: true },
-    { id: 'vitals', label: 'Track Vitals', iconNameLeft: 'pulse-outline', screen: 'Vitals', variant: 'filledSecondary' as const },
-    { id: 'symptoms', label: 'Log Symptoms', iconNameLeft: 'clipboard-outline', screen: 'SymptomTracker', variant: 'filledSecondary' as const },
-    { id: 'assistant', label: 'Ask Assistant', iconNameLeft: 'chatbubbles-outline', screen: 'AssistantTab' as any, variant: 'filledSecondary' as const, fullWidth: true },
+    { id: 'upload', label: 'Upload Document', iconNameLeft: 'cloud-upload-outline' as const, screen: 'Upload', variant: 'filledPrimary' as const, fullWidth: true },
+    { id: 'vitals', label: 'Track Vitals', iconNameLeft: 'pulse-outline' as const, screen: 'Vitals', variant: 'filledSecondary' as const },
+    { id: 'symptoms', label: 'Log Symptoms', iconNameLeft: 'clipboard-outline' as const, screen: 'SymptomTracker', variant: 'filledSecondary' as const },
+    { id: 'assistant', label: 'Ask Assistant', iconNameLeft: 'chatbubbles-outline' as const, screen: 'AssistantTab' as any, variant: 'filledSecondary' as const, fullWidth: true },
   ];
 
   // Mock data for Health Insights - now using real notification data
@@ -289,7 +289,7 @@ const HomeScreen = () => {
       <ScreenContainer scrollable={false} withPadding={false}>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" />
-          <StyledText tw="mt-2 text-gray-600">Loading dashboard...</StyledText>
+          <StyledText className="mt-2 text-gray-600">Loading dashboard...</StyledText>
         </StyledView>
       </ScreenContainer>
     );
@@ -301,8 +301,8 @@ const HomeScreen = () => {
         <StyledView className="mb-8">
           <StyledView className="flex-row justify-between items-center mb-2">
             <StyledView className="flex-1">
-              <StyledText variant="h1" tw="font-bold text-3xl">Dashboard</StyledText>
-              <StyledText variant="body1" color="textSecondary" tw="mt-1">
+              <StyledText variant="h1" className="font-bold text-3xl">Dashboard</StyledText>
+              <StyledText variant="body1" color="textSecondary" className="mt-1">
                 Welcome to your health insights.
               </StyledText>
             </StyledView>
@@ -311,7 +311,7 @@ const HomeScreen = () => {
 
           {usingDummyData && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-              <StyledText tw="text-yellow-800 text-sm text-center">
+              <StyledText className="text-yellow-800 text-sm text-center">
                 📱 Showing sample data (API not connected)
               </StyledText>
             </StyledView>
@@ -327,28 +327,28 @@ const HomeScreen = () => {
 
         {keyMetrics.length > 0 && (
           <>
-            <StyledText variant="h4" tw="mb-3 font-semibold">Highlights</StyledText>
+            <StyledText variant="h4" className="mb-3 font-semibold">Highlights</StyledText>
             <StyledView className="flex-row -mx-1 mb-8">
               {keyMetrics.map((metric) => (
                 <StyledView key={metric.id} className="flex-1 px-1">
-                  <Card withShadow={true} tw="flex-1 min-h-[120]">
+                  <Card withShadow={true} className="flex-1 min-h-[120]">
                     <StyledView className="flex-row justify-between items-center mb-3">
-                      <StyledText variant="label" color="textSecondary" tw="text-xs font-medium flex-1 mr-2">
+                      <StyledText variant="label" color="textSecondary" className="text-xs font-medium flex-1 mr-2">
                         {metric.label === 'Blood Pressure' ? 'Blood Pressure' : metric.label}
                       </StyledText>
                       <Ionicons name={metric.iconName as any} size={20} color={metric.iconColor} style={{ marginRight: -2 }} />
                     </StyledView>
                     <StyledView className="mb-2">
-                      <StyledText variant="h3" color="textPrimary" tw="font-bold text-2xl" numberOfLines={1} adjustsFontSizeToFit>
+                      <StyledText variant="h3" color="textPrimary" className="font-bold text-2xl" numberOfLines={1} adjustsFontSizeToFit>
                         {metric.value}
                         {metric.unit && (
-                          <StyledText variant="body2" color="textSecondary" tw="text-base">
+                          <StyledText variant="body2" color="textSecondary" className="text-base">
                             {metric.unit}
                           </StyledText>
                         )}
                       </StyledText>
                     </StyledView>
-                    <StyledText variant="caption" color="textMuted" tw="mt-auto text-xs">
+                    <StyledText variant="caption" color="textMuted" className="mt-auto text-xs">
                       {metric.lastChecked}
                     </StyledText>
                   </Card>
@@ -359,7 +359,7 @@ const HomeScreen = () => {
         )}
 
         {/* Section: Recent Documents */}
-        <Card title="Recent Activity" withShadow={true} tw="mb-6">
+        <Card title="Recent Activity" withShadow={true} className="mb-6">
           {recentDocuments.length > 0 ? (
             recentDocuments.slice(0, 3).map((doc, index) => (
               <ListItem
@@ -373,13 +373,13 @@ const HomeScreen = () => {
               />
             ))
           ) : (
-            <StyledText color="textMuted" tw="py-4 text-center">No recent activity.</StyledText>
+            <StyledText color="textMuted" className="py-4 text-center">No recent activity.</StyledText>
           )}
           {recentDocuments.length > 3 && (
             <StyledButton
               variant="textPrimary"
               onPress={() => navigation.navigate('DocumentsTab' as any)}
-              tw="mt-3 self-center pb-1"
+              className="mt-3 self-center pb-1"
             >
               View All Documents
             </StyledButton>
@@ -387,7 +387,7 @@ const HomeScreen = () => {
         </Card>
 
         {/* Section: Upcoming Medications */}
-        <Card title="Upcoming Medications" withShadow={true} tw="mb-6">
+        <Card title="Upcoming Medications" withShadow={true} className="mb-6">
           {upcomingMedications.length > 0 ? (
             upcomingMedications.slice(0, 3).map((med, index) => (
               <ListItem
@@ -402,14 +402,14 @@ const HomeScreen = () => {
               />
             ))
           ) : (
-            <StyledText color="textMuted" tw="py-4 text-center">No upcoming medications.</StyledText>
+            <StyledText color="textMuted" className="py-4 text-center">No upcoming medications.</StyledText>
           )}
           {upcomingMedications.length > 0 && (
             <StyledButton
               variant="textPrimary"
               // onPress={() => navigation.navigate('MedicationsTab')} // TODO: Update to correct tab/screen name
               onPress={() => navigation.navigate('MedicationsScreen')}
-              tw="mt-3 self-center pb-1"
+              className="mt-3 self-center pb-1"
             >
               Manage Medications
             </StyledButton>
@@ -417,7 +417,7 @@ const HomeScreen = () => {
         </Card>
 
         {/* Section: Health Insights */}
-        <Card title="Health Insights" withShadow={true} tw="mb-6">
+        <Card title="Health Insights" withShadow={true} className="mb-6">
           {healthInsights.length > 0 ? (
             healthInsights.map((insight, index) => (
               <ListItem
@@ -431,13 +431,13 @@ const HomeScreen = () => {
               />
             ))
           ) : (
-            <StyledText color="textMuted" tw="py-4 text-center">No new insights at the moment.</StyledText>
+            <StyledText color="textMuted" className="py-4 text-center">No new insights at the moment.</StyledText>
           )}
           {/* Optionally, add a 'View More' if there are many insights */}
         </Card>
 
         {/* Section: Quick Actions - Using grid-like layout */}
-        <Card title="Quick Actions" withShadow={true} tw="mb-6">
+        <Card title="Quick Actions" withShadow={true} className="mb-6">
           <StyledView className="flex-row flex-wrap -m-1.5">
             {quickActions.map((action) => (
               <StyledView
@@ -447,7 +447,7 @@ const HomeScreen = () => {
                 <StyledButton
                   variant={action.variant}
                   onPress={() => navigation.navigate(action.screen)}
-                  tw="w-full" // Button takes full width of its cell
+                  className="w-full" // Button takes full width of its cell
                   iconNameLeft={action.iconNameLeft} // Use new prop
                 // iconSize can be set here if needed, defaults to 18
                 >

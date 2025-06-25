@@ -1,29 +1,31 @@
 import React, { ReactNode } from 'react';
-import { TouchableOpacity, View, ViewStyle, TextStyle, ActivityIndicator, StyleProp } from 'react-native';
+import { TouchableOpacity, ActivityIndicator, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../theme';
-
-import StyledText from './StyledText'; // Assuming StyledText is in the same directory
+import StyledText from './StyledText';
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledView = styled(View); // For icon container
+
+// Type-safe icon names
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
 
 interface StyledButtonProps {
-  children: ReactNode; // Button label
+  children: ReactNode;
   onPress?: () => void;
   variant?: 'filledPrimary' | 'filledSecondary' | 'textPrimary' | 'textDestructive';
   disabled?: boolean;
   loading?: boolean;
-  tw?: string; // For additional Tailwind container classes
-  style?: StyleProp<ViewStyle>; // Custom container style override
-  textStyle?: StyleProp<TextStyle>; // Custom text style override
-  // New props for simple icon name handling
-  iconNameLeft?: string;
-  iconNameRight?: string;
+  className?: string; // Renamed from 'tw' for consistency
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  // Type-safe icon name props
+  iconNameLeft?: IoniconName;
+  iconNameRight?: IoniconName;
   iconSize?: number;
-  // Keep existing ReactNode icon props for full customization if needed, but prioritize iconName*
+  // Custom ReactNode icon props for advanced use cases
   iconLeft?: ReactNode;
   iconRight?: ReactNode;
 }
@@ -34,76 +36,84 @@ const StyledButton: React.FC<StyledButtonProps> = ({
   variant = 'filledPrimary',
   disabled = false,
   loading = false,
-  tw = '',
+  className = '',
   style,
   textStyle,
   iconNameLeft,
   iconNameRight,
-  iconSize = 18, // Default icon size
-  iconLeft,      // Custom ReactNode icon
-  iconRight,     // Custom ReactNode icon
+  iconSize = 18,
+  iconLeft,
+  iconRight,
 }) => {
   const { colors } = useTheme();
 
-  let containerBaseTw = 'flex-row items-center justify-center py-3 px-4 rounded-lg'; // Adjusted padding slightly
-  const textBaseTw = 'font-semibold text-base text-center';
-  let specificContainerTw = '';
-  let determinedIconColor = colors.textOnPrimaryColor; // Default for filledPrimary
-  let determinedTextColor = colors.textOnPrimaryColor;
+  // Centralized variant mapping
+  const VARIANT_MAP = {
+    filledPrimary: {
+      containerTw: 'bg-accent-primary py-3 px-4',
+      textColor: colors.textOnPrimaryColor,
+      iconColor: colors.textOnPrimaryColor,
+    },
+    filledSecondary: {
+      containerTw: 'bg-background-tertiary py-3 px-4',
+      textColor: colors.accentPrimary,
+      iconColor: colors.accentPrimary,
+    },
+    textPrimary: {
+      containerTw: 'bg-transparent py-2 px-3',
+      textColor: colors.accentPrimary,
+      iconColor: colors.accentPrimary,
+    },
+    textDestructive: {
+      containerTw: 'bg-transparent py-2 px-3',
+      textColor: colors.accentDestructive,
+      iconColor: colors.accentDestructive,
+    },
+  } as const;
 
-  if (disabled || loading) {
-    containerBaseTw += ' opacity-60'; // Slightly more opacity for disabled state
-  }
+  const { containerTw, textColor, iconColor } = VARIANT_MAP[variant];
+  const opacityTw = (disabled || loading) ? ' opacity-60' : '';
+  const baseTw = 'flex-row items-center justify-center rounded-lg';
 
-  switch (variant) {
-    case 'filledSecondary':
-      specificContainerTw = 'bg-backgroundTertiary';
-      determinedTextColor = colors.accentPrimary;
-      determinedIconColor = colors.accentPrimary;
-      break;
-    case 'textPrimary':
-      containerBaseTw = 'py-2 px-3';
-      specificContainerTw = 'bg-transparent';
-      determinedTextColor = colors.accentPrimary;
-      determinedIconColor = colors.accentPrimary;
-      break;
-    case 'textDestructive':
-      containerBaseTw = 'py-2 px-3';
-      specificContainerTw = 'bg-transparent';
-      determinedTextColor = colors.accentDestructive;
-      determinedIconColor = colors.accentDestructive;
-      break;
-    case 'filledPrimary': // Default
-    default:
-      specificContainerTw = `bg-accentPrimary`;
-      determinedTextColor = colors.textOnPrimaryColor;
-      determinedIconColor = colors.textOnPrimaryColor;
-      break;
-  }
-
-  const renderIcon = (name?: string, node?: ReactNode, side: 'left' | 'right' = 'left') => {
+  const renderIcon = (name?: IoniconName, node?: ReactNode, side: 'left' | 'right' = 'left') => {
     if (node) return node; // Prioritize custom ReactNode icon
     if (!name) return null;
-    const marginClass = side === 'left' && children ? 'mr-2' : (side === 'right' && children ? 'ml-2' : '');
-    return <Ionicons name={name as any} size={iconSize} color={determinedIconColor} className={marginClass} />;
+
+    // Use inline style for margins since className doesn't work on Ionicons
+    const marginStyle = {
+      marginRight: side === 'left' && children ? 8 : 0,
+      marginLeft: side === 'right' && children ? 8 : 0,
+    };
+
+    return (
+      <Ionicons
+        name={name}
+        size={iconSize}
+        color={iconColor}
+        style={marginStyle}
+      />
+    );
   };
 
   return (
     <StyledTouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      className={`${containerBaseTw} ${specificContainerTw} ${tw}`.trim()}
+      className={`${baseTw} ${containerTw}${opacityTw} ${className}`.trim()}
       style={style}
       activeOpacity={0.7}
+      // Accessibility improvements
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading }}
     >
       {loading ? (
-        <ActivityIndicator color={determinedIconColor} size="small" />
+        <ActivityIndicator color={iconColor} size="small" />
       ) : (
         <>
           {renderIcon(iconNameLeft, iconLeft, 'left')}
           <StyledText
-            tw={`${textBaseTw}`.trim()}
-            style={[{ color: determinedTextColor }, textStyle]} // Apply color directly via style to ensure override
+            className="font-semibold text-base text-center"
+            style={[{ color: textColor }, textStyle]}
           >
             {children}
           </StyledText>

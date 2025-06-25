@@ -112,7 +112,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
   const renderNotificationItem = ({ item }: { item: NotificationResponse }) => (
     <StyledView className="px-4 py-3 border-b border-gray-100">
       <StyledView className="flex-row justify-between items-start mb-1">
-        <StyledText variant="body2" tw="font-medium flex-1 mr-2" numberOfLines={1}>
+        <StyledText variant="body2" className="font-medium flex-1 mr-2" numberOfLines={1}>
           {item.title}
         </StyledText>
         <StyledView className="flex-row items-center">
@@ -128,13 +128,13 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
         </StyledView>
       </StyledView>
 
-      <StyledText variant="caption" color="textSecondary" numberOfLines={2} tw="mb-2">
+      <StyledText variant="caption" color="textSecondary" numberOfLines={2} className="mb-2">
         {item.message}
       </StyledText>
 
       {!item.is_read && (
         <StyledTouchableOpacity onPress={() => handleMarkAsRead(item.notification_id)}>
-          <StyledText variant="caption" color="accentPrimary" tw="font-medium">
+          <StyledText variant="caption" color="accentPrimary" className="font-medium">
             Mark as read
           </StyledText>
         </StyledTouchableOpacity>
@@ -163,7 +163,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
           >
             <StyledText
               variant="caption"
-              tw="text-white text-xs font-bold"
+              className="text-white text-xs font-bold"
               style={{ fontSize: 10 }}
             >
               {unreadCount > 99 ? '99+' : unreadCount.toString()}
@@ -191,7 +191,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
               {/* Header */}
               <StyledView className="px-4 py-3 border-b border-gray-200">
                 <StyledView className="flex-row justify-between items-center">
-                  <StyledText variant="h4" tw="font-semibold">
+                  <StyledText variant="h4" className="font-semibold">
                     Notifications
                   </StyledText>
                   <StyledTouchableOpacity onPress={() => setIsDropdownVisible(false)}>
@@ -222,7 +222,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
                     <StyledButton
                       variant="textPrimary"
                       onPress={handleViewAll}
-                      tw="w-full"
+                      className="w-full"
                     >
                       View All Notifications
                     </StyledButton>
@@ -235,7 +235,7 @@ const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onPress }) =>
                     size={32}
                     color={colors.textMuted}
                   />
-                  <StyledText variant="body2" color="textMuted" tw="mt-2 text-center">
+                  <StyledText variant="body2" color="textMuted" className="mt-2 text-center">
                     No notifications
                   </StyledText>
                 </StyledView>

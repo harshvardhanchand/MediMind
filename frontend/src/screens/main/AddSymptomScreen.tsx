@@ -12,7 +12,7 @@ import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
 import ErrorState from '../../components/common/ErrorState';
-import { ERROR_MESSAGES} from '../../constants/messages';
+import { ERROR_MESSAGES } from '../../constants/messages';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -56,9 +56,9 @@ const AddSymptomScreen = () => {
       // In a real app, you'd save this to your state management/API
       // For now, simulate API call with delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Symptom to save:', { 
-        symptom: newSymptomText, 
+
+      console.log('Symptom to save:', {
+        symptom: newSymptomText,
         severity: parseInt(severity)
       });
 
@@ -98,11 +98,11 @@ const AddSymptomScreen = () => {
   if (criticalError) {
     return (
       <ScreenContainer scrollable withPadding backgroundColor={theme.colors.backgroundPrimary}>
-        <StyledView tw="flex-row items-center py-2 mb-6">
-          <StyledTouchableOpacity onPress={() => navigation.goBack()} tw="p-2">
+        <StyledView className="flex-row items-center py-2 mb-6">
+          <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-2">
             <ArrowLeft size={24} color={theme.colors.textPrimary} />
           </StyledTouchableOpacity>
-          <StyledText variant="h2" color="primary" tw="ml-2">Add New Symptom</StyledText>
+          <StyledText variant="h2" color="primary" className="ml-2">Add New Symptom</StyledText>
         </StyledView>
         <ErrorState
           title="Unable to Load Symptom Form"
@@ -118,68 +118,67 @@ const AddSymptomScreen = () => {
   return (
     <ScreenContainer scrollable withPadding backgroundColor={theme.colors.backgroundPrimary}>
       {/* Header */}
-      <StyledView tw="flex-row items-center py-2 mb-6">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} tw="p-2">
+      <StyledView className="flex-row items-center py-2 mb-6">
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-2">
           <ArrowLeft size={24} color={theme.colors.textPrimary} />
         </StyledTouchableOpacity>
-        <StyledText variant="h2" color="primary" tw="ml-2">Add New Symptom</StyledText>
+        <StyledText variant="h2" color="primary" className="ml-2">Add New Symptom</StyledText>
       </StyledView>
 
-      <StyledView tw="bg-white p-5 rounded-lg shadow-sm mb-6" style={{ borderRadius: 12 }}>
+      <StyledView className="bg-white p-5 rounded-lg shadow-sm mb-6" style={{ borderRadius: 12 }}>
         {formError && (
-          <StyledView tw="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
-            <StyledText tw="text-red-700 text-sm">{formError}</StyledText>
+          <StyledView className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+            <StyledText className="text-red-700 text-sm">{formError}</StyledText>
           </StyledView>
         )}
 
-        <StyledInput 
+        <StyledInput
           label="Symptom Description"
           placeholder="e.g., Sharp headache in the morning"
           value={newSymptomText}
           onChangeText={setNewSymptomText}
-          tw="mb-5"
+          className="mb-5"
           multiline
           numberOfLines={3}
           inputStyle={{ backgroundColor: theme.colors.backgroundSecondary, minHeight: 80, textAlignVertical: 'top' }}
           editable={!loading}
         />
-        
-        <StyledText variant="label" tw="mb-3 text-gray-700">Severity (1-5)</StyledText>
-        <StyledView tw="flex-row mb-6 justify-between">
+
+        <StyledText variant="label" className="mb-3 text-gray-700">Severity (1-5)</StyledText>
+        <StyledView className="flex-row mb-6 justify-between">
           {[1, 2, 3, 4, 5].map(level => (
-            <StyledTouchableOpacity 
+            <StyledTouchableOpacity
               key={level}
-              tw={`w-12 h-12 items-center justify-center rounded-full border-2 ${
-                severity === level.toString() 
-                  ? `${getSeverityColor(level, severity)} border-primary` 
+              tw={`w-12 h-12 items-center justify-center rounded-full border-2 ${severity === level.toString()
+                  ? `${getSeverityColor(level, severity)} border-primary`
                   : 'border-gray-200 bg-gray-100'
-              }`}
+                }`}
               onPress={() => setSeverity(level.toString())}
               disabled={loading}
             >
-              <StyledText 
-                variant="h4" 
-                tw={`${severity === level.toString() ? 'text-primary' : 'text-gray-600'} font-semibold`}
+              <StyledText
+                variant="h4"
+                className={`${severity === level.toString() ? 'text-primary' : 'text-gray-600'} font-semibold`}
               >
                 {level}
               </StyledText>
             </StyledTouchableOpacity>
           ))}
         </StyledView>
-        
-        <StyledButton 
-          variant="filledPrimary" 
-          onPress={handleSaveSymptom} 
-          tw="w-full mb-2" 
+
+        <StyledButton
+          variant="filledPrimary"
+          onPress={handleSaveSymptom}
+          className="w-full mb-2"
           disabled={loading || newSymptomText.trim() === ''}
           loading={loading}
         >
           {loading ? 'Saving...' : 'Save Symptom'}
         </StyledButton>
-        <StyledButton 
-          variant="textPrimary" 
-          onPress={() => navigation.goBack()} 
-          tw="w-full" 
+        <StyledButton
+          variant="textPrimary"
+          onPress={() => navigation.goBack()}
+          className="w-full"
           disabled={loading}
         >
           Cancel

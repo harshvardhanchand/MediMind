@@ -39,7 +39,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
 
       <StyledText
         variant="h3"
-        tw="text-center mb-2"
+        className="text-center mb-2"
         style={{ color: colors.textPrimary }}
       >
         {title}
@@ -47,7 +47,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
 
       <StyledText
         variant="body1"
-        tw="text-center mb-6 leading-6"
+        className="text-center mb-6 leading-6"
         style={{ color: colors.textSecondary }}
       >
         {message}

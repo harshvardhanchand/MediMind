@@ -159,10 +159,10 @@ const CreateProfileScreen = () => {
       <StyledScrollView className="flex-1 bg-gray-50">
         {/* Header */}
         <StyledView className="px-6 pt-12 pb-6 bg-white">
-          <StyledText variant="h1" tw="font-bold text-2xl text-center mb-2">
+          <StyledText variant="h1" className="font-bold text-2xl text-center mb-2">
             Create Your Profile
           </StyledText>
-          <StyledText variant="body1" tw="text-gray-600 text-center">
+          <StyledText variant="body1" className="text-gray-600 text-center">
             Help us personalize your health experience
           </StyledText>
         </StyledView>
@@ -173,7 +173,7 @@ const CreateProfileScreen = () => {
             <StyledView className="p-4 space-y-4">
               {/* Name */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Full Name *
                 </StyledText>
                 <StyledTextInput
@@ -187,7 +187,7 @@ const CreateProfileScreen = () => {
 
               {/* Date of Birth */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Date of Birth (Optional)
                 </StyledText>
                 <StyledTouchableOpacity
@@ -200,7 +200,7 @@ const CreateProfileScreen = () => {
                   <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
                 </StyledTouchableOpacity>
                 {profile.dateOfBirth && (
-                  <StyledText variant="caption" tw="text-gray-500 mt-1">
+                  <StyledText variant="caption" className="text-gray-500 mt-1">
                     Age: {calculateAge(profile.dateOfBirth)} years
                   </StyledText>
                 )}
@@ -208,7 +208,7 @@ const CreateProfileScreen = () => {
 
               {/* Gender */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Gender (Optional)
                 </StyledText>
                 <StyledView className="flex-row space-x-2">
@@ -222,7 +222,7 @@ const CreateProfileScreen = () => {
                         }`}
                     >
                       <StyledText
-                        tw={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                        className={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
                           }`}
                       >
                         {genderOption}
@@ -234,7 +234,7 @@ const CreateProfileScreen = () => {
 
               {/* Weight */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Weight (kg)
                 </StyledText>
                 <StyledTextInput
@@ -249,7 +249,7 @@ const CreateProfileScreen = () => {
 
               {/* Height */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Height (cm)
                 </StyledText>
                 <StyledTextInput
@@ -270,7 +270,7 @@ const CreateProfileScreen = () => {
           <Card>
             <StyledView className="p-4">
               <StyledView className="flex-row items-center justify-between mb-4">
-                <StyledText variant="body2" tw="font-semibold text-gray-700">
+                <StyledText variant="body2" className="font-semibold text-gray-700">
                   Medical Conditions (Optional)
                 </StyledText>
                 <StyledTouchableOpacity
@@ -278,14 +278,14 @@ const CreateProfileScreen = () => {
                   className="bg-blue-500 px-3 py-2 rounded-lg flex-row items-center"
                 >
                   <Ionicons name="add" size={16} color="white" />
-                  <StyledText tw="text-white font-medium ml-1">Add</StyledText>
+                  <StyledText className="text-white font-medium ml-1">Add</StyledText>
                 </StyledTouchableOpacity>
               </StyledView>
 
               {profile.medicalConditions.length === 0 ? (
                 <StyledView className="py-6 items-center">
                   <Ionicons name="medical-outline" size={32} color={colors.textSecondary} />
-                  <StyledText tw="text-gray-500 mt-2 text-center text-sm">
+                  <StyledText className="text-gray-500 mt-2 text-center text-sm">
                     Add any current medical conditions to get personalized health insights
                   </StyledText>
                 </StyledView>
@@ -295,19 +295,19 @@ const CreateProfileScreen = () => {
                     <StyledView key={index} className="bg-gray-50 rounded-lg p-3">
                       <StyledView className="flex-row items-start justify-between">
                         <StyledView className="flex-1">
-                          <StyledText tw="font-semibold text-gray-900 mb-1">
+                          <StyledText className="font-semibold text-gray-900 mb-1">
                             {condition.condition_name}
                           </StyledText>
 
                           <StyledView className="flex-row items-center space-x-2 mb-2">
                             <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
-                              <StyledText tw="text-xs font-medium capitalize">
+                              <StyledText className="text-xs font-medium capitalize">
                                 {condition.status || 'active'}
                               </StyledText>
                             </StyledView>
                             {condition.severity && (
                               <StyledView className={`px-2 py-1 rounded-full ${getSeverityColor(condition.severity)}`}>
-                                <StyledText tw="text-xs font-medium capitalize">
+                                <StyledText className="text-xs font-medium capitalize">
                                   {condition.severity}
                                 </StyledText>
                               </StyledView>
@@ -315,13 +315,13 @@ const CreateProfileScreen = () => {
                           </StyledView>
 
                           {condition.diagnosing_doctor && (
-                            <StyledText tw="text-sm text-gray-600 mb-1">
+                            <StyledText className="text-sm text-gray-600 mb-1">
                               Doctor: {condition.diagnosing_doctor}
                             </StyledText>
                           )}
 
                           {condition.notes && (
-                            <StyledText tw="text-sm text-gray-600">
+                            <StyledText className="text-sm text-gray-600">
                               {condition.notes}
                             </StyledText>
                           )}
@@ -354,14 +354,14 @@ const CreateProfileScreen = () => {
             {loading ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
-              <StyledText tw="text-white font-bold text-lg text-center">
+              <StyledText className="text-white font-bold text-lg text-center">
                 Complete Profile & Continue
               </StyledText>
             )}
           </StyledTouchableOpacity>
 
           <StyledView className="mt-4 px-4">
-            <StyledText tw="text-gray-500 text-center text-sm leading-relaxed">
+            <StyledText className="text-gray-500 text-center text-sm leading-relaxed">
               Your profile helps us provide personalized health insights and ensure medication safety. All information is securely encrypted.
             </StyledText>
           </StyledView>
@@ -388,17 +388,17 @@ const CreateProfileScreen = () => {
         <StyledView className="flex-1 bg-white">
           <StyledView className="flex-row items-center justify-between px-4 py-4 border-b border-gray-200">
             <StyledTouchableOpacity onPress={() => setShowConditionModal(false)}>
-              <StyledText tw="text-blue-500 font-medium">Cancel</StyledText>
+              <StyledText className="text-blue-500 font-medium">Cancel</StyledText>
             </StyledTouchableOpacity>
-            <StyledText tw="font-semibold text-lg">Add Condition</StyledText>
+            <StyledText className="font-semibold text-lg">Add Condition</StyledText>
             <StyledTouchableOpacity onPress={handleSaveCondition}>
-              <StyledText tw="text-blue-500 font-medium">Save</StyledText>
+              <StyledText className="text-blue-500 font-medium">Save</StyledText>
             </StyledTouchableOpacity>
           </StyledView>
 
           <StyledScrollView className="flex-1 px-4 py-6">
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Condition Name *
               </StyledText>
               <StyledTextInput
@@ -411,7 +411,7 @@ const CreateProfileScreen = () => {
             </StyledView>
 
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Status
               </StyledText>
               <StyledView className="flex-row flex-wrap gap-2">
@@ -425,7 +425,7 @@ const CreateProfileScreen = () => {
                       }`}
                   >
                     <StyledText
-                      tw={`font-medium capitalize ${newCondition.status === status ? 'text-white' : 'text-gray-700'
+                      className={`font-medium capitalize ${newCondition.status === status ? 'text-white' : 'text-gray-700'
                         }`}
                     >
                       {status}
@@ -436,7 +436,7 @@ const CreateProfileScreen = () => {
             </StyledView>
 
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Severity (Optional)
               </StyledText>
               <StyledView className="flex-row flex-wrap gap-2">
@@ -450,7 +450,7 @@ const CreateProfileScreen = () => {
                       }`}
                   >
                     <StyledText
-                      tw={`font-medium capitalize ${newCondition.severity === severity ? 'text-white' : 'text-gray-700'
+                      className={`font-medium capitalize ${newCondition.severity === severity ? 'text-white' : 'text-gray-700'
                         }`}
                     >
                       {severity}
@@ -461,7 +461,7 @@ const CreateProfileScreen = () => {
             </StyledView>
 
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Diagnosing Doctor (Optional)
               </StyledText>
               <StyledTextInput
@@ -474,7 +474,7 @@ const CreateProfileScreen = () => {
             </StyledView>
 
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Notes (Optional)
               </StyledText>
               <StyledTextInput

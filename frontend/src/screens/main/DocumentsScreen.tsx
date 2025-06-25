@@ -196,7 +196,7 @@ const DocumentsScreen = () => {
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <StyledText
             variant="body1"
-            tw="mt-4 text-center"
+            className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
             {LOADING_MESSAGES.LOADING_DOCUMENTS}
@@ -291,15 +291,15 @@ const DocumentsScreen = () => {
     mainContent = (
       <StyledView className="flex-1 items-center justify-center">
         <ActivityIndicator animating={true} size="large" />
-        <StyledText variant="body1" color="textSecondary" tw="mt-2">Loading documents...</StyledText>
+        <StyledText variant="body1" color="textSecondary" className="mt-2">Loading documents...</StyledText>
       </StyledView>
     );
   } else if (filteredDocuments.length === 0 && !usingDummyData) {
     mainContent = (
       <StyledView className="flex-1 items-center justify-center">
         <Ionicons name="cloud-offline-outline" size={64} color={colors.textMuted} />
-        <StyledText variant="h4" color="textMuted" tw="mt-4">No Documents Found</StyledText>
-        <StyledText color="textMuted" tw="text-center mt-1 mx-8">
+        <StyledText variant="h4" color="textMuted" className="mt-4">No Documents Found</StyledText>
+        <StyledText color="textMuted" className="text-center mt-1 mx-8">
           Try adjusting your search or filter criteria, or upload a new document.
         </StyledText>
       </StyledView>
@@ -327,14 +327,14 @@ const DocumentsScreen = () => {
     <ScreenContainer scrollable={false} withPadding={false}>
       <StyledView className="flex-1 pt-6">
         <StyledView className="px-4 pb-4">
-          <StyledText variant="h1" tw="font-bold text-3xl">Documents</StyledText>
-          <StyledText variant="body1" color="textSecondary" tw="mt-1">
+          <StyledText variant="h1" className="font-bold text-3xl">Documents</StyledText>
+          <StyledText variant="body1" color="textSecondary" className="mt-1">
             Manage your lab results, prescriptions, and records.
           </StyledText>
 
           {usingDummyData && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-              <StyledText tw="text-yellow-800 text-sm text-center">
+              <StyledText className="text-yellow-800 text-sm text-center">
                 📱 Showing sample data (API not connected)
               </StyledText>
             </StyledView>
@@ -365,7 +365,7 @@ const DocumentsScreen = () => {
           />
           <StyledView className="bg-white rounded-t-xl">
             <StyledView className="p-4 border-b border-gray-200">
-              <StyledText variant="h3" tw="font-semibold text-center">Filter by Type</StyledText>
+              <StyledText variant="h3" className="font-semibold text-center">Filter by Type</StyledText>
             </StyledView>
 
             {documentFilterOptions.map((item, index) => (
@@ -390,7 +390,7 @@ const DocumentsScreen = () => {
               <StyledButton
                 variant="filledPrimary"
                 onPress={() => setFilterModalVisible(false)}
-                tw="w-full"
+                className="w-full"
               >
                 Close
               </StyledButton>

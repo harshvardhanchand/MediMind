@@ -96,7 +96,7 @@ const AssistantScreen = () => {
           {!isUser && (
             <StyledView className="flex-row items-center mb-1">
               <Ionicons name="sparkles-outline" size={14} color={colors.accentPrimary} />
-              <StyledText variant="caption" tw="ml-1 font-semibold text-blue-500">
+              <StyledText variant="caption" className="ml-1 font-semibold text-blue-500">
                 Health Assistant
               </StyledText>
             </StyledView>
@@ -116,7 +116,7 @@ const AssistantScreen = () => {
               color: isUser ? 'rgba(255,255,255,0.7)' : colors.textSecondary,
               marginTop: 4
             }}
-            tw={isUser ? 'text-right' : 'text-left'}
+            className={isUser ? 'text-right' : 'text-left'}
           >
             {formatTime(item.timestamp)}
           </StyledText>
@@ -136,7 +136,7 @@ const AssistantScreen = () => {
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </StyledTouchableOpacity>
-        <StyledText variant="h3" tw="font-semibold">Health Assistant</StyledText>
+        <StyledText variant="h3" className="font-semibold">Health Assistant</StyledText>
       </StyledView>
 
       {/* Chat Area */}

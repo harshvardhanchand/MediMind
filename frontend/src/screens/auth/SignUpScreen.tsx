@@ -75,8 +75,8 @@ const SignUpScreen = () => {
 
   return (
     <ScreenContainer withPadding>
-      <StyledText variant="h1" color="primary" tw="mb-4 text-center">Create Account</StyledText>
-      <StyledText variant="body1" color="textSecondary" tw="mb-8 text-center">
+      <StyledText variant="h1" color="primary" className="mb-4 text-center">Create Account</StyledText>
+      <StyledText variant="body1" color="textSecondary" className="mb-8 text-center">
         Join us to manage your health data securely.
       </StyledText>
       
@@ -88,7 +88,7 @@ const SignUpScreen = () => {
         autoComplete="email"
         textContentType="emailAddress"
         autoCapitalize="none"
-        tw="mb-4"
+        className="mb-4"
         editable={!loading}
       />
       <StyledInput
@@ -100,7 +100,7 @@ const SignUpScreen = () => {
         textContentType="newPassword"
         autoCorrect={false}
         spellCheck={false}
-        tw="mb-4"
+        className="mb-4"
         editable={!loading}
       />
       <StyledInput
@@ -112,17 +112,17 @@ const SignUpScreen = () => {
         textContentType="newPassword"
         autoCorrect={false}
         spellCheck={false}
-        tw="mb-6"
+        className="mb-6"
         editable={!loading}
       />
 
       {error && (
-        <StyledText variant="caption" color="error" tw="text-center mb-4">
+        <StyledText variant="caption" color="error" className="text-center mb-4">
           {error}
         </StyledText>
       )}
       {successMessage && (
-        <StyledText variant="caption" color="success" tw="text-center mb-4"> 
+        <StyledText variant="caption" color="success" className="text-center mb-4"> 
           {successMessage}
         </StyledText>
       )}
@@ -130,7 +130,7 @@ const SignUpScreen = () => {
       <StyledButton 
         variant="filledPrimary"
         onPress={handleSignUp} 
-        tw="w-full mb-4"
+        className="w-full mb-4"
         disabled={loading}
         loading={loading}
       >
@@ -139,7 +139,7 @@ const SignUpScreen = () => {
       <StyledButton 
         variant="textPrimary"
         onPress={() => navigation.navigate('Login')} 
-        tw="w-full"
+        className="w-full"
         disabled={loading}
       >
         Already have an account? Log In

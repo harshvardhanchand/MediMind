@@ -248,7 +248,7 @@ const EditProfileScreen = () => {
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <StyledText
             variant="body1"
-            tw="mt-4 text-center"
+            className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
             {LOADING_MESSAGES.LOADING_PROFILE}
@@ -284,7 +284,7 @@ const EditProfileScreen = () => {
           >
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </StyledTouchableOpacity>
-          <StyledText variant="h1" tw="font-bold text-xl flex-1">
+          <StyledText variant="h1" className="font-bold text-xl flex-1">
             Edit Profile
           </StyledText>
           <StyledTouchableOpacity
@@ -295,7 +295,7 @@ const EditProfileScreen = () => {
             {loading ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
-              <StyledText tw="text-white font-semibold">Save</StyledText>
+              <StyledText className="text-white font-semibold">Save</StyledText>
             )}
           </StyledTouchableOpacity>
         </StyledView>
@@ -306,7 +306,7 @@ const EditProfileScreen = () => {
             <StyledView className="p-4 space-y-4">
               {/* Name */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Full Name
                 </StyledText>
                 <StyledTextInput
@@ -320,7 +320,7 @@ const EditProfileScreen = () => {
 
               {/* Email (Read-only) */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Email
                 </StyledText>
                 <StyledTextInput
@@ -329,14 +329,14 @@ const EditProfileScreen = () => {
                   className="border border-gray-300 rounded-lg px-3 py-3 bg-gray-100"
                   style={{ color: colors.textSecondary }}
                 />
-                <StyledText variant="caption" tw="text-gray-500 mt-1">
+                <StyledText variant="caption" className="text-gray-500 mt-1">
                   Email cannot be changed
                 </StyledText>
               </StyledView>
 
               {/* Date of Birth */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Date of Birth
                 </StyledText>
                 <StyledTouchableOpacity
@@ -349,7 +349,7 @@ const EditProfileScreen = () => {
                   <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
                 </StyledTouchableOpacity>
                 {profile.dateOfBirth && (
-                  <StyledText variant="caption" tw="text-gray-500 mt-1">
+                  <StyledText variant="caption" className="text-gray-500 mt-1">
                     Age: {calculateAge(profile.dateOfBirth)} years
                   </StyledText>
                 )}
@@ -357,7 +357,7 @@ const EditProfileScreen = () => {
 
               {/* Weight */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Weight (kg)
                 </StyledText>
                 <StyledTextInput
@@ -372,7 +372,7 @@ const EditProfileScreen = () => {
 
               {/* Height */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Height (cm)
                 </StyledText>
                 <StyledTextInput
@@ -387,7 +387,7 @@ const EditProfileScreen = () => {
 
               {/* Gender */}
               <StyledView>
-                <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                   Gender
                 </StyledText>
                 <StyledView className="flex-row space-x-2">
@@ -401,7 +401,7 @@ const EditProfileScreen = () => {
                         }`}
                     >
                       <StyledText
-                        tw={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                        className={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
                           }`}
                       >
                         {genderOption}
@@ -419,7 +419,7 @@ const EditProfileScreen = () => {
           <Card>
             <StyledView className="p-4">
               <StyledView className="flex-row items-center justify-between mb-4">
-                <StyledText variant="body2" tw="font-semibold text-gray-700">
+                <StyledText variant="body2" className="font-semibold text-gray-700">
                   Medical Conditions
                 </StyledText>
                 <StyledTouchableOpacity
@@ -427,17 +427,17 @@ const EditProfileScreen = () => {
                   className="bg-blue-500 px-3 py-2 rounded-lg flex-row items-center"
                 >
                   <Ionicons name="add" size={16} color="white" />
-                  <StyledText tw="text-white font-medium ml-1">Add</StyledText>
+                  <StyledText className="text-white font-medium ml-1">Add</StyledText>
                 </StyledTouchableOpacity>
               </StyledView>
 
               {profile.medicalConditions.length === 0 ? (
                 <StyledView className="py-8 items-center">
                   <Ionicons name="medical-outline" size={48} color={colors.textSecondary} />
-                  <StyledText tw="text-gray-500 mt-2 text-center">
+                  <StyledText className="text-gray-500 mt-2 text-center">
                     No medical conditions added yet
                   </StyledText>
-                  <StyledText tw="text-gray-400 text-sm mt-1 text-center">
+                  <StyledText className="text-gray-400 text-sm mt-1 text-center">
                     Tap "Add" to include your medical conditions
                   </StyledText>
                 </StyledView>
@@ -447,19 +447,19 @@ const EditProfileScreen = () => {
                     <StyledView key={index} className="bg-gray-50 rounded-lg p-3">
                       <StyledView className="flex-row items-start justify-between">
                         <StyledView className="flex-1">
-                          <StyledText tw="font-semibold text-gray-900 mb-1">
+                          <StyledText className="font-semibold text-gray-900 mb-1">
                             {condition.condition_name}
                           </StyledText>
 
                           <StyledView className="flex-row items-center space-x-2 mb-2">
                             <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
-                              <StyledText tw="text-xs font-medium capitalize">
+                              <StyledText className="text-xs font-medium capitalize">
                                 {condition.status || 'active'}
                               </StyledText>
                             </StyledView>
                             {condition.severity && (
                               <StyledView className={`px-2 py-1 rounded-full ${getSeverityColor(condition.severity)}`}>
-                                <StyledText tw="text-xs font-medium capitalize">
+                                <StyledText className="text-xs font-medium capitalize">
                                   {condition.severity}
                                 </StyledText>
                               </StyledView>
@@ -467,19 +467,19 @@ const EditProfileScreen = () => {
                           </StyledView>
 
                           {condition.diagnosed_date && (
-                            <StyledText tw="text-sm text-gray-600 mb-1">
+                            <StyledText className="text-sm text-gray-600 mb-1">
                               Diagnosed: {new Date(condition.diagnosed_date).toLocaleDateString()}
                             </StyledText>
                           )}
 
                           {condition.diagnosing_doctor && (
-                            <StyledText tw="text-sm text-gray-600 mb-1">
+                            <StyledText className="text-sm text-gray-600 mb-1">
                               Doctor: {condition.diagnosing_doctor}
                             </StyledText>
                           )}
 
                           {condition.notes && (
-                            <StyledText tw="text-sm text-gray-600 italic">
+                            <StyledText className="text-sm text-gray-600 italic">
                               {condition.notes}
                             </StyledText>
                           )}
@@ -512,10 +512,10 @@ const EditProfileScreen = () => {
         <StyledView className="mt-6 mx-4 mb-6">
           <Card>
             <StyledView className="p-4">
-              <StyledText variant="body2" tw="font-semibold mb-2 text-gray-700">
+              <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
                 Member Since
               </StyledText>
-              <StyledText variant="body1" tw="text-gray-600">
+              <StyledText variant="body1" className="text-gray-600">
                 {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -548,20 +548,20 @@ const EditProfileScreen = () => {
           {/* Modal Header */}
           <StyledView className="flex-row items-center justify-between px-4 py-4 border-b border-gray-200">
             <StyledTouchableOpacity onPress={() => setShowConditionModal(false)}>
-              <StyledText tw="text-blue-500 font-medium">Cancel</StyledText>
+              <StyledText className="text-blue-500 font-medium">Cancel</StyledText>
             </StyledTouchableOpacity>
-            <StyledText tw="font-semibold text-lg">
+            <StyledText className="font-semibold text-lg">
               {editingConditionIndex !== null ? 'Edit Condition' : 'Add Condition'}
             </StyledText>
             <StyledTouchableOpacity onPress={handleSaveCondition}>
-              <StyledText tw="text-blue-500 font-medium">Save</StyledText>
+              <StyledText className="text-blue-500 font-medium">Save</StyledText>
             </StyledTouchableOpacity>
           </StyledView>
 
           <StyledScrollView className="flex-1 px-4 py-6">
             {/* Condition Name */}
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Condition Name *
               </StyledText>
               <StyledTextInput
@@ -575,7 +575,7 @@ const EditProfileScreen = () => {
 
             {/* Status */}
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Status
               </StyledText>
               <StyledView className="flex-row flex-wrap gap-2">
@@ -589,7 +589,7 @@ const EditProfileScreen = () => {
                       }`}
                   >
                     <StyledText
-                      tw={`font-medium capitalize ${newCondition.status === status ? 'text-white' : 'text-gray-700'
+                      className={`font-medium capitalize ${newCondition.status === status ? 'text-white' : 'text-gray-700'
                         }`}
                     >
                       {status}
@@ -601,7 +601,7 @@ const EditProfileScreen = () => {
 
             {/* Severity */}
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Severity (Optional)
               </StyledText>
               <StyledView className="flex-row flex-wrap gap-2">
@@ -618,7 +618,7 @@ const EditProfileScreen = () => {
                       }`}
                   >
                     <StyledText
-                      tw={`font-medium capitalize ${newCondition.severity === severity ? 'text-white' : 'text-gray-700'
+                      className={`font-medium capitalize ${newCondition.severity === severity ? 'text-white' : 'text-gray-700'
                         }`}
                     >
                       {severity}
@@ -630,7 +630,7 @@ const EditProfileScreen = () => {
 
             {/* Diagnosed Date */}
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Diagnosed Date (Optional)
               </StyledText>
               <StyledTextInput
@@ -644,7 +644,7 @@ const EditProfileScreen = () => {
 
             {/* Diagnosing Doctor */}
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Diagnosing Doctor (Optional)
               </StyledText>
               <StyledTextInput
@@ -658,7 +658,7 @@ const EditProfileScreen = () => {
 
             {/* Notes */}
             <StyledView className="mb-4">
-              <StyledText tw="font-semibold mb-2 text-gray-700">
+              <StyledText className="font-semibold mb-2 text-gray-700">
                 Notes (Optional)
               </StyledText>
               <StyledTextInput

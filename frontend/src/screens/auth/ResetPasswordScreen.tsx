@@ -30,10 +30,10 @@ const ResetPasswordScreen = () => {
     const initializePasswordReset = async () => {
       try {
         setIsInitializing(true);
-        
+
         // First, check if we already have a session (user came from email link)
         const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-        
+
         if (sessionError) {
           console.error('Session error:', sessionError);
           setError('Failed to verify reset session. Please try again.');
@@ -80,35 +80,35 @@ const ResetPasswordScreen = () => {
   const processResetLink = async (url: string) => {
     try {
       console.log('Processing reset link:', url);
-      
+
       // Parse both hash fragments and query parameters
       const urlObj = new URL(url);
       let params = new URLSearchParams();
-      
+
       // Check hash fragment first (Supabase typically uses this)
       if (urlObj.hash) {
         const fragment = urlObj.hash.substring(1);
         params = new URLSearchParams(fragment);
       }
-      
+
       // If no hash params, check query parameters
       if (!params.has('access_token') && urlObj.search) {
         params = new URLSearchParams(urlObj.search);
       }
-      
+
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
       const type = params.get('type');
 
-      console.log('Extracted params:', { 
-        hasAccessToken: !!accessToken, 
-        hasRefreshToken: !!refreshToken, 
-        type 
+      console.log('Extracted params:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        type
       });
 
       if (type === 'recovery' && accessToken && refreshToken) {
         console.log('Setting session with extracted tokens');
-        
+
         const { data, error: sessionError } = await supabaseClient.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
@@ -195,10 +195,10 @@ const ResetPasswordScreen = () => {
   if (isInitializing) {
     return (
       <ScreenContainer withPadding>
-        <StyledText variant="h1" color="primary" tw="mb-4 text-center">
+        <StyledText variant="h1" color="primary" className="mb-4 text-center">
           Reset Password
         </StyledText>
-        <StyledText variant="body1" color="textSecondary" tw="mb-8 text-center">
+        <StyledText variant="body1" color="textSecondary" className="mb-8 text-center">
           Initializing password reset...
         </StyledText>
       </ScreenContainer>
@@ -207,33 +207,33 @@ const ResetPasswordScreen = () => {
 
   return (
     <ScreenContainer withPadding>
-      <StyledText variant="h1" color="primary" tw="mb-4 text-center">
+      <StyledText variant="h1" color="primary" className="mb-4 text-center">
         Reset Password
       </StyledText>
-      
+
       {!isAuthenticated ? (
         <>
-          <StyledText variant="body1" color="textSecondary" tw="mb-8 text-center">
+          <StyledText variant="body1" color="textSecondary" className="mb-8 text-center">
             Please click the password reset link in your email to continue.
           </StyledText>
-          
+
           {error && (
-            <StyledText variant="caption" color="error" tw="text-center mb-4">
+            <StyledText variant="caption" color="error" className="text-center mb-4">
               {error}
             </StyledText>
           )}
-          
+
           <StyledButton
             variant="textPrimary"
             onPress={() => navigation.navigate('Login')}
-            tw="w-full"
+            className="w-full"
           >
             Back to Login
           </StyledButton>
         </>
       ) : (
         <>
-          <StyledText variant="body1" color="textSecondary" tw="mb-8 text-center">
+          <StyledText variant="body1" color="textSecondary" className="mb-8 text-center">
             Enter your new password below.
           </StyledText>
 
@@ -246,7 +246,7 @@ const ResetPasswordScreen = () => {
             textContentType="newPassword"
             autoCorrect={false}
             spellCheck={false}
-            tw="mb-4"
+            className="mb-4"
             editable={!loading}
           />
 
@@ -259,12 +259,12 @@ const ResetPasswordScreen = () => {
             textContentType="newPassword"
             autoCorrect={false}
             spellCheck={false}
-            tw="mb-6"
+            className="mb-6"
             editable={!loading}
           />
 
           {error && (
-            <StyledText variant="caption" color="error" tw="text-center mb-4">
+            <StyledText variant="caption" color="error" className="text-center mb-4">
               {error}
             </StyledText>
           )}
@@ -272,7 +272,7 @@ const ResetPasswordScreen = () => {
           <StyledButton
             variant="filledPrimary"
             onPress={handleResetPassword}
-            tw="w-full mb-4"
+            className="w-full mb-4"
             disabled={loading}
             loading={loading}
           >
@@ -282,7 +282,7 @@ const ResetPasswordScreen = () => {
           <StyledButton
             variant="textPrimary"
             onPress={() => navigation.navigate('Login')}
-            tw="w-full"
+            className="w-full"
             disabled={loading}
           >
             Back to Login

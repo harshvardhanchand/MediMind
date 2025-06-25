@@ -116,7 +116,7 @@ const FeaturesScreen = () => {
       {/* Feature Title */}
       <StyledText
         variant="h1"
-        tw="text-gray-900 text-3xl font-bold text-center mb-6"
+        className="text-gray-900 text-3xl font-bold text-center mb-6"
       >
         {feature.title}
       </StyledText>
@@ -124,7 +124,7 @@ const FeaturesScreen = () => {
       {/* Feature Description */}
       <StyledText
         variant="body1"
-        tw="text-gray-600 text-lg text-center leading-relaxed px-4"
+        className="text-gray-600 text-lg text-center leading-relaxed px-4"
       >
         {feature.description}
       </StyledText>
@@ -137,7 +137,7 @@ const FeaturesScreen = () => {
         {/* Header */}
         <StyledView className="flex-row justify-between items-center px-6 pt-12 pb-4">
           <StyledTouchableOpacity onPress={handleSkip}>
-            <StyledText tw="text-gray-500 font-medium">Skip</StyledText>
+            <StyledText className="text-gray-500 font-medium">Skip</StyledText>
           </StyledTouchableOpacity>
 
           {/* Progress Dots */}
@@ -176,7 +176,7 @@ const FeaturesScreen = () => {
             style={{ elevation: 3 }}
           >
             <StyledView className="flex-row items-center justify-center">
-              <StyledText tw="text-white font-bold text-lg mr-2">
+              <StyledText className="text-white font-bold text-lg mr-2">
                 {currentIndex === features.length - 1 ? 'Continue' : 'Next'}
               </StyledText>
               <Ionicons name="arrow-forward" size={20} color="white" />

@@ -47,7 +47,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
 
       <StyledText
         variant="h3"
-        tw="text-center mb-2"
+        className="text-center mb-2"
         style={{ color: colors.textPrimary }}
       >
         {title}
@@ -56,7 +56,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       {description && (
         <StyledText
           variant="body1"
-          tw="text-center mb-6 leading-6"
+          className="text-center mb-6 leading-6"
           style={{ color: colors.textSecondary }}
         >
           {description}

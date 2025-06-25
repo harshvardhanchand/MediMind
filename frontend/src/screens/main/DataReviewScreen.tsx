@@ -304,7 +304,7 @@ const DataReviewScreen = () => {
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <StyledText
             variant="body1"
-            tw="mt-4 text-center"
+            className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
             {LOADING_MESSAGES.LOADING_DOCUMENTS}
@@ -345,33 +345,33 @@ const DataReviewScreen = () => {
   const renderMedicationInputs = (med: MedicationContent, medIndex: number) => {
     const medicationName = String(editedData?.medications?.[medIndex]?.name.value || med.name.value || 'Unnamed');
     return (
-      <Card key={`med-${medIndex}`} title={`Medication: ${medicationName}`} tw="mb-4">
+      <Card key={`med-${medIndex}`} title={`Medication: ${medicationName}`} className="mb-4">
         <StyledInput
           label={med.name.label}
           value={String(editedData?.medications?.[medIndex]?.name.value || '')}
           onChangeText={(text) => handleInputChange('medications', medIndex, 'name', 'value', text)}
-          tw="mb-3"
+          className="mb-3"
         />
         <StyledView className="flex-row mb-3">
           <StyledInput
             label={med.dosage.label}
             value={String(editedData?.medications?.[medIndex]?.dosage.value || '')}
             onChangeText={(text) => handleInputChange('medications', medIndex, 'dosage', 'value', text)}
-            tw="flex-1 mr-2"
+            className="flex-1 mr-2"
             keyboardType="numeric"
           />
           <StyledInput
             label="Unit"
             value={String(editedData?.medications?.[medIndex]?.dosage.unit || '')}
             onChangeText={(text) => handleInputChange('medications', medIndex, 'dosage', 'unit', text)}
-            tw="w-1/3"
+            className="w-1/3"
           />
         </StyledView>
         <StyledInput
           label={med.frequency.label}
           value={String(editedData?.medications?.[medIndex]?.frequency.value || '')}
           onChangeText={(text) => handleInputChange('medications', medIndex, 'frequency', 'value', text)}
-          tw="mb-1"
+          className="mb-1"
         />
       </Card>
     );
@@ -384,7 +384,7 @@ const DataReviewScreen = () => {
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1 mr-2">
           <MaterialIcons name="chevron-left" size={28} color={colors.accentPrimary} />
         </StyledTouchableOpacity>
-        <StyledText variant="h3" tw="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
+        <StyledText variant="h3" className="font-semibold flex-1 text-center" numberOfLines={1} ellipsizeMode="tail">
           Review: {String(document?.name || 'Document')}
         </StyledText>
         <StyledView className="w-8" />
@@ -406,22 +406,22 @@ const DataReviewScreen = () => {
         )}
 
         {editedData.lab_results && editedData.lab_results.length > 0 && (
-          <Card title="Lab Results" tw="mb-4">
+          <Card title="Lab Results" className="mb-4">
             {editedData.lab_results.map((labField, labIndex) => (
               <StyledView key={`lab-${labIndex}-${String(labField.label || 'lab')}`} className="mb-3">
-                <StyledText variant="label" color="textSecondary" tw="mb-1">{String(labField.label || 'Lab Test')}</StyledText>
+                <StyledText variant="label" color="textSecondary" className="mb-1">{String(labField.label || 'Lab Test')}</StyledText>
                 <StyledView className="flex-row items-center">
                   <StyledInput
                     value={String(labField.value || '')}
                     onChangeText={(text) => handleInputChange('lab_results', labIndex, 'value', null, text)}
-                    tw="flex-2 mr-2"
+                    className="flex-2 mr-2"
                     keyboardType="numeric"
                     placeholder={`Value for ${String(labField.label || 'test')}`}
                   />
                   <StyledInput
                     value={String(labField.unit || '')}
                     onChangeText={(text) => handleInputChange('lab_results', labIndex, 'unit', null, text)}
-                    tw="flex-1"
+                    className="flex-1"
                     placeholder="Unit"
                   />
                 </StyledView>
@@ -431,26 +431,26 @@ const DataReviewScreen = () => {
         )}
 
         {editedData.notes !== undefined && (
-          <Card title="General Notes" tw="mb-4">
+          <Card title="General Notes" className="mb-4">
             <StyledInput
               label="Notes"
               value={editedData.notes || ''}
               onChangeText={(text) => handleInputChange('notes', null, 'notesText', 'value', text)}
               multiline
               inputStyle={{ height: 120, textAlignVertical: 'top' }}
-              tw="h-auto"
+              className="h-auto"
             />
           </Card>
         )}
 
         <StyledView className="mt-6 flex-row justify-between">
-          <StyledButton variant="textDestructive" onPress={() => navigation.goBack()} tw="flex-1 mr-2" disabled={isSaving}>
+          <StyledButton variant="textDestructive" onPress={() => navigation.goBack()} className="flex-1 mr-2" disabled={isSaving}>
             <StyledText>Discard Changes</StyledText>
           </StyledButton>
           <StyledButton
             variant="filledPrimary"
             onPress={handleSave}
-            tw="flex-1 ml-2"
+            className="flex-1 ml-2"
             disabled={isSaving}
             loading={isSaving}
           >

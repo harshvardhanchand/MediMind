@@ -12,24 +12,24 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 interface CardProps {
   children: ReactNode;
   title?: string;
-  tw?: string;
+  className?: string;
   style?: StyleProp<ViewStyle>;
-  contentTw?: string; // Tailwind classes for the inner content view
+  contentClassName?: string; // Tailwind classes for the inner content view
   noPadding?: boolean;
   onPress?: () => void;
   /**
    * Adds a subtle shadow, similar to some Apple Health summary cards.
    * Defaults to false for a flatter look on most cards.
    */
-  withShadow?: boolean; 
+  withShadow?: boolean;
 }
 
 const Card: React.FC<CardProps> = ({
   children = null,
   title,
-  tw = '',
+  className = '',
   style,
-  contentTw = '',
+  contentClassName = '',
   noPadding = false,
   onPress,
   withShadow = false,
@@ -50,9 +50,9 @@ const Card: React.FC<CardProps> = ({
   }
 
   const content = (
-    <StyledView className={`flex-1 ${contentTw || ''}`.trim()}>
+    <StyledView className={`flex-1 ${contentClassName || ''}`.trim()}>
       {title ? (
-        <StyledText variant="h3" tw="mb-3 font-semibold text-gray-900">
+        <StyledText variant="h3" className="mb-3 font-semibold text-gray-900">
           {title}
         </StyledText>
       ) : null}
@@ -64,7 +64,7 @@ const Card: React.FC<CardProps> = ({
     return (
       <StyledTouchableOpacity
         onPress={onPress}
-        className={`${cardBaseTw} ${tw || ''}`.trim()}
+        className={`${cardBaseTw} ${className || ''}`.trim()}
         style={style}
         activeOpacity={0.8}
       >
@@ -74,8 +74,8 @@ const Card: React.FC<CardProps> = ({
   }
 
   return (
-    <StyledView 
-      className={`${cardBaseTw} ${tw || ''}`.trim()}
+    <StyledView
+      className={`${cardBaseTw} ${className || ''}`.trim()}
       style={style}
     >
       {content}
