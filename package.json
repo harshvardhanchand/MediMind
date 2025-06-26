@@ -1,7 +1,7 @@
 {
-  "name": "medical-data-hub",
+  "name": "medimind",
   "version": "0.2.0",
-  "description": "AI-Powered Patient Medical Data Hub",
+  "description": "MediMind - AI-Powered Health Companion",
   "private": true,
   "main": "frontend/index.js",
   "scripts": {
