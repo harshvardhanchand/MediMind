@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default {
   "expo": {
     "name": "MediMind",
-    "slug": "medimind",
+    "slug": "medical-data-hub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./frontend/assets/icon.png",
