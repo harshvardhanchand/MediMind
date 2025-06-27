@@ -18,7 +18,7 @@ export default {
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.medimind",
+      "bundleIdentifier": "com.harshchand.medimind",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -28,7 +28,7 @@ export default {
         "foregroundImage": "./frontend/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.medimind"
+      "package": "com.harshchand.medimind"
     },
     "web": {
       "favicon": "./frontend/assets/favicon.png"

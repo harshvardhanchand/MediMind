@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default {
   "expo": {
     "name": "MediMind",
-    "slug": "medimind",
+    "slug": "medical-data-hub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -18,7 +18,7 @@ export default {
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.medimind",
+      "bundleIdentifier": "com.harshchand.medimind",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -28,7 +28,7 @@ export default {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.medimind"
+      "package": "com.harshchand.medimind"
     },
     "web": {
       "favicon": "./assets/favicon.png"
