@@ -13,41 +13,27 @@ import { theme } from '../theme';
 import MainTabNavigator from './MainTabNavigator';
 import { RootStackParamList, AuthStackParamList } from './types';
 
-const LoginScreenWithErrorBoundary = () => (
-  <ErrorBoundary
-    level="screen"
-    context="LoginScreen"
-    onError={(error, errorInfo) => {
-      console.error('🚨 LoginScreen Error Boundary triggered:', error);
-    }}
-  >
-    <LoginScreen />
-  </ErrorBoundary>
-);
 
-const SignUpScreenWithErrorBoundary = () => (
-  <ErrorBoundary
-    level="screen"
-    context="SignUpScreen"
-    onError={(error, errorInfo) => {
-      console.error('🚨 SignUpScreen Error Boundary triggered:', error);
-    }}
-  >
-    <SignUpScreen />
-  </ErrorBoundary>
-);
+function withScreenErrorBoundary<P extends object>(
+  Component: React.ComponentType<P>,
+  contextName: string
+) {
+  return (props: P) => (
+    <ErrorBoundary
+      level="screen"
+      context={contextName}
+      onError={(error, errorInfo) => {
+        console.error(`🚨 ${contextName} Error Boundary triggered:`, error);
+      }}
+    >
+      <Component {...props} />
+    </ErrorBoundary>
+  );
+}
 
-const ResetPasswordScreenWithErrorBoundary = () => (
-  <ErrorBoundary
-    level="screen"
-    context="ResetPasswordScreen"
-    onError={(error, errorInfo) => {
-      console.error('🚨 ResetPasswordScreen Error Boundary triggered:', error);
-    }}
-  >
-    <ResetPasswordScreen />
-  </ErrorBoundary>
-);
+const LoginScreenWithErrorBoundary = withScreenErrorBoundary(LoginScreen, 'LoginScreen');
+const SignUpScreenWithErrorBoundary = withScreenErrorBoundary(SignUpScreen, 'SignUpScreen');
+const ResetPasswordScreenWithErrorBoundary = withScreenErrorBoundary(ResetPasswordScreen, 'ResetPasswordScreen');
 
 // Auth Stack
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
@@ -67,17 +53,17 @@ const AuthenticatedAppWrapper = ({ children }: { children: React.ReactNode }) =>
 );
 
 
-const MainWithNotifications = () => (
+const MainWithNotifications = React.memo(() => (
   <AuthenticatedAppWrapper>
     <MainTabNavigator />
   </AuthenticatedAppWrapper>
-);
+));
 
-const OnboardingWithNotifications = () => (
+const OnboardingWithNotifications = React.memo(() => (
   <AuthenticatedAppWrapper>
     <OnboardingNavigator />
   </AuthenticatedAppWrapper>
-);
+));
 
 
 const SplashScreen = () => (
@@ -91,24 +77,37 @@ const SplashScreen = () => (
 const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-  const { session, user, isLoading } = useAuth();
+  const { session, user, isLoading, signOut, refreshUser } = useAuth();
+
+  // Track if this is a fresh app start vs ongoing session
+  const [hasCheckedSession, setHasCheckedSession] = React.useState(false);
+
+  // Only reset incomplete profiles on fresh app start, not during active onboarding
+  React.useEffect(() => {
+    if (!isLoading && !hasCheckedSession) {
+      setHasCheckedSession(true);
+
+      // If user has session but no profile on app start, reset them
+      if (session && !user?.name) {
+        console.log('🔄 App restarted with incomplete profile - signing out for clean restart');
+        signOut();
+      }
+    }
+  }, [isLoading, hasCheckedSession]);
 
   return (
     <RootStackNav.Navigator screenOptions={{ headerShown: false }}>
       {isLoading ? (
         // Show splash screen while loading
         <RootStackNav.Screen name="Splash" component={SplashScreen} />
+      ) : session && user?.name ? (
+        // User is authenticated AND has completed profile - go to main app
+        <RootStackNav.Screen name="Main" component={MainWithNotifications} />
       ) : session ? (
-        // User is authenticated
-        user?.name ? (
-          // User has completed profile - go to main app with notifications
-          <RootStackNav.Screen name="Main" component={MainWithNotifications} />
-        ) : (
-          // User is authenticated but hasn't completed profile - show onboarding with notifications
-          <RootStackNav.Screen name="Onboarding" component={OnboardingWithNotifications} />
-        )
+        // User is authenticated but incomplete profile - allow onboarding to continue
+        <RootStackNav.Screen name="Onboarding" component={OnboardingWithNotifications} />
       ) : (
-        // User is not authenticated - show auth screens (no NotificationProvider)
+        // User is not authenticated - show auth screens
         <RootStackNav.Screen name="Auth" component={AuthNavigator} />
       )}
     </RootStackNav.Navigator>
@@ -116,12 +115,6 @@ const AppNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-  },
   splashContainer: {
     flex: 1,
     justifyContent: 'center',
