@@ -5,7 +5,6 @@ import * as Linking from 'expo-linking';
 
 import OnboardingNavigator from './OnboardingNavigator';
 import { NotificationProvider } from '../context/NotificationContext';
-import ErrorBoundary from '../components/common/ErrorBoundary';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
@@ -15,27 +14,7 @@ import MainTabNavigator from './MainTabNavigator';
 import { RootStackParamList, AuthStackParamList } from './types';
 
 
-function withScreenErrorBoundary<P extends object>(
-  Component: React.ComponentType<P>,
-  contextName: string
-) {
-  const WrappedComponent = (props: P) => (
-    <ErrorBoundary
-      level="screen"
-      context={contextName}
-      onError={(error, errorInfo) => {
-        console.error(`🚨 ${contextName} Error Boundary triggered:`, error);
-      }}
-    >
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-
-  // Add displayName for React DevTools
-  WrappedComponent.displayName = `withErrorBoundary(${contextName})`;
-
-  return WrappedComponent;
-}
+import { withScreenErrorBoundary } from '../utils/withErrorBoundary';
 
 const LoginScreenWithErrorBoundary = withScreenErrorBoundary(LoginScreen, 'LoginScreen');
 const SignUpScreenWithErrorBoundary = withScreenErrorBoundary(SignUpScreen, 'SignUpScreen');
@@ -118,16 +97,26 @@ const isPasswordResetUrl = (url: string): boolean => {
 };
 
 
-const AuthFlow = React.memo(() => {
+const AuthFlow = React.memo(({ isPasswordReset = false }: { isPasswordReset?: boolean }) => {
+  return <AuthNavigator isPasswordReset={isPasswordReset} />;
+});
+
+const RegularAuthFlow = React.memo(() => (
+  <AuthNavigator isPasswordReset={false} />
+));
+
+const AppNavigator = () => {
+  const { session, user, isLoading, signOut } = useAuth();
+
+  const [hasCheckedSession, setHasCheckedSession] = React.useState(false);
   const [isPasswordReset, setIsPasswordReset] = React.useState(false);
 
-
+  // Password reset detection - moved to main AppNavigator
   React.useEffect(() => {
-    let mounted = true; // Track component mount state
+    let mounted = true;
 
     const checkForPasswordReset = async () => {
       try {
-
         const timeoutPromise = new Promise<string | null>(resolve =>
           setTimeout(() => resolve(null), 1000)
         );
@@ -138,7 +127,7 @@ const AuthFlow = React.memo(() => {
         ]);
 
         if (mounted && initialUrl && isPasswordResetUrl(initialUrl)) {
-          console.log('🔐 Password reset flow detected in AuthFlow');
+          console.log('🔐 Password reset flow detected in AppNavigator');
           setIsPasswordReset(true);
         }
       } catch (error) {
@@ -150,7 +139,7 @@ const AuthFlow = React.memo(() => {
 
     const subscription = Linking.addEventListener('url', (event) => {
       if (mounted && event.url && isPasswordResetUrl(event.url)) {
-        console.log('🔐 Password reset link received in AuthFlow');
+        console.log('🔐 Password reset link received in AppNavigator');
         setIsPasswordReset(true);
       }
     });
@@ -161,21 +150,6 @@ const AuthFlow = React.memo(() => {
     };
   }, []);
 
-  return <AuthNavigator isPasswordReset={isPasswordReset} />;
-});
-
-const RegularAuthFlow = React.memo(() => (
-  <AuthNavigator isPasswordReset={false} />
-));
-
-const AppNavigator = () => {
-  const { session, user, isLoading, signOut, refreshUser } = useAuth();
-
-
-  const [hasCheckedSession, setHasCheckedSession] = React.useState(false);
-  const [isPasswordReset, setIsPasswordReset] = React.useState(false);
-
-
   React.useEffect(() => {
     if (!session && isPasswordReset) {
       console.log('🔐 Session cleared after password reset - resetting flag');
@@ -183,11 +157,9 @@ const AppNavigator = () => {
     }
   }, [session, isPasswordReset]);
 
-
   React.useEffect(() => {
     if (!isLoading && !hasCheckedSession) {
       setHasCheckedSession(true);
-
 
       if (session && !user?.name && !isPasswordReset) {
         console.log('🔄 App restarted with incomplete profile - signing out for clean restart');
@@ -203,7 +175,9 @@ const AppNavigator = () => {
         <RootStackNav.Screen name="Splash" component={SplashScreen} />
       ) : isPasswordReset ? (
 
-        <RootStackNav.Screen name="Auth" component={AuthFlow} />
+        <RootStackNav.Screen name="Auth">
+          {() => <AuthFlow isPasswordReset={true} />}
+        </RootStackNav.Screen>
       ) : session && user?.name ? (
 
         <RootStackNav.Screen name="Main" component={MainWithNotifications} />
