@@ -14,6 +14,7 @@ from app.models.extracted_data import ExtractedData
 from app.repositories.document_repo import DocumentRepository
 from app.repositories.extracted_data_repo import ExtractedDataRepository
 from app.utils.ai_processors import process_document_with_docai, structure_text_with_gemini
+from app.utils.ocr_validation import validate_ocr_confidence, get_validation_summary
 from app.services.auto_population_service import get_auto_population_service
 from app.services.notification_service import get_notification_service, get_medical_triggers
 from app.middleware.performance import track_database_query
@@ -184,6 +185,68 @@ async def process_ocr_stage(
                 processing_stage="ocr",
                 error_code=ErrorCode.OCR_PROCESSING_FAILED
             )
+
+        # ✨ NEW: OCR Quality Validation ✨
+        logger.info(f"Validating OCR quality for document {document.document_id}")
+        
+        try:
+            # Get document type for appropriate threshold
+            doc_type = document.document_type.value if document.document_type else "other"
+            
+            # Validate OCR confidence
+            validation_result = validate_ocr_confidence(doc_ai_result, doc_type)
+            
+            # Log validation summary
+            logger.info(f"OCR validation result: {get_validation_summary(validation_result)}")
+            
+            if not validation_result["is_valid"]:
+                # Log detailed failure info
+                logger.warning(
+                    f"OCR quality insufficient for document {document.document_id}: "
+                    f"confidence={validation_result['overall_confidence']:.1%}, "
+                    f"threshold={validation_result['threshold']:.1%}, "
+                    f"quality_level={validation_result['quality_level']}"
+                )
+                
+                # Mark document as failed with detailed error
+                await doc_repo.update_status_async(
+                    db, document_id=document.document_id, 
+                    status=ProcessingStatus.FAILED
+                )
+                await db.commit()
+                
+                # Create user-friendly error message with recommendation
+                error_message = (
+                    f"Document quality too low for accurate processing. "
+                    f"{validation_result['recommendation']} "
+                    f"(Current quality: {validation_result['confidence']:.0%}, "
+                    f"Required for {doc_type}: {validation_result['threshold']:.0%})"
+                )
+                
+                raise DocumentProcessingError(
+                    error_message,
+                    document_id=str(document.document_id),
+                    processing_stage="ocr_validation",
+                    error_code=ErrorCode.OCR_QUALITY_TOO_LOW
+                )
+            
+            # Log successful validation with details
+            logger.info(
+                f"OCR quality validation passed for document {document.document_id}: "
+                f"confidence={validation_result['overall_confidence']:.1%} "
+                f"({validation_result['quality_level']} quality)"
+            )
+            
+        except DocumentProcessingError:
+            # Re-raise our custom errors
+            raise
+        except Exception as validation_error:
+            # Log validation errors but don't fail the document
+            logger.error(
+                f"OCR validation failed with error for document {document.document_id}: {validation_error}. "
+                f"Proceeding with processing (fallback behavior)."
+            )
+            # Continue processing despite validation error
 
         raw_text_content = doc_ai_result.text
         

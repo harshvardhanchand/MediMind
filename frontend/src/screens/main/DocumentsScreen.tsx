@@ -335,7 +335,7 @@ const DocumentsScreen = () => {
           {usingDummyData && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
               <StyledText className="text-yellow-800 text-sm text-center">
-                📱 Showing sample data (API not connected)
+                Showing sample data (API not connected)
               </StyledText>
             </StyledView>
           )}

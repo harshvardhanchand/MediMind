@@ -25,7 +25,7 @@ const AnalyticsDashboard: React.FC = () => {
     try {
       const retention = await analytics.getRetentionData();
       const events = await analytics.exportData();
-      
+
       setRetentionData(retention);
       // Show last 10 events
       setRecentEvents(events.slice(-10).reverse());
@@ -39,7 +39,7 @@ const AnalyticsDashboard: React.FC = () => {
       const data = await analytics.exportData();
       console.log('Analytics Data Export:', JSON.stringify(data, null, 2));
       Alert.alert(
-        'Data Exported', 
+        'Data Exported',
         `${data.length} events exported to console. Check your development console.`
       );
     } catch (error) {
@@ -48,8 +48,8 @@ const AnalyticsDashboard: React.FC = () => {
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString() + ' ' + 
-           new Date(timestamp).toLocaleTimeString();
+    return new Date(timestamp).toLocaleDateString() + ' ' +
+      new Date(timestamp).toLocaleTimeString();
   };
 
   const calculateDaysSince = (timestamp: number) => {
@@ -61,20 +61,20 @@ const AnalyticsDashboard: React.FC = () => {
     <ScrollView style={{ flex: 1, backgroundColor: theme.colors.backgroundPrimary }}>
       <View style={{ padding: 20 }}>
         <StyledText variant="h2" style={{ marginBottom: 20, textAlign: 'center' }}>
-          📊 Analytics Dashboard
+          Analytics Dashboard
         </StyledText>
 
         {/* Retention Metrics */}
-        <View style={{ 
-          backgroundColor: theme.colors.backgroundSecondary, 
-          padding: 15, 
-          borderRadius: 10, 
-          marginBottom: 20 
+        <View style={{
+          backgroundColor: theme.colors.backgroundSecondary,
+          padding: 15,
+          borderRadius: 10,
+          marginBottom: 20
         }}>
           <StyledText variant="h3" style={{ marginBottom: 10 }}>
-            📈 Retention Metrics
+            Retention Metrics
           </StyledText>
-          
+
           {retentionData ? (
             <>
               <StyledText style={{ marginBottom: 5 }}>
@@ -90,7 +90,7 @@ const AnalyticsDashboard: React.FC = () => {
                 Last Open: {retentionData.last_open ? calculateDaysSince(retentionData.last_open) : 'N/A'}
               </StyledText>
               <StyledText style={{ marginBottom: 5 }}>
-                Avg Sessions/Day: {retentionData.unique_days > 0 ? 
+                Avg Sessions/Day: {retentionData.unique_days > 0 ?
                   (retentionData.total_sessions / retentionData.unique_days).toFixed(1) : '0'}
               </StyledText>
             </>
@@ -100,23 +100,23 @@ const AnalyticsDashboard: React.FC = () => {
         </View>
 
         {/* Recent Events */}
-        <View style={{ 
-          backgroundColor: theme.colors.backgroundSecondary, 
-          padding: 15, 
-          borderRadius: 10, 
-          marginBottom: 20 
+        <View style={{
+          backgroundColor: theme.colors.backgroundSecondary,
+          padding: 15,
+          borderRadius: 10,
+          marginBottom: 20
         }}>
           <StyledText variant="h3" style={{ marginBottom: 10 }}>
-            🔄 Recent Events
+            Recent Events
           </StyledText>
-          
+
           {recentEvents.length > 0 ? (
             recentEvents.map((event, index) => (
-              <View key={index} style={{ 
-                marginBottom: 10, 
-                padding: 10, 
+              <View key={index} style={{
+                marginBottom: 10,
+                padding: 10,
                 backgroundColor: theme.colors.backgroundPrimary,
-                borderRadius: 5 
+                borderRadius: 5
               }}>
                 <StyledText variant="body2" style={{ fontWeight: 'bold' }}>
                   {event.event}
@@ -142,25 +142,25 @@ const AnalyticsDashboard: React.FC = () => {
             variant="filledPrimary"
             onPress={loadAnalyticsData}
           >
-            🔄 Refresh Data
+            Refresh Data
           </StyledButton>
-          
+
           <StyledButton
             variant="textPrimary"
             onPress={exportData}
           >
-            📤 Export to Console
+            Export to Console
           </StyledButton>
         </View>
 
-        <View style={{ 
-          marginTop: 20, 
-          padding: 15, 
+        <View style={{
+          marginTop: 20,
+          padding: 15,
           backgroundColor: theme.colors.backgroundSecondary,
-          borderRadius: 10 
+          borderRadius: 10
         }}>
           <StyledText variant="caption" style={{ textAlign: 'center' }}>
-            💡 This dashboard is for development only.{'\n'}
+            This dashboard is for development only.{'\n'}
             Remove before production deployment.
           </StyledText>
         </View>

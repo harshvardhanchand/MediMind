@@ -299,7 +299,7 @@ const SymptomTrackerScreen = () => {
           {usingDummyData && !apiConnected && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
               <StyledText className="text-yellow-800 text-sm text-center">
-                📱 API connection failed - Showing sample data
+                API connection failed - Showing sample data
               </StyledText>
             </StyledView>
           )}
@@ -307,7 +307,7 @@ const SymptomTrackerScreen = () => {
           {usingDummyData && apiConnected && (
             <StyledView className="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
               <StyledText className="text-blue-800 text-sm text-center">
-                📋 No symptoms logged yet - Showing sample data
+                No symptoms logged yet - Showing sample data
               </StyledText>
             </StyledView>
           )}
@@ -315,7 +315,7 @@ const SymptomTrackerScreen = () => {
           {!usingDummyData && apiConnected && symptoms.length > 0 && (
             <StyledView className="mt-3 p-2 bg-green-100 rounded border border-green-300">
               <StyledText className="text-green-800 text-sm text-center">
-                ✅ Connected to API - Real data loaded
+                Connected to API - Real data loaded
               </StyledText>
             </StyledView>
           )}

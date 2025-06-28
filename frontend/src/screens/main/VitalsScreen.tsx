@@ -81,11 +81,11 @@ const VitalsScreen = () => {
     setLoading(true);
     setError(null);
     setUsingDummyData(false);
-    
+
     try {
       console.log('Trying to fetch real health readings from API...');
       const response = await healthReadingsServices.getHealthReadings();
-      
+
       if (response.data && response.data.length > 0) {
         console.log(`Loaded ${response.data.length} real health readings from API`);
         setDisplayedReadings(response.data);
@@ -150,7 +150,7 @@ const VitalsScreen = () => {
     const iconBg = 'bg-primary/10';
 
     return (
-      <StyledTouchableOpacity 
+      <StyledTouchableOpacity
         className="p-3 mb-3 bg-white rounded-lg shadow-sm flex-row items-center"
         style={{ borderRadius: 12 }}
       >
@@ -180,8 +180,8 @@ const VitalsScreen = () => {
       <ScreenContainer>
         <StyledView className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <StyledText 
-            variant="body1" 
+          <StyledText
+            variant="body1"
             className="mt-4 text-center"
             style={{ color: colors.textSecondary }}
           >
@@ -215,12 +215,12 @@ const VitalsScreen = () => {
     );
   } else {
     mainContent = (
-        <FlatList<HealthReadingResponse>
-            data={displayedReadings}
-            keyExtractor={(item) => item.health_reading_id}
-            renderItem={renderVitalItem}
-            showsVerticalScrollIndicator={false}
-        />
+      <FlatList<HealthReadingResponse>
+        data={displayedReadings}
+        keyExtractor={(item) => item.health_reading_id}
+        renderItem={renderVitalItem}
+        showsVerticalScrollIndicator={false}
+      />
     );
   }
 
@@ -232,22 +232,22 @@ const VitalsScreen = () => {
           <StyledText variant="body2" color="textSecondary" className="mt-1">
             Track your health measurements
           </StyledText>
-          
+
           {usingDummyData && (
             <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
               <StyledText className="text-yellow-800 text-sm text-center">
-                📱 Showing sample data (API not connected)
+                Showing sample data (API not connected)
               </StyledText>
             </StyledView>
           )}
         </StyledView>
         <StyledButton variant="textPrimary" onPress={loadHealthReadingsFromApi} className="px-2 py-1 min-w-0">
-            <StyledText variant="caption" color="primary" className="text-xs">
-              Show All
-            </StyledText>
+          <StyledText variant="caption" color="primary" className="text-xs">
+            Show All
+          </StyledText>
         </StyledButton>
       </StyledView>
-      
+
       <StyledView className="mb-4 bg-blue-50 p-4 rounded-lg">
         <StyledText variant="label" className="font-semibold text-blue-700 mb-1">
           Vitals Overview
@@ -256,16 +256,16 @@ const VitalsScreen = () => {
           Keep track of your important health numbers here. Add new readings regularly.
         </StyledText>
       </StyledView>
-      
+
       <StyledView className="flex-1">
         {mainContent}
       </StyledView>
-      
+
       <StyledView className="pt-3">
-        <StyledButton 
+        <StyledButton
           variant="filledPrimary"
           iconLeft={<Plus size={18} color={colors.onPrimary} />}
-          onPress={() => navigation.navigate('AddHealthReading')} 
+          onPress={() => navigation.navigate('AddHealthReading')}
           className="w-full"
           style={{ borderRadius: 10 }}
         >

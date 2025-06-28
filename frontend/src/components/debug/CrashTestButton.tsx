@@ -66,7 +66,7 @@ const CrashTestButton: React.FC<CrashTestButtonProps> = ({ variant = 'textPrimar
       variant={variant}
       onPress={handleTestCrash}
     >
-      🧪 Test Crash Reporting
+      Test Crash Reporting
     </StyledButton>
   );
 };

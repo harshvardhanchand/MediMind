@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import {
-  Appbar, Button, Text, RadioButton, Snackbar, 
-  ProgressBar, Card 
+  Appbar, Button, Text, RadioButton, Snackbar,
+  ProgressBar, Card
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,7 +18,7 @@ type DocumentUploadNavigationProp = NativeStackNavigationProp<RootStackParamList
 
 const DocumentUploadScreen = () => {
   const navigation = useNavigation<DocumentUploadNavigationProp>();
-  
+
   const [selectedFileAssets, setSelectedFileAssets] = useState<DocumentPicker.DocumentPickerAsset[]>([]);
   const [documentType, setDocumentType] = useState<string>(DOCUMENT_TYPES.PRESCRIPTION);
   const [isUploading, setIsUploading] = useState(false);
@@ -38,24 +38,24 @@ const DocumentUploadScreen = () => {
         copyToCacheDirectory: true,
         multiple: true,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         if (result.assets.length > 5) {
           setError('Maximum 5 files allowed per upload. Please select fewer files.');
           setShowSnackbar(true);
           return;
         }
-        
-        const invalidFiles = result.assets.filter(file => 
+
+        const invalidFiles = result.assets.filter(file =>
           file.size && file.size > MAX_FILE_SIZE
         );
-        
+
         if (invalidFiles.length > 0) {
           setError(ERROR_MESSAGES.FILE_TOO_LARGE);
           setShowSnackbar(true);
           return;
         }
-        
+
         setSelectedFileAssets(result.assets);
       } else {
         setSelectedFileAssets([]);
@@ -86,9 +86,9 @@ const DocumentUploadScreen = () => {
     setError('');
     setSuccessMessage('');
     setCriticalError(null);
-    
+
     const formData = new FormData();
-    
+
     selectedFileAssets.forEach((fileAsset) => {
       formData.append('files', {
         uri: fileAsset.uri,
@@ -96,56 +96,64 @@ const DocumentUploadScreen = () => {
         type: fileAsset.mimeType,
       } as any);
     });
-    
+
     formData.append('document_type', documentType);
 
     try {
       const response = await documentServices.uploadDocument(formData);
-      
+
       // Handle response which is now an array of uploaded documents
       const uploadedDocuments = Array.isArray(response.data) ? response.data : [response.data];
       const uploadedCount = uploadedDocuments.length;
       const totalCount = selectedFileAssets.length;
-      
+
       if (uploadedCount === totalCount) {
         setSuccessMessage(SUCCESS_MESSAGES.DOCUMENT_UPLOADED);
       } else {
         setSuccessMessage(`${uploadedCount} of ${totalCount} documents uploaded successfully! Check logs for failed uploads.`);
       }
-      
+
       setShowSnackbar(true);
       setSelectedFileAssets([]);
       setDocumentType(DOCUMENT_TYPES.PRESCRIPTION);
-      
+
       setTimeout(() => {
         navigation.goBack();
       }, 2500);
 
     } catch (err: any) {
-      console.error('Error uploading documents:', err);
-      let errorMessage = ERROR_MESSAGES.UPLOAD_ERROR;
+      console.error('Upload failed:', err);
+      setIsUploading(false);
+
+      let errorMessage = 'Upload failed. Please try again.';
+
       if (err.response?.data?.detail) {
         if (typeof err.response.data.detail === 'string') {
           errorMessage = err.response.data.detail;
         } else if (err.response.data.detail.message) {
           errorMessage = err.response.data.detail.message;
-          if (err.response.data.detail.failed_uploads) {
-            const failedNames = err.response.data.detail.failed_uploads.map((f: any) => f.filename).join(', ');
-            errorMessage += ` Failed files: ${failedNames}`;
-          }
         }
+
+        // Handle specific error codes
+        if (err.response.data.error_code === 'OCR_QUALITY_TOO_LOW') {
+          errorMessage = `Document Quality Too Low\n\n${errorMessage}\n\nTips for better results:\n• Use good lighting when taking photos\n• Ensure text is clear and in focus\n• Avoid shadows or glare\n• Take photos straight-on (not at an angle)\n• For handwritten documents, ensure neat writing`;
+        }
+
+        if (err.response.data.detail.failed_uploads) {
+          const failedNames = err.response.data.detail.failed_uploads.map((f: any) => f.filename).join(', ');
+          errorMessage += ` Failed files: ${failedNames}`;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
       }
+
       setError(errorMessage);
-      setShowSnackbar(true);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
     }
   };
 
   const handleCancel = () => {
     if (isUploading) {
-        Alert.alert('Upload in Progress', 'Cannot cancel while upload is active with this method.');
+      Alert.alert('Upload in Progress', 'Cannot cancel while upload is active with this method.');
     } else {
       navigation.goBack();
     }
@@ -185,22 +193,22 @@ const DocumentUploadScreen = () => {
         <Appbar.BackAction onPress={handleCancel} />
         <Appbar.Content title="Upload Document" />
       </Appbar.Header>
-      
+
       <ScrollView contentContainerStyle={styles.content}>
         <Text variant="headlineSmall" style={styles.title}>Add Medical Document</Text>
-        
+
         <Card style={styles.filePickerCard}>
           <Card.Content>
-            <Button 
-              mode="contained" 
-              icon="file-upload" 
+            <Button
+              mode="contained"
+              icon="file-upload"
               onPress={pickDocument}
               disabled={isUploading}
               style={styles.uploadButton}
             >
               Select Documents
             </Button>
-            
+
             {selectedFileAssets.map((fileAsset, index) => (
               <View key={index} style={styles.fileInfoContainer}>
                 <Text style={styles.fileName}>
@@ -216,8 +224,8 @@ const DocumentUploadScreen = () => {
                     Size: {(fileAsset.size / 1024).toFixed(1)} KB
                   </Text>
                 )}
-                <Button 
-                  mode="outlined" 
+                <Button
+                  mode="outlined"
                   onPress={() => removeFile(index)}
                   style={styles.removeButton}
                 >
@@ -227,22 +235,22 @@ const DocumentUploadScreen = () => {
             ))}
           </Card.Content>
         </Card>
-        
+
         <Card style={styles.optionsCard}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Document Type</Text>
-            <RadioButton.Group 
-              onValueChange={value => setDocumentType(value)} 
+            <RadioButton.Group
+              onValueChange={value => setDocumentType(value)}
               value={documentType}
             >
-              <RadioButton.Item label="Prescription" value={DOCUMENT_TYPES.PRESCRIPTION} disabled={isUploading}/>
-              <RadioButton.Item label="Lab Result" value={DOCUMENT_TYPES.LAB_RESULT} disabled={isUploading}/>
-              <RadioButton.Item label="Imaging Report" value={DOCUMENT_TYPES.IMAGING_REPORT} disabled={isUploading}/>
-              <RadioButton.Item label="Discharge Summary" value={DOCUMENT_TYPES.DISCHARGE_SUMMARY} disabled={isUploading}/>
+              <RadioButton.Item label="Prescription" value={DOCUMENT_TYPES.PRESCRIPTION} disabled={isUploading} />
+              <RadioButton.Item label="Lab Result" value={DOCUMENT_TYPES.LAB_RESULT} disabled={isUploading} />
+              <RadioButton.Item label="Imaging Report" value={DOCUMENT_TYPES.IMAGING_REPORT} disabled={isUploading} />
+              <RadioButton.Item label="Discharge Summary" value={DOCUMENT_TYPES.DISCHARGE_SUMMARY} disabled={isUploading} />
             </RadioButton.Group>
           </Card.Content>
         </Card>
-        
+
         {isUploading && (
           <Card style={styles.progressCard}>
             <Card.Content>
@@ -253,18 +261,18 @@ const DocumentUploadScreen = () => {
             </Card.Content>
           </Card>
         )}
-        
+
         <View style={styles.buttonContainer}>
-          <Button 
-            mode="outlined" 
-            onPress={handleCancel} 
+          <Button
+            mode="outlined"
+            onPress={handleCancel}
             style={styles.cancelButton}
             disabled={isUploading && false}
           >
             Cancel
           </Button>
-          <Button 
-            mode="contained" 
+          <Button
+            mode="contained"
             onPress={uploadDocument}
             loading={isUploading}
             disabled={isUploading || !selectedFileAssets || selectedFileAssets.length === 0}
@@ -274,7 +282,7 @@ const DocumentUploadScreen = () => {
           </Button>
         </View>
       </ScrollView>
-      
+
       <Snackbar
         visible={showSnackbar}
         onDismiss={() => setShowSnackbar(false)}

@@ -69,12 +69,12 @@ const HealthReadingsScreen = () => {
   const navigation = useNavigation<HealthReadingsScreenNavigationProp>();
   const [selectedReadingType, setSelectedReadingType] = useState<ReadingType>('all');
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
-  
+
   // Data states
   const [readings, setReadings] = useState<ReadingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingDummyData, setUsingDummyData] = useState(false);
-  
+
   const screenWidth = Dimensions.get('window').width - 32; // Adjust for padding
 
   useEffect(() => {
@@ -85,10 +85,10 @@ const HealthReadingsScreen = () => {
     try {
       setLoading(true);
       setUsingDummyData(false);
-      
+
       console.log('Trying to fetch real health readings from API...');
       const response = await healthReadingsServices.getHealthReadings();
-      
+
       if (response.data && response.data.length > 0) {
         console.log(`Loaded ${response.data.length} real health readings from API`);
         const convertedReadings = convertApiReadingsToDisplayFormat(response.data);
@@ -137,17 +137,17 @@ const HealthReadingsScreen = () => {
 
     return Object.values(groupedByDate) as ReadingData[];
   };
-  
+
   const handleReadingTypeChange = (value: ReadingType) => {
     setSelectedReadingType(value);
   };
-  
+
   // Get chart data based on reading type
   const getChartData = () => {
     const labels = readings.map(reading => reading.date);
-    
+
     const datasets: ChartDataset[] = [];
-    
+
     if (selectedReadingType === 'all' || selectedReadingType === 'bloodPressure') {
       datasets.push({
         data: readings.map(reading => reading.bloodPressureSystolic || 0),
@@ -156,7 +156,7 @@ const HealthReadingsScreen = () => {
         label: 'Blood Pressure (systolic)',
       });
     }
-    
+
     if (selectedReadingType === 'all' || selectedReadingType === 'bloodGlucose') {
       datasets.push({
         data: readings.map(reading => reading.bloodGlucose || 0),
@@ -165,7 +165,7 @@ const HealthReadingsScreen = () => {
         label: 'Blood Glucose (mg/dL)',
       });
     }
-    
+
     if (selectedReadingType === 'all' || selectedReadingType === 'heartRate') {
       datasets.push({
         data: readings.map(reading => reading.heartRate || 0),
@@ -174,7 +174,7 @@ const HealthReadingsScreen = () => {
         label: 'Heart Rate (bpm)',
       });
     }
-    
+
     return {
       labels,
       datasets,
@@ -189,11 +189,11 @@ const HealthReadingsScreen = () => {
       </View>
     );
   }
-  
+
   // Render the chart view
   const renderChartView = () => {
     const chartData = getChartData();
-    
+
     return (
       <View style={styles.chartContainer}>
         <LineChart
@@ -234,7 +234,7 @@ const HealthReadingsScreen = () => {
       </View>
     );
   };
-  
+
   // Render the table view
   const renderTableView = () => {
     return (
@@ -270,27 +270,27 @@ const HealthReadingsScreen = () => {
       </View>
     );
   };
-  
+
   return (
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title="Health Readings" />
       </Appbar.Header>
-      
+
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>Health Readings</Text>
         <Text style={styles.headerSubtitle}>Track and monitor your health metrics</Text>
-        
+
         {usingDummyData && (
           <View style={styles.dummyDataBanner}>
             <Text style={styles.dummyDataText}>
-              📱 Showing sample data (API not connected)
+              Showing sample data (API not connected)
             </Text>
           </View>
         )}
       </View>
-      
+
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <Button
@@ -323,7 +323,7 @@ const HealthReadingsScreen = () => {
           </Button>
         </ScrollView>
       </View>
-      
+
       <Card style={styles.card}>
         <Card.Content>
           <View style={styles.cardHeader}>
@@ -339,11 +339,11 @@ const HealthReadingsScreen = () => {
           </View>
           <Text style={styles.cardSubtitle}>View and analyze your health metrics</Text>
           <Divider style={styles.divider} />
-          
+
           {viewMode === 'chart' ? renderChartView() : renderTableView()}
         </Card.Content>
       </Card>
-      
+
       <FAB
         style={styles.fab}
         icon="plus"

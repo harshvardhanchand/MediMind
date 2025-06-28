@@ -311,6 +311,21 @@ async def get_performance_stats(request: Request):
         "correlation_id": getattr(request.state, 'correlation_id', 'unknown')
     })
 
+@app.get("/api/admin/ocr-config", include_in_schema=False)
+async def get_ocr_validation_config(request: Request):
+    """Get current OCR validation configuration (admin only)."""
+    from app.utils.ocr_validation import OCRValidationConfig
+    
+    config = OCRValidationConfig()
+    summary = config.get_config_summary()
+    
+    return JSONResponse({
+        "active_thresholds": summary["active_thresholds"],
+        "absolute_minimum": summary["absolute_minimum"],
+        "has_overrides": summary["has_overrides"],
+        "environment_overrides": summary["environment_overrides"] if summary["has_overrides"] else {}
+    })
+
 
 @app.get("/", include_in_schema=False)
 async def root():
