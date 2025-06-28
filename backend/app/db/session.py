@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from typing import Generator, AsyncGenerator
 from contextlib import asynccontextmanager
+from sqlalchemy.sql import text
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
@@ -14,17 +15,13 @@ logger = logging.getLogger(__name__)
 Base = declarative_base()  # For synchronous operations
 AsyncBase = declarative_base()  # For asynchronous operations
 
-# Keep Base as the primary one for backward compatibility
-# But AsyncBase can be used for async-specific models if needed
 
-# Use create_engine for synchronous connection with the DATABASE_URL from settings
-# Ensure settings.DATABASE_URL provides a sync DSN (e.g., postgresql://... or postgresql+psycopg2://...)
 engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
 
-# Use sessionmaker for synchronous sessions
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Synchronous dependency provider
+
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
@@ -32,7 +29,7 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
-# ASYNCHRONOUS SETUP
+
 async_engine = None
 AsyncSessionLocal = None
 
@@ -45,7 +42,7 @@ if settings.ASYNC_DATABASE_URL:
         logger.info("Asynchronous database engine initialized.")
     except Exception as e:
         logger.error(f"Failed to initialize asynchronous database engine: {e}", exc_info=True)
-        # async_engine and AsyncSessionLocal will remain None, preventing async DB operations
+       
 else:
     logger.warning("ASYNC_DATABASE_URL not configured. Asynchronous database features will be unavailable.")
 
@@ -58,6 +55,8 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
         raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
     async with AsyncSessionLocal() as session:
         try:
+            # Set search_path to include extensions schema for vector operations
+            await session.execute(text("SET search_path TO public, extensions"))
             yield session
             # Auto-commit successful transactions
             await session.commit()
@@ -79,10 +78,8 @@ async def get_async_db_manual() -> AsyncGenerator[AsyncSession, None]:
         raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
     async with AsyncSessionLocal() as session:
         try:
+            # Set search_path to include extensions schema for vector operations
+            await session.execute(text("SET search_path TO public, extensions"))
             yield session
         finally:
             await session.close()
-
-# Optional: Add a function to create tables (useful for initial setup/tests without Alembic)
-# def init_db():
-#     Base.metadata.create_all(bind=engine) 
