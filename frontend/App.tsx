@@ -6,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import { enableScreens } from 'react-native-screens';
 import { theme } from './src/theme';
 import AppNavigator from './src/navigation/AppNavigator';
-import "./src/global.css";
 import { AuthProvider } from './src/context/AuthContext';
 import DeepLinkingService from './src/services/deepLinkingService';
 import { analytics } from './src/services/analytics';
