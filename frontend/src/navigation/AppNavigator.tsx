@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import * as Linking from 'expo-linking';
 
 import OnboardingNavigator from './OnboardingNavigator';
@@ -67,31 +67,47 @@ const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 // Utility function for robust URL parsing
 const isPasswordResetUrl = (url: string): boolean => {
   try {
+    console.log('🔍 Checking if password reset URL:', url);
+
+    // ADD VISUAL DEBUGGING FOR TESTFLIGHT
+    Alert.alert('Debug: URL Received', `URL: ${url}`, [{ text: 'OK' }]);
+
     const parsed = Linking.parse(url);
+    console.log('🔍 Parsed URL:', parsed);
+
+    // ADD VISUAL DEBUGGING FOR PARSED URL
+    Alert.alert('Debug: Parsed URL', `Path: ${parsed.path}\nQuery: ${JSON.stringify(parsed.queryParams)}`, [{ text: 'OK' }]);
 
     // Check if it's a ResetPassword route
     if (parsed.path === 'ResetPassword') {
+      console.log('✅ Found ResetPassword path');
+      Alert.alert('Debug: Match Found', 'Found ResetPassword path!', [{ text: 'OK' }]);
       return true;
     }
 
     // Check for Supabase recovery type in query params
     if (parsed.queryParams && parsed.queryParams.type === 'recovery') {
+      console.log('✅ Found recovery type in query params');
+      Alert.alert('Debug: Match Found', 'Found recovery type in query params!', [{ text: 'OK' }]);
       return true;
     }
 
-
+    // Check hash parameters
     const urlObj = new URL(url);
     if (urlObj.hash) {
       const hashParams = new URLSearchParams(urlObj.hash.substring(1));
       if (hashParams.get('type') === 'recovery') {
+        console.log('✅ Found recovery type in hash');
+        Alert.alert('Debug: Match Found', 'Found recovery type in hash!', [{ text: 'OK' }]);
         return true;
       }
     }
 
+    Alert.alert('Debug: No Match', 'URL does not match reset password pattern', [{ text: 'OK' }]);
     return false;
   } catch (error) {
     console.warn('Failed to parse URL for password reset detection:', error);
-
+    Alert.alert('Debug: Error', `Failed to parse URL: ${error}`, [{ text: 'OK' }]);
     return url.includes('type=recovery') || url.includes('ResetPassword');
   }
 };
@@ -138,9 +154,17 @@ const AppNavigator = () => {
     checkForPasswordReset();
 
     const subscription = Linking.addEventListener('url', (event) => {
+      console.log('🔗 Deep link received:', event.url);
+
+      // ADD VISUAL DEBUGGING FOR TESTFLIGHT
+      Alert.alert('Debug: Deep Link', `Received: ${event.url}`, [{ text: 'OK' }]);
+
       if (mounted && event.url && isPasswordResetUrl(event.url)) {
-        console.log('🔐 Password reset link received in AppNavigator');
+        console.log('🔐 Password reset link detected - navigating to ResetPassword');
+        Alert.alert('Debug: Navigation', 'Navigating to ResetPassword screen!', [{ text: 'OK' }]);
         setIsPasswordReset(true);
+      } else {
+        console.log('🔗 Not a password reset link');
       }
     });
 
@@ -167,6 +191,26 @@ const AppNavigator = () => {
       }
     }
   }, [isLoading, hasCheckedSession, isPasswordReset]);
+
+  // Debug current state
+  React.useEffect(() => {
+    Alert.alert('Debug: App State', `isLoading: ${isLoading}\nisPasswordReset: ${isPasswordReset}\nhasSession: ${!!session}\nhasUserName: ${!!user?.name}`, [{ text: 'OK' }]);
+  }, [isLoading, isPasswordReset, session, user]);
+
+  // Debug navigation decisions
+  React.useEffect(() => {
+    if (isLoading) {
+      Alert.alert('Debug: Navigation Decision', 'Showing Splash Screen', [{ text: 'OK' }]);
+    } else if (isPasswordReset) {
+      Alert.alert('Debug: Navigation Decision', 'Showing Password Reset Auth Flow', [{ text: 'OK' }]);
+    } else if (session && user?.name) {
+      Alert.alert('Debug: Navigation Decision', 'Showing Main App', [{ text: 'OK' }]);
+    } else if (session) {
+      Alert.alert('Debug: Navigation Decision', 'Showing Onboarding', [{ text: 'OK' }]);
+    } else {
+      Alert.alert('Debug: Navigation Decision', 'Showing Regular Auth Flow', [{ text: 'OK' }]);
+    }
+  }, [isLoading, isPasswordReset, session, user]);
 
   return (
     <RootStackNav.Navigator screenOptions={{ headerShown: false }}>

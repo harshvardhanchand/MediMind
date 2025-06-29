@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 // import { styled } from 'nativewind'; // No longer directly needed
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { Alert } from 'react-native';
 
 import { AuthStackParamList } from '../../navigation/types'; // Corrected path
 import { supabaseClient } from '../../services/supabase'; // Import Supabase client
@@ -81,15 +81,19 @@ const LoginScreen = () => {
   };
 
   const handleForgotPassword = async () => {
+    Alert.alert('Debug: Forgot Password', 'handleForgotPassword called', [{ text: 'OK' }]);
+
     if (!email.trim()) {
       setError("Please enter your email address first.");
+      Alert.alert('Debug: Validation', 'No email entered', [{ text: 'OK' }]);
       return;
     }
 
+    Alert.alert('Debug: Email Check', `Email entered: ${email}`, [{ text: 'OK' }]);
+
     try {
-
       const resetPasswordURL = 'medimind://ResetPassword';
-
+      Alert.alert('Debug: Reset URL', `Using redirect URL: ${resetPasswordURL}`, [{ text: 'OK' }]);
 
       const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: resetPasswordURL,
@@ -98,14 +102,17 @@ const LoginScreen = () => {
       if (resetError) {
         console.error('Reset password error:', resetError);
         setError(resetError.message);
+        Alert.alert('Debug: Supabase Error', `Error: ${resetError.message}`, [{ text: 'OK' }]);
       } else {
         setError(null);
         console.log('Password reset email sent successfully');
+        Alert.alert('Debug: Success', 'Supabase confirmed email sent successfully', [{ text: 'OK' }]);
         alert("Password reset email sent! Please check your inbox and click the link to reset your password.");
       }
     } catch (catchError: any) {
       console.error('Catch error in forgot password:', catchError);
       setError(catchError.message || "An unexpected error occurred.");
+      Alert.alert('Debug: Catch Error', `Catch error: ${catchError.message}`, [{ text: 'OK' }]);
     }
   };
 
