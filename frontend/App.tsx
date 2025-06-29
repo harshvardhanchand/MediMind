@@ -14,19 +14,6 @@ import ErrorBoundary from './src/components/common/ErrorBoundary';
 
 enableScreens();
 
-const linking = {
-  prefixes: ['medimind://'],
-  config: {
-    screens: {
-      Auth: {
-        screens: {
-          ResetPassword: 'ResetPassword',
-        },
-      },
-    },
-  },
-};
-
 export default function App() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
@@ -54,7 +41,7 @@ export default function App() {
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
           <AuthProvider>
-            <NavigationContainer ref={navigationRef} linking={linking}>
+            <NavigationContainer ref={navigationRef}>
               <AppNavigator />
             </NavigationContainer>
           </AuthProvider>
