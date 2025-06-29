@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
 
-import { AuthStackParamList } from '../../navigation/types';
+import { AuthStackParamList, ResetPasswordRouteParams } from '../../navigation/types';
 import { supabaseClient } from '../../services/supabase';
 import { useTheme } from '../../theme';
 
@@ -14,10 +14,11 @@ import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
 
 type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
+type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;
 
 const ResetPasswordScreen = () => {
   const navigation = useNavigation<ResetPasswordScreenNavigationProp>();
-  const route = useRoute();
+  const route = useRoute<ResetPasswordScreenRouteProp>();
   const theme = useTheme();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,187 +27,215 @@ const ResetPasswordScreen = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
+  // Helper to set session and update state
+  const setAuthSession = async (accessToken: string, refreshToken: string) => {
+    Alert.alert('Debug: RPS SetAuthSession', `Attempting to set session. AT: ${!!accessToken}, RT: ${!!refreshToken}`, [{ text: 'OK' }]);
+    const { data, error: sessionError } = await supabaseClient.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (sessionError) {
+      console.error('Session error on setAuthSession:', sessionError);
+      Alert.alert('Debug: RPS Session Set Error', `Session error: ${sessionError.message}`, [{ text: 'OK' }]);
+      setError('Invalid or expired reset link. Please request a new password reset.');
+      setIsAuthenticated(false);
+    } else if (data.session) {
+      console.log('Successfully set session for password reset from setAuthSession');
+      Alert.alert('Debug: RPS Session Success', 'Successfully set session.', [{ text: 'OK' }]);
+      setIsAuthenticated(true);
+      setError(null);
+    } else {
+      Alert.alert('Debug: RPS No Session Data', 'Session set but no session data returned', [{ text: 'OK' }]);
+      setError('Failed to authenticate with reset link.');
+      setIsAuthenticated(false);
+    }
+  };
+
+
   useEffect(() => {
-    Alert.alert('Debug: Screen Load', 'ResetPasswordScreen loaded', [{ text: 'OK' }]);
+    Alert.alert('Debug: RPS Load', `Route Params: ${JSON.stringify(route.params)}`, [{ text: 'OK' }]);
 
     const initializePasswordReset = async () => {
+      setIsInitializing(true);
+      setError(null); // Clear previous errors
+
+      // 1. Check for existing Supabase session (e.g., if user re-opens app quickly)
+      const { data: { session: currentSession }, error: currentSessionError } = await supabaseClient.auth.getSession();
+      if (currentSessionError) {
+        console.error('Error fetching current session:', currentSessionError);
+        // Non-fatal, proceed with link processing
+      }
+      if (currentSession) {
+        console.log('Found existing Supabase session, user might be authenticated for reset.');
+        // Check if this session is sufficient for password update (e.g. user.aud === 'authenticated')
+        // Supabase updateUser requires an authenticated session.
+        // If the link was already processed and session set, this is fine.
+        setIsAuthenticated(true);
+        setIsInitializing(false);
+        Alert.alert('Debug: RPS Existing SB Session', 'Found active Supabase session.', [{ text: 'OK' }]);
+        return;
+      }
+
+
+      // 2. Prioritize route params passed from AppNavigator
+      const params = route.params;
+      if (params) {
+        Alert.alert('Debug: RPS Route Params Found', `Params: ${JSON.stringify(params)}`, [{ text: 'OK' }]);
+        if (params.error_description) {
+          setError(`Error from link: ${params.error_description}`);
+          setIsAuthenticated(false);
+          setIsInitializing(false);
+          Alert.alert('Debug: RPS Error Param', `Error: ${params.error_description}`, [{ text: 'OK' }]);
+          return;
+        }
+
+        if (params.type === 'recovery' && params.accessToken && params.refreshToken) {
+          Alert.alert('Debug: RPS Route Params Valid', 'Using tokens from route params.', [{ text: 'OK' }]);
+          await setAuthSession(params.accessToken, params.refreshToken);
+          setIsInitializing(false);
+          return;
+        }
+         Alert.alert('Debug: RPS Route Params Incomplete', 'Route params present but not sufficient for immediate session set.', [{ text: 'OK' }]);
+      } else {
+        Alert.alert('Debug: RPS No Route Params', 'No route params found.', [{ text: 'OK' }]);
+      }
+
+      // 3. If no/incomplete route params, or if they didn't lead to authentication,
+      //    try to get the initial URL (could be redundant if AppNavigator already handled, but good fallback)
+      let initialUrlProcessed = false;
       try {
-        Alert.alert('Debug: Init Start', 'Starting password reset initialization', [{ text: 'OK' }]);
-        setIsInitializing(true);
-
-        // First, check if we already have a session (user came from email link)
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          Alert.alert('Debug: Session Error', `Session error: ${sessionError.message}`, [{ text: 'OK' }]);
-          setError('Failed to verify reset session. Please try again.');
-          setIsInitializing(false);
-          return;
-        }
-
-        if (session) {
-          console.log('Found existing session for password reset');
-          Alert.alert('Debug: Session Found', 'Found existing session for password reset', [{ text: 'OK' }]);
-          setIsAuthenticated(true);
-          setError(null);
-          setIsInitializing(false);
-          return;
-        }
-
-        Alert.alert('Debug: No Session', 'No existing session found', [{ text: 'OK' }]);
-
-        // If no session, try to get the URL and process it
         const initialUrl = await Linking.getInitialURL();
         if (initialUrl) {
-          console.log('Processing initial URL:', initialUrl);
-          Alert.alert('Debug: Initial URL', `Found initial URL: ${initialUrl}`, [{ text: 'OK' }]);
-          await processResetLink(initialUrl);
+          Alert.alert('Debug: RPS Initial URL', `Found: ${initialUrl}`, [{ text: 'OK' }]);
+          // Avoid reprocessing if params from AppNavigator were already sufficient
+          if (!(params && params.accessToken && params.refreshToken)) {
+             initialUrlProcessed = await processResetLink(initialUrl, 'Initial URL');
+          } else {
+            Alert.alert('Debug: RPS Initial URL Skipped', 'Skipped processing initialURL as route params were sufficient.', [{ text: 'OK' }]);
+          }
         } else {
-          // No URL and no session - user needs to click the email link
-          Alert.alert('Debug: No URL', 'No initial URL found', [{ text: 'OK' }]);
-          setError('Please click the password reset link in your email to continue.');
+           Alert.alert('Debug: RPS No Initial URL', 'No initial URL found by RPS.', [{ text: 'OK' }]);
         }
-
-        // Set up listener for incoming links
-        const subscription = Linking.addEventListener('url', (event) => {
-          console.log('Received deep link:', event.url);
-          Alert.alert('Debug: Deep Link Event', `Received deep link in ResetPassword: ${event.url}`, [{ text: 'OK' }]);
-          processResetLink(event.url);
-        });
-
-        setIsInitializing(false);
-        return () => subscription?.remove();
-      } catch (error) {
-        console.error('Error initializing password reset:', error);
-        Alert.alert('Debug: Init Error', `Initialization error: ${error}`, [{ text: 'OK' }]);
-        setError('Failed to initialize password reset. Please try again.');
-        setIsInitializing(false);
+      } catch (e) {
+        console.error("Error getting initial URL in RPS:", e);
+        Alert.alert('Debug: RPS Initial URL Error', `Error: ${e}`, [{ text: 'OK' }]);
       }
+
+      if (isAuthenticated || initialUrlProcessed && isAuthenticated) { // if processResetLink set isAuthenticated
+        setIsInitializing(false);
+        return;
+      }
+
+      // 4. Set up listener for incoming links if not yet authenticated
+      //    This handles cases where the link arrives after the screen is already mounted.
+      const subscription = Linking.addEventListener('url', async (event) => {
+        Alert.alert('Debug: RPS Deep Link Event', `URL: ${event.url}`, [{ text: 'OK' }]);
+        await processResetLink(event.url, 'Event Listener');
+      });
+
+      // If after all checks, not authenticated and no initial URL or params led to auth.
+      if (!isAuthenticated && !initialUrlProcessed && !params?.accessToken) {
+         Alert.alert('Debug: RPS Final State', 'No tokens from params, initial URL, or event. Showing prompt.', [{ text: 'OK' }]);
+         setError('Please click the password reset link in your email to continue.');
+      }
+
+      setIsInitializing(false);
+      return () => subscription?.remove();
     };
 
     initializePasswordReset();
-  }, []);
+  }, [route.params]); // Re-run if route.params change
 
-  const processResetLink = async (url: string) => {
+  // processResetLink now primarily for URL strings from Linking module
+  const processResetLink = async (url: string, context: string): Promise<boolean> => {
+    Alert.alert('Debug: RPS Process Link', `Context: ${context}, URL: ${url}`, [{ text: 'OK' }]);
     try {
-      console.log('Processing reset link:', url);
-      Alert.alert('Debug: Process Link', `Processing reset link: ${url}`, [{ text: 'OK' }]);
-
-      // Parse both hash fragments and query parameters
       const urlObj = new URL(url);
-      let params = new URLSearchParams();
+      let searchParams = new URLSearchParams();
 
-      Alert.alert('Debug: URL Object', `Protocol: ${urlObj.protocol}\nHost: ${urlObj.host}\nPathname: ${urlObj.pathname}\nSearch: ${urlObj.search}\nHash: ${urlObj.hash}`, [{ text: 'OK' }]);
-
-      // Check hash fragment first (Supabase typically uses this)
-      if (urlObj.hash) {
-        const fragment = urlObj.hash.substring(1);
-        params = new URLSearchParams(fragment);
-        Alert.alert('Debug: Hash Fragment', `Found hash fragment: ${fragment}`, [{ text: 'OK' }]);
+      if (urlObj.hash && urlObj.hash.length > 1) {
+        searchParams = new URLSearchParams(urlObj.hash.substring(1));
+        Alert.alert('Debug: RPS Link Hash', `Fragment: ${urlObj.hash.substring(1)}`, [{ text: 'OK' }]);
+      }
+      if (searchParams.get('type') !== 'recovery' && urlObj.search) {
+         const queryOnlyParams = new URLSearchParams(urlObj.search);
+         if(queryOnlyParams.get('type') === 'recovery'){
+            searchParams = queryOnlyParams;
+            Alert.alert('Debug: RPS Link Query', `Query: ${urlObj.search}`, [{ text: 'OK' }]);
+         }
       }
 
-      // If no hash params, check query parameters
-      if (!params.has('access_token') && urlObj.search) {
-        params = new URLSearchParams(urlObj.search);
-        Alert.alert('Debug: Query Params', `Using query parameters: ${urlObj.search}`, [{ text: 'OK' }]);
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
+      const type = searchParams.get('type');
+      const errorDesc = searchParams.get('error_description');
+
+      Alert.alert('Debug: RPS Link Extracted', `Type: ${type}, AT: ${!!accessToken}, RT: ${!!refreshToken}, Err: ${errorDesc}`, [{ text: 'OK' }]);
+
+      if (errorDesc) {
+        setError(`Error from link: ${errorDesc}`);
+        setIsAuthenticated(false);
+        return false;
       }
-
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      const type = params.get('type');
-
-      console.log('Extracted params:', {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-        type
-      });
-
-      Alert.alert('Debug: Extracted Params', `Access Token: ${accessToken ? 'YES' : 'NO'}\nRefresh Token: ${refreshToken ? 'YES' : 'NO'}\nType: ${type}`, [{ text: 'OK' }]);
 
       if (type === 'recovery' && accessToken && refreshToken) {
-        console.log('Setting session with extracted tokens');
-        Alert.alert('Debug: Valid Tokens', 'Found valid recovery tokens - setting session', [{ text: 'OK' }]);
-
-        const { data, error: sessionError } = await supabaseClient.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          Alert.alert('Debug: Session Set Error', `Session error: ${sessionError.message}`, [{ text: 'OK' }]);
-          setError('Invalid or expired reset link. Please request a new password reset.');
-        } else if (data.session) {
-          console.log('Successfully set session for password reset');
-          Alert.alert('Debug: Session Success', 'Successfully set session for password reset', [{ text: 'OK' }]);
-          setIsAuthenticated(true);
-          setError(null);
-        } else {
-          Alert.alert('Debug: No Session Data', 'Session set but no session data returned', [{ text: 'OK' }]);
-          setError('Failed to authenticate with reset link.');
-        }
+        await setAuthSession(accessToken, refreshToken);
+        return true; // Indicates successful processing
       } else {
-        console.log('Invalid reset link format or missing parameters');
-        Alert.alert('Debug: Invalid Link', `Invalid link format:\nType: ${type}\nAccess Token: ${accessToken ? 'YES' : 'NO'}\nRefresh Token: ${refreshToken ? 'YES' : 'NO'}`, [{ text: 'OK' }]);
-        setError('Invalid password reset link. Please request a new password reset.');
+        Alert.alert('Debug: RPS Link Invalid', 'Link from Linking module not sufficient.', [{ text: 'OK' }]);
+        // Avoid overwriting error if already set by route.params
+        if(!error) setError('Invalid password reset link from email.');
+        return false;
       }
-    } catch (error) {
-      console.error('Error processing reset link:', error);
-      Alert.alert('Debug: Process Error', `Error processing reset link: ${error}`, [{ text: 'OK' }]);
+    } catch (err) {
+      console.error('Error processing reset link string:', err);
+      Alert.alert('Debug: RPS Link Process Error', `Error: ${err}`, [{ text: 'OK' }]);
       setError('Failed to process password reset link. Please try again.');
+      return false;
     }
   };
 
   const handleResetPassword = async () => {
-    Alert.alert('Debug: Reset Start', 'handleResetPassword called', [{ text: 'OK' }]);
-
+    // Alert.alert('Debug: Reset Start', 'handleResetPassword called', [{ text: 'OK' }]);
     if (!isAuthenticated) {
-      Alert.alert('Debug: Not Authenticated', 'User not authenticated for password reset', [{ text: 'OK' }]);
-      setError('Please click the password reset link in your email first.');
+      Alert.alert('Error', 'Authentication failed. Please ensure you have clicked a valid password reset link.', [{ text: 'OK' }]);
+      setError('Authentication required. Please use the link from your email.');
       return;
     }
 
-    Alert.alert('Debug: Authenticated', 'User is authenticated, proceeding with reset', [{ text: 'OK' }]);
-
+    // Alert.alert('Debug: Authenticated', 'User is authenticated, proceeding with reset', [{ text: 'OK' }]);
     if (!newPassword.trim()) {
-      Alert.alert('Debug: Validation', 'No new password entered', [{ text: 'OK' }]);
       setError("Please enter a new password.");
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      Alert.alert('Debug: Validation', 'Passwords do not match', [{ text: 'OK' }]);
       setError("Passwords do not match.");
       return;
     }
-
     if (newPassword.length < 6) {
-      Alert.alert('Debug: Validation', 'Password too short', [{ text: 'OK' }]);
       setError("Password must be at least 6 characters long.");
       return;
     }
 
-    Alert.alert('Debug: Validation Passed', 'All validations passed, updating password', [{ text: 'OK' }]);
-
+    // Alert.alert('Debug: Validation Passed', 'All validations passed, updating password', [{ text: 'OK' }]);
     setLoading(true);
     setError(null);
 
     try {
-      console.log('Updating password...');
-      Alert.alert('Debug: Supabase Update', 'Calling supabase updateUser', [{ text: 'OK' }]);
-
+      // console.log('Updating password...');
+      // Alert.alert('Debug: Supabase Update', 'Calling supabase updateUser', [{ text: 'OK' }]);
       const { data, error: updateError } = await supabaseClient.auth.updateUser({
         password: newPassword,
       });
 
       if (updateError) {
         console.error('Password update error:', updateError);
-        Alert.alert('Debug: Update Error', `Password update error: ${updateError.message}`, [{ text: 'OK' }]);
+        // Alert.alert('Debug: Update Error', `Password update error: ${updateError.message}`, [{ text: 'OK' }]);
         setError(updateError.message);
       } else if (data) {
-        console.log('Password updated successfully');
-        Alert.alert('Debug: Update Success', 'Password updated successfully in Supabase', [{ text: 'OK' }]);
+        // console.log('Password updated successfully');
+        // Alert.alert('Debug: Update Success', 'Password updated successfully in Supabase', [{ text: 'OK' }]);
         Alert.alert(
           'Success',
           'Password updated successfully! You can now log in with your new password.',
@@ -214,8 +243,7 @@ const ResetPasswordScreen = () => {
             {
               text: 'OK',
               onPress: () => {
-                // Sign out to ensure clean state
-                supabaseClient.auth.signOut();
+                supabaseClient.auth.signOut(); // Sign out to ensure clean state
                 navigation.navigate('Login');
               },
             },
@@ -223,8 +251,8 @@ const ResetPasswordScreen = () => {
         );
       }
     } catch (catchError: any) {
-      console.error('Catch error:', catchError);
-      Alert.alert('Debug: Catch Error', `Catch error during password update: ${catchError.message}`, [{ text: 'OK' }]);
+      console.error('Catch error during password update:', catchError);
+      // Alert.alert('Debug: Catch Error', `Catch error during password update: ${catchError.message}`, [{ text: 'OK' }]);
       setError(catchError.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);

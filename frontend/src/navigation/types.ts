@@ -5,10 +5,18 @@ import { MainBottomTabParamList } from './MainTabNavigator';
 // Assuming MedicationDetailData might be defined in MedicationDetailScreen or a shared types file
 // For now, we'll use a generic object for initialData if needed, or define it if you point me to it.
 
+// Define the parameters for the ResetPassword route
+export type ResetPasswordRouteParams = {
+  accessToken?: string;
+  refreshToken?: string;
+  type?: string;
+  error_description?: string; // To handle errors passed in URL
+};
+
 export type AuthStackParamList = {
   Login: undefined;
   SignUp: undefined;
-  ResetPassword: undefined;
+  ResetPassword: ResetPasswordRouteParams | undefined; // Update to accept params or be undefined
   // Register: undefined; // Removed as SignUpScreen is the primary
   // Add other auth screens here if needed
 };
