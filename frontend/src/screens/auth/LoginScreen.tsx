@@ -155,7 +155,7 @@ const LoginScreen = () => {
         className="w-full mb-4"
         disabled={isLoading}
       >
-        Forgot Password?
+        Forgot Password
       </StyledButton>
 
       <StyledButton
