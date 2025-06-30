@@ -72,7 +72,6 @@ const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
   try {
     console.log('🔧 Parsing reset link:', url);
-    Alert.alert('Debug: AppNav Parse Start', `URL: ${url}`, [{ text: 'OK' }]);
 
     const urlObj = new URL(url);
     let params = new URLSearchParams();
@@ -81,7 +80,6 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
     if (urlObj.hash && urlObj.hash.length > 1) {
       const fragment = urlObj.hash.substring(1);
       params = new URLSearchParams(fragment);
-      Alert.alert('Debug: AppNav Hash', `Fragment: ${fragment}`, [{ text: 'OK' }]);
     }
 
     // If no hash params with 'type=recovery', check query parameters
@@ -89,7 +87,6 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
       const queryParams = new URLSearchParams(urlObj.search);
       if (queryParams.get('type') === 'recovery') {
         params = queryParams;
-        Alert.alert('Debug: AppNav Query', `Query: ${urlObj.search}`, [{ text: 'OK' }]);
       }
     }
 
@@ -106,7 +103,6 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
             params.set(key, value);
           }
         });
-        Alert.alert('Debug: AppNav ExpoParse', `Expo Query: ${JSON.stringify(expoParsedUrl.queryParams)}`, [{ text: 'OK' }]);
       }
     }
 
@@ -115,9 +111,6 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
     const refreshToken = params.get('refresh_token');
     const type = params.get('type');
     const error_description = params.get('error_description');
-
-
-    Alert.alert('Debug: AppNav Parsed', `Type: ${type}, AT: ${!!accessToken}, RT: ${!!refreshToken}, Err: ${error_description}`, [{ text: 'OK' }]);
 
     if (type === 'recovery' && accessToken && refreshToken) {
       return { accessToken, refreshToken, type };
@@ -142,7 +135,6 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
     return null;
   } catch (error) {
     console.error('Error parsing reset link:', error);
-    Alert.alert('Debug: AppNav Parse ERR', `Error: ${error}`, [{ text: 'OK' }]);
     return null;
   }
 };
@@ -168,14 +160,10 @@ const AppNavigator = () => {
 
     const processUrl = (url: string | null) => {
       if (mounted && url) {
-        Alert.alert('Debug: AppNav Process URL', `URL: ${url}`, [{ text: 'OK' }]);
         const params = parseResetLink(url);
         if (params) {
           console.log('🔐 Password reset params extracted in AppNavigator:', params);
-          Alert.alert('Debug: AppNav Params Set', `Params: ${JSON.stringify(params)}`, [{ text: 'OK' }]);
           setResetPasswordParams(params);
-        } else {
-          Alert.alert('Debug: AppNav No Params', 'No valid reset params from URL', [{ text: 'OK' }]);
         }
       }
     };
@@ -190,7 +178,6 @@ const AppNavigator = () => {
         processUrl(initialUrl);
       } catch (error) {
         console.warn('Error checking initial URL for password reset:', error);
-        Alert.alert('Debug: AppNav InitURLErr', `Error: ${error}`, [{ text: 'OK' }]);
       }
     };
 
@@ -211,7 +198,6 @@ const AppNavigator = () => {
     // If session becomes null (e.g., after password update and sign out) and we had reset params, clear them.
     if (!session && resetPasswordParams) {
       console.log('🔐 Session cleared, removing password reset params.');
-      Alert.alert('Debug: AppNav Session Null', 'Clearing reset params', [{ text: 'OK' }]);
       setResetPasswordParams(undefined);
     }
   }, [session]); // Only depends on session
@@ -227,32 +213,21 @@ const AppNavigator = () => {
     }
   }, [isLoading, hasCheckedSession, session, user, resetPasswordParams, signOut]);
 
-
-  // Debug current state
-  React.useEffect(() => {
-    Alert.alert('Debug: App State', `isLoading: ${isLoading}\nresetParams: ${JSON.stringify(resetPasswordParams)}\nhasSession: ${!!session}\nhasUserName: ${!!user?.name}`, [{ text: 'OK' }]);
-  }, [isLoading, resetPasswordParams, session, user]);
-
   // Determine navigation logic
   let content;
   if (isLoading) {
-    Alert.alert('Debug: Nav Decision', 'Showing Splash Screen', [{ text: 'OK' }]);
     content = <RootStackNav.Screen name="Splash" component={SplashScreen} />;
   } else if (resetPasswordParams) {
-    Alert.alert('Debug: Nav Decision', 'Showing Password Reset Auth Flow', [{ text: 'OK' }]);
     content = (
       <RootStackNav.Screen name="Auth">
         {() => <AuthFlow resetPasswordParams={resetPasswordParams} />}
       </RootStackNav.Screen>
     );
   } else if (session && user?.name) {
-    Alert.alert('Debug: Nav Decision', 'Showing Main App', [{ text: 'OK' }]);
     content = <RootStackNav.Screen name="Main" component={MainWithNotifications} />;
   } else if (session) {
-    Alert.alert('Debug: Nav Decision', 'Showing Onboarding', [{ text: 'OK' }]);
     content = <RootStackNav.Screen name="Onboarding" component={OnboardingWithNotifications} />;
   } else {
-    Alert.alert('Debug: Nav Decision', 'Showing Regular Auth Flow', [{ text: 'OK' }]);
     content = <RootStackNav.Screen name="Auth" component={RegularAuthFlow} />;
   }
 
