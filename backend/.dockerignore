@@ -2,7 +2,13 @@
 venv/
 medimind/
 env/
+
+# Environment files (secrets configured in deployment platform)
+.env
 .env.local
+.env.production
+.env.development
+.env.staging
 
 # Python cache
 __pycache__/
