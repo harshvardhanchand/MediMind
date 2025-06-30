@@ -46,7 +46,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     // Log error details
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     
-    // Track error in analytics
+    
     analytics.track('error_boundary_triggered', {
       error_message: error.message,
       error_stack: error.stack,

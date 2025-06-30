@@ -13,7 +13,9 @@
     "test:backend": "cd backend && pytest -xvs tests/",
     "test:frontend": "jest --rootDir frontend",
     "test": "npm run test:backend && npm run test:frontend",
-    "lint": "eslint frontend/src --ext .ts,.tsx,.js,.jsx"
+    "lint": "eslint frontend/src --ext .ts,.tsx,.js,.jsx",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -47,7 +49,6 @@
     "expo-notifications": "^0.31.3",
     "expo-secure-store": "~14.2.3",
     "expo-status-bar": "~2.2.3",
-    "https-browserify": "^1.0.0",
     "lucide-react-native": "^0.511.0",
     "nativewind": "^2.0.11",
     "os-browserify": "^0.3.0",
@@ -71,7 +72,6 @@
     "react-native-web": "^0.20.0",
     "react-native-webview": "^13.8.6",
     "readable-stream": "^4.7.0",
-    "stream-http": "^3.2.0",
     "url": "^0.11.4",
     "vm-browserify": "^1.1.2",
     "web-streams-polyfill": "^3.2.0",

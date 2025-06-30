@@ -16,8 +16,4 @@ const { Readable } = require('readable-stream');
 global.Stream = Readable;
 global.stream = require('readable-stream');
 
-// Use React Native's native WebSocket implementation
-if (typeof global.WebSocket === 'undefined') {
-  // React Native already provides a global WebSocket
-  global.WebSocket = WebSocket;
-} 
+

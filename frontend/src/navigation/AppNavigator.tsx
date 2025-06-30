@@ -88,8 +88,8 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
     if (params.get('type') !== 'recovery' && urlObj.search) {
       const queryParams = new URLSearchParams(urlObj.search);
       if (queryParams.get('type') === 'recovery') {
-         params = queryParams;
-         Alert.alert('Debug: AppNav Query', `Query: ${urlObj.search}`, [{ text: 'OK' }]);
+        params = queryParams;
+        Alert.alert('Debug: AppNav Query', `Query: ${urlObj.search}`, [{ text: 'OK' }]);
       }
     }
 
@@ -97,17 +97,17 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
     // This handles cases like medimind://ResetPassword?type=recovery...
     const expoParsedUrl = Linking.parse(url);
     if (params.get('type') !== 'recovery' && expoParsedUrl.queryParams) {
-        const queryParams = expoParsedUrl.queryParams as any;
-        if (queryParams.type === 'recovery') {
-            params = new URLSearchParams(expoParsedUrl.path?.split('?')[1] || '');
-            // Manually add from expoParsedUrl.queryParams if some are missing
-            Object.entries(queryParams).forEach(([key, value]) => {
-                if (!params.has(key) && typeof value === 'string') {
-                    params.set(key, value);
-                }
-            });
-            Alert.alert('Debug: AppNav ExpoParse', `Expo Query: ${JSON.stringify(expoParsedUrl.queryParams)}`, [{ text: 'OK' }]);
-        }
+      const queryParams = expoParsedUrl.queryParams as any;
+      if (queryParams.type === 'recovery') {
+        params = new URLSearchParams(expoParsedUrl.path?.split('?')[1] || '');
+        // Manually add from expoParsedUrl.queryParams if some are missing
+        Object.entries(queryParams).forEach(([key, value]) => {
+          if (!params.has(key) && typeof value === 'string') {
+            params.set(key, value);
+          }
+        });
+        Alert.alert('Debug: AppNav ExpoParse', `Expo Query: ${JSON.stringify(expoParsedUrl.queryParams)}`, [{ text: 'OK' }]);
+      }
     }
 
 
@@ -123,18 +123,18 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
       return { accessToken, refreshToken, type };
     }
     if (error_description) {
-        // If there's an error description, it's likely a failed attempt, still pass it
-        console.warn('Password reset link contains error:', error_description);
-        return { error_description, type };
+      // If there's an error description, it's likely a failed attempt, still pass it
+      console.warn('Password reset link contains error:', error_description);
+      return { error_description, type };
     }
 
     // Check if the path itself indicates a reset password screen, even if tokens are not in URL yet
     // This is a weaker check, but helps if the URL is just for navigation
     if (expoParsedUrl.path === 'ResetPassword' || url.includes('ResetPassword')) {
-        console.log('🔗 URL indicates ResetPassword screen, but no tokens found yet in AppNavigator.');
-        // Return empty object to signify it's a password reset context,
-        // ResetPasswordScreen will then try its own Linking.getInitialURL or listener
-        return { type: 'recovery' }; // Indicate it's a recovery attempt
+      console.log('🔗 URL indicates ResetPassword screen, but no tokens found yet in AppNavigator.');
+      // Return empty object to signify it's a password reset context,
+      // ResetPasswordScreen will then try its own Linking.getInitialURL or listener
+      return { type: 'recovery' }; // Indicate it's a recovery attempt
     }
 
 
@@ -175,7 +175,7 @@ const AppNavigator = () => {
           Alert.alert('Debug: AppNav Params Set', `Params: ${JSON.stringify(params)}`, [{ text: 'OK' }]);
           setResetPasswordParams(params);
         } else {
-           Alert.alert('Debug: AppNav No Params', 'No valid reset params from URL', [{ text: 'OK' }]);
+          Alert.alert('Debug: AppNav No Params', 'No valid reset params from URL', [{ text: 'OK' }]);
         }
       }
     };
@@ -184,8 +184,8 @@ const AppNavigator = () => {
       try {
         // Short timeout for getInitialURL as it can hang on Android in some cases
         const initialUrl = await Promise.race([
-            Linking.getInitialURL(),
-            new Promise<string|null>(resolve => setTimeout(() => resolve(null), 1500))
+          Linking.getInitialURL(),
+          new Promise<string | null>(resolve => setTimeout(() => resolve(null), 1500))
         ]);
         processUrl(initialUrl);
       } catch (error) {

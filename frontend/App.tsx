@@ -18,7 +18,6 @@ export default function App() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   useEffect(() => {
-    // Initialize services
     crashReporting.init();
     const deepLinkingService = DeepLinkingService.getInstance();
     deepLinkingService.setNavigationRef(navigationRef.current!);
@@ -30,7 +29,7 @@ export default function App() {
       level="global"
       context="App"
       onError={(error, errorInfo) => {
-        console.error('🚨 Global Error Boundary triggered:', error);
+        console.error(' Global Error Boundary triggered:', error);
         crashReporting.captureException(error, {
           componentStack: errorInfo.componentStack,
           level: 'global',

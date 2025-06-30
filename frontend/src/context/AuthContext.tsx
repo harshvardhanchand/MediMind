@@ -28,14 +28,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = async () => {
     if (!session) return;
-    
+
     try {
       const response = await userServices.getMe();
       // Merge the API user data with the Supabase user data
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const fetchSession = async () => {
       try {
         console.log('🔍 Starting session fetch...');
-        
+
         const { data, error } = await supabaseClient.auth.getSession();
         console.log('🔍 Supabase getSession result:', {
           hasSession: !!data.session,
@@ -76,14 +76,14 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           hasToken: !!data.session?.access_token,
           error: error?.message
         });
-        
+
         if (error) {
           console.error('Error fetching session:', error);
           setSession(null);
           setUser(null);
         } else {
           setSession(data.session);
-          
+
           // Fetch user profile if session exists
           if (data.session) {
             console.log('🔍 Fetching user profile...');
@@ -116,9 +116,9 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const { data: authListenerData } = supabaseClient.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('🔍 Auth state change:', event, !!newSession);
-        
+
         setSession(newSession);
-        
+
         // Track authentication events
         if (event === 'SIGNED_IN' && newSession) {
           analytics.setUserId(newSession.user.id);
@@ -130,11 +130,11 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           // Set user context for crash reporting
           crashReporting.setUser(newSession.user.id, newSession.user.email);
           crashReporting.addBreadcrumb('User signed in', 'auth', 'info');
-          
-          // Fetch user profile
+
+
           try {
             const userProfile = await userServices.getMe();
-            // UserResponse contains the user data directly
+
             const extendedUser = {
               ...newSession.user,
               ...userProfile.data,
@@ -171,8 +171,8 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     analytics.trackUserAction('user_logout_initiated');
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
-        console.error('Error signing out:', error.message);
-        analytics.trackUserAction('user_logout_error', { error: error.message });
+      console.error('Error signing out:', error.message);
+      analytics.trackUserAction('user_logout_error', { error: error.message });
     }
     setIsLoading(false);
   };

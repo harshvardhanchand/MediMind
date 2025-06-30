@@ -31,21 +31,8 @@ import {
 import apiClient from './client';
 
 // Authentication services
-// Login and Register are now handled by Supabase client-side SDK directly in the frontend.
-// The backend's role is to verify JWTs for API calls.
-export const authServices = {
-  // login: (email: string, password: string): Promise<AxiosResponse<{ token: string; user: UserResponse }>> => 
-  //   apiClient.post('/api/auth/login', { email, password }),
-    
-  // register: (userData: { email: string; password: string; name: string }): Promise<AxiosResponse<UserResponse>> => 
-  //   apiClient.post('/api/auth/register', userData),
-    
-  // Logout is also typically handled by Supabase client SDK (supabase.auth.signOut()).
-  // A backend logout endpoint is often not needed unless specific server-side session cleanup is required.
-  // If you have a backend /api/auth/logout endpoint with specific logic, uncomment this.
-  // logout: (): Promise<AxiosResponse<void>> => 
-  //   apiClient.post('/api/auth/logout'),
-};
+// Authentication is handled directly by Supabase client SDK
+
 
 // Document services
 export const documentServices = {

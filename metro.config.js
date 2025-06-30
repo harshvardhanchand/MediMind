@@ -26,9 +26,6 @@ config.resolver.extraNodeModules = {
   assert: require.resolve('assert/'),
   crypto: require.resolve('crypto-browserify'),
   'readable-stream': require.resolve('readable-stream'),
-  net: path.join(frontendRoot, 'empty.js'),
-  tls: path.join(frontendRoot, 'empty.js'),
-  fs: path.join(frontendRoot, 'empty.js'),
   ws: path.resolve(frontendRoot, 'shims/ws.js'),
 };
 
