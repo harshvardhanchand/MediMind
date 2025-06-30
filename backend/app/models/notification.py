@@ -20,8 +20,8 @@ class Notification(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
-    type = Column(String(50), nullable=False)  # drug_interaction, side_effect_warning, health_trend, etc.
-    severity = Column(String(20), nullable=False)  # low, medium, high
+    type = Column(String(50), nullable=False)  
+    severity = Column(String(20), nullable=False) 
     title = Column(String(200), nullable=False)
     message = Column(Text, nullable=False)
     notification_metadata = Column(JSONB, nullable=True)
@@ -30,13 +30,13 @@ class Notification(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     expires_at = Column(DateTime, nullable=True)
     
-    # Related entities that triggered this notification
+    
     related_medication_id = Column(UUID(as_uuid=True), ForeignKey("medications.medication_id", ondelete="SET NULL"), nullable=True)
     related_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id", ondelete="SET NULL"), nullable=True)
     related_health_reading_id = Column(UUID(as_uuid=True), ForeignKey("health_readings.health_reading_id", ondelete="SET NULL"), nullable=True)
     related_extracted_data_id = Column(UUID(as_uuid=True), ForeignKey("extracted_data.extracted_data_id", ondelete="SET NULL"), nullable=True)
     
-    # Relationships
+    
     user = relationship("User", back_populates="notifications")
     related_medication = relationship("Medication", back_populates="notifications")
     related_document = relationship("Document", back_populates="notifications")
@@ -51,15 +51,15 @@ class MedicalSituation(Base):
     __tablename__ = "medical_situations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    medical_context = Column(JSONB, nullable=False)  # Medical profile that triggered analysis
-    analysis_result = Column(JSONB, nullable=False)  # AI analysis results
+    medical_context = Column(JSONB, nullable=False) 
+    analysis_result = Column(JSONB, nullable=False)  
     confidence_score = Column(Float, nullable=False)
     similarity_threshold = Column(Float, nullable=False, default=0.85)
     usage_count = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     last_used_at = Column(DateTime, nullable=False, server_default=func.now())
     
-    # Note: embedding column is added via raw SQL in migration (vector type)
+    
 
 
 class AIAnalysisLog(Base):
@@ -79,17 +79,17 @@ class AIAnalysisLog(Base):
     analysis_result = Column(JSONB, nullable=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     
-    # Related entities that triggered the analysis
+    
     related_medication_id = Column(UUID(as_uuid=True), ForeignKey("medications.medication_id", ondelete="SET NULL"), nullable=True)
     related_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id", ondelete="SET NULL"), nullable=True)
     related_health_reading_id = Column(UUID(as_uuid=True), ForeignKey("health_readings.health_reading_id", ondelete="SET NULL"), nullable=True)
     related_extracted_data_id = Column(UUID(as_uuid=True), ForeignKey("extracted_data.extracted_data_id", ondelete="SET NULL"), nullable=True)
     
-    # Relationships
+    
     user = relationship("User", back_populates="ai_analysis_logs")
     related_medication = relationship("Medication", back_populates="ai_analysis_logs")
     related_document = relationship("Document", back_populates="ai_analysis_logs")
     related_health_reading = relationship("HealthReading", back_populates="ai_analysis_logs")
     related_extracted_data = relationship("ExtractedData", back_populates="ai_analysis_logs")
     
-    # Note: embedding column is added via raw SQL in migration (vector type) 
+    

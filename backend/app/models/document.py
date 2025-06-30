@@ -40,7 +40,7 @@ class Document(Base):
     document_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True)
     original_filename = Column(String, nullable=False)
-    storage_path = Column(String, unique=True, nullable=False) # e.g., GCS path or identifier
+    storage_path = Column(String, unique=True, nullable=False) 
     document_type = Column(
         SQLAlchemyEnum(
             DocumentType,

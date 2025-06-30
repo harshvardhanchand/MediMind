@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     
     # Core application settings
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    PROJECT_NAME: str = "Medical Data Hub API"
+    PROJECT_NAME: str = "MediMind"
     
     
     # CORS settings
@@ -28,7 +28,9 @@ class Settings(BaseSettings):
         "http://localhost:8082",   # Localhost version
         "http://localhost:8081",   # Alternative localhost port
         "http://localhost:8083",   # Another localhost port
-    ]
+    ],
+    if os.getenv("ENVIRONMENT") == "production":
+        CORS_ORIGINS.append("*")
     
     # Authentication settings
     SUPABASE_URL: Optional[AnyHttpUrl] = None

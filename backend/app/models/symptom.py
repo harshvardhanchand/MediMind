@@ -27,7 +27,7 @@ class Symptom(Base):
     
     symptom_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True)
-    symptom = Column(String, nullable=False, index=True)  # e.g., "headache", "nausea", "fatigue"
+    symptom = Column(String, nullable=False, index=True)  
     severity = Column(
         SQLAlchemyEnum(
             SymptomSeverity,
@@ -38,20 +38,20 @@ class Symptom(Base):
         ),
         nullable=False
     )
-    reported_date = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    duration = Column(String, nullable=True)  # e.g., "2 hours", "3 days"
-    location = Column(String, nullable=True)  # e.g., "head", "chest", "abdomen"
+    reported_date = Column(DateTime, default=datetime.now(datetime.UTC), nullable=False, index=True)
+    duration = Column(String, nullable=True) 
+    location = Column(String, nullable=True)  
     notes = Column(Text, nullable=True)
     
-    # Optional links to triggers
+   
     related_medication_id = Column(UUID(as_uuid=True), ForeignKey("medications.medication_id"), nullable=True)
     related_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id"), nullable=True)
     
-    # Tracking fields
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
-    # Relationships
+    created_at = Column(DateTime, default=datetime.now(datetime.UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now(datetime.UTC), onupdate=datetime.now(datetime.UTC), nullable=False)
+    
+    
     user = relationship("User")
     related_medication = relationship("Medication")
     related_document = relationship("Document")

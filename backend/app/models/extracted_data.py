@@ -28,26 +28,26 @@ class ExtractedData(Base):
     
     extracted_data_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id"), nullable=False, unique=True, index=True)
-    # Using JSONB to store flexible structured data
+   
     content = Column(JSONB, nullable=False)
-    # Optional: Store the raw text extracted by OCR before structuring
+    
     raw_text = Column(Text, nullable=True)
     extraction_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
     review_status = Column(
         SQLAlchemyEnum(
             ReviewStatus,
-            values_callable=enum_values,   # Use .value list instead of .name
-            name="reviewstatus",           # Must match existing PG type
-            native_enum=True,              # Keep it a real PG enum
-            create_type=False              # Don't try to recreate
+            values_callable=enum_values,   
+            name="reviewstatus",           
+            native_enum=True,              
+            create_type=False              
         ),
-        default=ReviewStatus.PENDING_REVIEW.value,  # Use .value instead of enum directly
+        default=ReviewStatus.PENDING_REVIEW.value,  
         nullable=False
     )
     reviewed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
     review_timestamp = Column(DateTime, nullable=True)
     
-    # Relationships
+    
     document = relationship("Document", back_populates="extracted_data")
     reviewed_by_user = relationship("User")
     notifications = relationship("Notification", back_populates="related_extracted_data")

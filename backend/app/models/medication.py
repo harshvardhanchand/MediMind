@@ -41,21 +41,21 @@ class Medication(Base):
     medication_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True)
     name = Column(String, nullable=False, index=True)
-    dosage = Column(String, nullable=True)  # e.g., "10mg"
+    dosage = Column(String, nullable=True)  
     frequency = Column(
         SQLAlchemyEnum(
             MedicationFrequency,
-            values_callable=enum_values,   # Use .value list instead of .name
-            name="medicationfrequency",    # Must match existing PG type
-            native_enum=True,              # Keep it a real PG enum
-            create_type=False              # Don't try to recreate
+            values_callable=enum_values,   
+            name="medicationfrequency",    
+            native_enum=True,              
+            create_type=False              
         ),
         nullable=False
     )
-    frequency_details = Column(String, nullable=True)  # Additional frequency details if needed
+    frequency_details = Column(String, nullable=True) 
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
-    time_of_day = Column(JSON, nullable=True)  # Store times as array of strings like ["08:00", "20:00"]
+    time_of_day = Column(JSON, nullable=True)  
     with_food = Column(Boolean, nullable=True)
     reason = Column(String, nullable=True)
     prescribing_doctor = Column(String, nullable=True)
@@ -64,24 +64,24 @@ class Medication(Base):
     status = Column(
         SQLAlchemyEnum(
             MedicationStatus,
-            values_callable=enum_values,   # Use .value list instead of .name
-            name="medicationstatus",       # Must match existing PG type
-            native_enum=True,              # Keep it a real PG enum
-            create_type=False              # Don't try to recreate
+            values_callable=enum_values,   
+            name="medicationstatus",       
+            native_enum=True,             
+            create_type=False              
         ),
         default=MedicationStatus.ACTIVE,
         nullable=False
     )
     
-    # Links to other data
-    related_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id"), nullable=True)
-    tags = Column(JSON, nullable=True)  # List of tags/categories for this medication
     
-    # Tracking fields
+    related_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id"), nullable=True)
+    tags = Column(JSON, nullable=True)  
+    
+    
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
-    # Relationships
+   
     user = relationship("User")
     related_document = relationship("Document")
     notifications = relationship("Notification", back_populates="related_medication")

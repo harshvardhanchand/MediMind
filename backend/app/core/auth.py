@@ -43,12 +43,12 @@ async def verify_token(
     token = credentials.credentials
     
     try:
-        # Simple JWT decode - no caching, no over-engineering
+        
         decoded_token = jwt.decode(
             token,
             settings.SUPABASE_JWT_SECRET,
             algorithms=["HS256"],
-            audience="authenticated"  # Supabase default audience
+            audience="authenticated"  
         )
         
         user_id = decoded_token.get("sub")

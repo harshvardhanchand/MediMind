@@ -5,7 +5,7 @@ from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Text, Enum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy.orm import relationship, Mapped
 
-from app.db.session import Base # Assuming Base is in app.db.session
+from app.db.session import Base 
 
 class HealthReadingType(str, enum.Enum):
     BLOOD_PRESSURE = "BLOOD_PRESSURE"
@@ -14,12 +14,12 @@ class HealthReadingType(str, enum.Enum):
     WEIGHT = "WEIGHT"
     HEIGHT = "HEIGHT"
     BMI = "BMI"
-    SPO2 = "SPO2" # Blood oxygen saturation
+    SPO2 = "SPO2" 
     TEMPERATURE = "TEMPERATURE"
     RESPIRATORY_RATE = "RESPIRATORY_RATE"
-    PAIN_LEVEL = "PAIN_LEVEL" # e.g., scale of 1-10
+    PAIN_LEVEL = "PAIN_LEVEL" 
     STEPS = "STEPS"
-    SLEEP = "SLEEP" # Could be duration in minutes or more complex object
+    SLEEP = "SLEEP" 
     OTHER = "OTHER"
 
 def enum_values(enum_cls):
@@ -35,31 +35,28 @@ class HealthReading(Base):
     reading_type = Column(
         SQLAlchemyEnum(
             HealthReadingType,
-            values_callable=enum_values,   # Use .value list instead of .name
-            name="healthreadingtype",      # Must match existing PG type
-            native_enum=True,              # Keep it a real PG enum
-            create_type=False              # Don't try to recreate
+            values_callable=enum_values,   
+            name="healthreadingtype",      
+            native_enum=True,              
+            create_type=False              
         ),
         nullable=False,
         index=True
     )
     
-    # For simple numeric values like weight, height, glucose, heart_rate, spo2, temperature, respiratory_rate, pain_level, steps
+    
     numeric_value = Column(Numeric(precision=10, scale=2), nullable=True)
-    unit = Column(String, nullable=True) # e.g., "kg", "lbs", "mg/dL", "bpm", "%", "C", "F", "breaths/min"
+    unit = Column(String, nullable=True) 
 
-    # For blood pressure (which has two values)
+   
     systolic_value = Column(Integer, nullable=True)
     diastolic_value = Column(Integer, nullable=True)
-    # unit for blood pressure is typically mmHg, can be stored in 'unit' or implicitly known
-
-    # For text-based values or when a more complex structure is needed via JSON
     text_value = Column(Text, nullable=True)
-    json_value = Column(JSONB, nullable=True) # For complex values like sleep data { "duration_minutes": 480, "quality": "good" }
+    json_value = Column(JSONB, nullable=True)
 
     reading_date = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     notes = Column(Text, nullable=True)
-    source = Column(String, nullable=True) # e.g., "manual_entry", "apple_health", "wearable_device_xyz"
+    source = Column(String, nullable=True)
     related_document_id = Column(PG_UUID(as_uuid=True), ForeignKey("documents.document_id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -73,4 +70,3 @@ class HealthReading(Base):
     def __repr__(self):
         return f"<HealthReading(id={self.health_reading_id}, type='{self.reading_type}', user_id='{self.user_id}')>"
 
-# from sqlalchemy import Integer # Removed redundant import 

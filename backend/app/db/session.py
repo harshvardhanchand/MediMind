@@ -55,13 +55,13 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
         raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
     async with AsyncSessionLocal() as session:
         try:
-            # Set search_path to include extensions schema for vector operations
+            
             await session.execute(text("SET search_path TO public, extensions"))
             yield session
             # Auto-commit successful transactions
             await session.commit()
         except Exception:
-            # Auto-rollback on any exception
+            
             await session.rollback()
             raise
         finally:
@@ -78,7 +78,7 @@ async def get_async_db_manual() -> AsyncGenerator[AsyncSession, None]:
         raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
     async with AsyncSessionLocal() as session:
         try:
-            # Set search_path to include extensions schema for vector operations
+            
             await session.execute(text("SET search_path TO public, extensions"))
             yield session
         finally:

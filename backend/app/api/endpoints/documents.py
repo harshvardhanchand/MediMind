@@ -226,10 +226,6 @@ def list_documents(
     List all documents belonging to the authenticated user.
     
     Results are paginated and ordered by upload timestamp (newest first).
-    
-    Performance Notes:
-    - optimized=True: Uses eager loading, ~85% fewer database queries, faster response
-    - optimized=False: Uses lazy loading, backward compatibility, slower for large datasets
     """
     user = get_or_create_user(db, token_data)
     

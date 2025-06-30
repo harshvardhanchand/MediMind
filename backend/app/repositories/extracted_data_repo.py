@@ -22,14 +22,10 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
         Status defaults to PENDING_REVIEW.
         """
         try:
-            # Initialize with empty content or a placeholder if your schema requires `content`
-            # The model defines `content` as nullable=False, so an empty JSON object is appropriate.
-            # raw_text is nullable. review_status defaults in the model.
+            
             db_extracted_data = ExtractedData(
                 document_id=document_id,
-                content={}, # Default to empty JSON object
-                # raw_text will be populated after OCR
-                # review_status defaults to PENDING_REVIEW in the model
+                content={}, 
             )
             db.add(db_extracted_data)
             db.commit()
@@ -44,7 +40,7 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
     def get_by_document_id(self, db: Session, *, document_id: uuid.UUID) -> Optional[ExtractedData]:
         """Retrieves an ExtractedData record by its associated document_id."""
         try:
-            # Using query for sync session
+            
             return db.query(ExtractedData).filter(ExtractedData.document_id == document_id).first()
         except SQLAlchemyError as e:
             logger.error(f"Error retrieving ExtractedData for document {document_id}: {e}", exc_info=True)
@@ -72,7 +68,6 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
         if db_extracted_data:
             try:
                 db_extracted_data.content = content
-                # Potentially update extraction_timestamp here if desired
                 db.commit()
                 db.refresh(db_extracted_data)
                 logger.info(f"Updated structured content for ExtractedData linked to document_id: {document_id}")
@@ -98,7 +93,7 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
                 db_extracted_data.review_status = review_status
                 if reviewed_by_user_id:
                     db_extracted_data.reviewed_by_user_id = reviewed_by_user_id
-                # Set review_timestamp to current time when status is updated
+                
                 db_extracted_data.review_timestamp = datetime.utcnow()
                 db.commit()
                 db.refresh(db_extracted_data)
@@ -147,7 +142,7 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
                 .where(ExtractedData.document_id == document_id)
                 .values(
                     content=content,
-                    extraction_timestamp=datetime.utcnow()  # Update extraction timestamp
+                    extraction_timestamp=datetime.utcnow()  
                 )
             )
             result = await db.execute(stmt)
@@ -162,9 +157,7 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
             from sqlalchemy import insert
             stmt = insert(ExtractedData).values(
                 document_id=document_id,
-                content={},  # Default to empty JSON object
-                # raw_text will be populated after OCR
-                # review_status defaults to PENDING_REVIEW in the model
+                content={}
             )
             await db.execute(stmt)
             logger.info(f"Initial ExtractedData record created for document_id: {document_id}")
@@ -173,4 +166,4 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
             logger.error(f"Error creating initial ExtractedData for document {document_id}: {e}", exc_info=True)
             return False
 
-    # Add other methods as needed, e.g., delete 
+    
