@@ -4,8 +4,6 @@ import { MedicationDetailData } from '../types/interfaces';
 import { MainBottomTabParamList } from './MainTabNavigator';
 
 export type ResetPasswordRouteParams = {
-  accessToken?: string;
-  refreshToken?: string;
   type?: string;
   error_description?: string;
 };

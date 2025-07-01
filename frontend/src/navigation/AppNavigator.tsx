@@ -107,27 +107,19 @@ const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
     }
 
 
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
     const type = params.get('type');
     const error_description = params.get('error_description');
 
-    if (type === 'recovery' && accessToken && refreshToken) {
-      return { accessToken, refreshToken, type };
-    }
     if (error_description) {
-      // If there's an error description, it's likely a failed attempt, still pass it
+
       console.warn('Password reset link contains error:', error_description);
       return { error_description, type };
     }
 
-    // Check if the path itself indicates a reset password screen, even if tokens are not in URL yet
-    // This is a weaker check, but helps if the URL is just for navigation
+
     if (expoParsedUrl.path === 'ResetPassword' || url.includes('ResetPassword')) {
-      console.log('🔗 URL indicates ResetPassword screen, but no tokens found yet in AppNavigator.');
-      // Return empty object to signify it's a password reset context,
-      // ResetPasswordScreen will then try its own Linking.getInitialURL or listener
-      return { type: 'recovery' }; // Indicate it's a recovery attempt
+      console.log('🔗 URL indicates ResetPassword screen - Supabase already verified the token');
+      return { type: 'recovery' }; // Any ResetPassword redirect means recovery
     }
 
 
