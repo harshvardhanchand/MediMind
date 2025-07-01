@@ -3,16 +3,16 @@ Medical Embedding Service
 Handles creation and similarity search of medical situation embeddings
 """
 
-import numpy as np
-import json
 import hashlib
 import logging
 import threading
 from collections import OrderedDict
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional
+import numpy as np
+import json
+import re
 import torch
 from transformers import AutoTokenizer, AutoModel
-import spacy
 
 
 logger = logging.getLogger(__name__)
@@ -38,9 +38,6 @@ class MedicalEmbeddingService:
         
         # Initialize BiomedBERT
         self._init_biomedbert()
-        
-        # Initialize medical NER (optional - for entity extraction)
-        self._init_medical_ner()
     
     def _init_biomedbert(self):
         """Initialize BiomedBERT model and tokenizer"""
@@ -92,22 +89,6 @@ class MedicalEmbeddingService:
                 f"BiomedBERT error: {biomedbert_err}. "
                 f"BioBERT error: {str(e)}"
             )
-    
-    def _init_medical_ner(self):
-        """Initialize medical NER for entity extraction using spaCy medical models"""
-        try:
-            
-            # Try to load a medical NER model (requires separate installation)
-            try:
-                self.nlp = spacy.load("en_core_sci_md")  # scispaCy medical model
-                logger.info("Medical NER initialized with scispaCy")
-            except OSError:
-                # Fallback to general English model
-                self.nlp = spacy.load("en_core_web_sm")
-                logger.info("Medical NER initialized with general English model")
-        except Exception as e:
-            logger.warning(f"Medical NER not available: {str(e)}")
-            self.nlp = None
     
     def create_medical_embedding(self, medical_profile: Dict[str, Any]) -> np.ndarray:
         """
@@ -218,7 +199,6 @@ class MedicalEmbeddingService:
     def _create_chunked_embedding(self, text: str, max_tokens: int) -> np.ndarray:
         """Create embedding for long text by chunking and averaging with improved sentence boundary detection"""
         # Improved sentence splitting that handles medical abbreviations and decimals
-        import re
         
         # Split on sentence boundaries but preserve medical abbreviations
         # This regex looks for periods followed by whitespace and capital letters
@@ -457,71 +437,6 @@ class MedicalEmbeddingService:
         # Create hash
         hash_string = json.dumps(normalized, sort_keys=True)
         return hashlib.md5(hash_string.encode()).hexdigest()
-    
-    def extract_medical_entities(self, medical_text: str) -> Dict[str, List[str]]:
-        """
-        Extract medical entities using NER with comprehensive medical entity recognition
-        """
-        if not self.nlp:
-            logger.warning("Medical NER not available - returning empty entities")
-            return {"drugs": [], "diseases": [], "symptoms": []}
-        
-        try:
-            doc = self.nlp(medical_text)
-            
-            entities = {
-                "drugs": [],
-                "diseases": [],
-                "symptoms": [],
-                "procedures": [],
-                "body_parts": []
-            }
-            
-            for ent in doc.ents:
-                entity_text = ent.text.lower().strip()
-                if not entity_text:
-                    continue
-                
-                # Map different entity types based on the NER model being used
-                if hasattr(self.nlp, 'meta') and 'scispacy' in str(self.nlp.meta):
-                    # scispaCy medical model entity mapping
-                    if ent.label_ in ["CHEMICAL", "DRUG"]:
-                        entities["drugs"].append(entity_text)
-                    elif ent.label_ in ["DISEASE", "DISORDER", "CONDITION"]:
-                        entities["diseases"].append(entity_text)
-                    elif ent.label_ in ["SYMPTOM", "SIGN"]:
-                        entities["symptoms"].append(entity_text)
-                    elif ent.label_ in ["PROCEDURE", "TREATMENT"]:
-                        entities["procedures"].append(entity_text)
-                    elif ent.label_ in ["ANATOMY", "BODY_PART"]:
-                        entities["body_parts"].append(entity_text)
-                else:
-                    # General English model - basic entity recognition
-                    if ent.label_ in ["ORG"] and any(keyword in entity_text for keyword in ["hospital", "clinic", "pharmacy"]):
-                        # Skip organization names for medical context
-                        continue
-                    elif ent.label_ in ["PERSON"] and any(title in entity_text for title in ["dr", "doctor", "physician"]):
-                        # Skip doctor names
-                        continue
-                    else:
-                        # For general model, try to classify based on context
-                        if any(drug_keyword in entity_text for drug_keyword in ["mg", "ml", "tablet", "capsule", "pill"]):
-                            entities["drugs"].append(entity_text)
-                        elif any(symptom_keyword in entity_text for symptom_keyword in ["pain", "ache", "fever", "nausea"]):
-                            entities["symptoms"].append(entity_text)
-            
-            # Remove duplicates while preserving order
-            for key in entities:
-                entities[key] = list(dict.fromkeys(entities[key]))
-            
-            logger.debug(f"Extracted medical entities: {len(entities['drugs'])} drugs, "
-                        f"{len(entities['diseases'])} diseases, {len(entities['symptoms'])} symptoms")
-            
-            return entities
-            
-        except Exception as e:
-            logger.error(f"Failed to extract medical entities: {str(e)}")
-            return {"drugs": [], "diseases": [], "symptoms": [], "procedures": [], "body_parts": []}
     
     def clear_cache(self):
         """Clear the embedding cache (thread-safe)"""
