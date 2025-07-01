@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime,timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Text, Enum as SQLAlchemyEnum, Integer, Float
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy.orm import relationship, Mapped
@@ -54,13 +54,13 @@ class HealthReading(Base):
     text_value = Column(Text, nullable=True)
     json_value = Column(JSONB, nullable=True)
 
-    reading_date = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    reading_date = Column(DateTime, default= datetime.now(timezone.utc), nullable=False, index=True)
     notes = Column(Text, nullable=True)
     source = Column(String, nullable=True)
     related_document_id = Column(PG_UUID(as_uuid=True), ForeignKey("documents.document_id", ondelete="SET NULL"), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default= datetime.now(timezone.utc), onupdate= datetime.now(timezone.utc), nullable=False)
 
     user = relationship("User")
     related_document = relationship("Document")

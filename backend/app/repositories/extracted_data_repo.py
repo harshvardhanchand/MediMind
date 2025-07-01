@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 import logging
-from datetime import datetime
+from datetime import datetime,timezone
 
 from app.models.extracted_data import ExtractedData, ReviewStatus
 from app.schemas.extracted_data import ExtractedDataCreate, ExtractedDataUpdate
@@ -94,7 +94,7 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
                 if reviewed_by_user_id:
                     db_extracted_data.reviewed_by_user_id = reviewed_by_user_id
                 
-                db_extracted_data.review_timestamp = datetime.utcnow()
+                db_extracted_data.review_timestamp =  datetime.now(timezone.utc)()
                 db.commit()
                 db.refresh(db_extracted_data)
                 logger.info(f"Updated review_status to {review_status} for ExtractedData (document {document_id})")
@@ -142,7 +142,7 @@ class ExtractedDataRepository(CRUDBase[ExtractedData, ExtractedDataCreate, Extra
                 .where(ExtractedData.document_id == document_id)
                 .values(
                     content=content,
-                    extraction_timestamp=datetime.utcnow()  
+                    extraction_timestamp= datetime.now(timezone.utc)()  
                 )
             )
             result = await db.execute(stmt)

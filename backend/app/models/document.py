@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime,timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -51,7 +51,7 @@ class Document(Base):
         ),
         nullable=False
     )
-    upload_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    upload_timestamp = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
     processing_status = Column(
         SQLAlchemyEnum(
             ProcessingStatus,

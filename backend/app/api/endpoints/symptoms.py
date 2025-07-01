@@ -5,7 +5,7 @@ Provides REST API for symptom tracking and management
 
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime,timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks, Path
 from sqlalchemy.orm import Session
 
@@ -116,7 +116,7 @@ async def create_symptom(
     try:
         
         if not symptom.reported_date:
-            symptom.reported_date = datetime.utcnow()
+            symptom.reported_date =  datetime.now(timezone.utc)
         
         
         db_symptom = symptom_repo.create_with_user(
@@ -468,7 +468,7 @@ async def create_symptoms_bulk(
             try:
                 
                 if not symptom_data.reported_date:
-                    symptom_data.reported_date = datetime.utcnow()
+                    symptom_data.reported_date =  datetime.now(timezone.utc)
                 
                 
                 db_symptom = symptom_repo.create_with_user(

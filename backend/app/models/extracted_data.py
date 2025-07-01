@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime,timezone
 from sqlalchemy import Column, DateTime, ForeignKey, Enum as SQLAlchemyEnum, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
@@ -32,7 +32,7 @@ class ExtractedData(Base):
     content = Column(JSONB, nullable=False)
     
     raw_text = Column(Text, nullable=True)
-    extraction_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    extraction_timestamp = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
     review_status = Column(
         SQLAlchemyEnum(
             ReviewStatus,

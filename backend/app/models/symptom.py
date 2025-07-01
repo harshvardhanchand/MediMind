@@ -1,10 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import datetime,timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Enum as SQLAlchemyEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import enum
-
 from app.db.session import Base
 
 class SymptomSeverity(str, enum.Enum):
@@ -38,7 +37,7 @@ class Symptom(Base):
         ),
         nullable=False
     )
-    reported_date = Column(DateTime, default=datetime.now(datetime.UTC), nullable=False, index=True)
+    reported_date = Column(DateTime, default=datetime.now(timezone.UTC), nullable=False, index=True)
     duration = Column(String, nullable=True) 
     location = Column(String, nullable=True)  
     notes = Column(Text, nullable=True)
@@ -48,8 +47,8 @@ class Symptom(Base):
     related_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.document_id"), nullable=True)
     
     
-    created_at = Column(DateTime, default=datetime.now(datetime.UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(datetime.UTC), onupdate=datetime.now(datetime.UTC), nullable=False)
+    created_at = Column(DateTime, default=datetime.now(timezone.UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now(timezone.UTC), onupdate=datetime.now(timezone.UTC), nullable=False)
     
     
     user = relationship("User")

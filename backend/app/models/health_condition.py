@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Enum as SQLAlchemyEnum, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -66,8 +66,8 @@ class HealthCondition(Base):
     related_extracted_data_id = Column(UUID(as_uuid=True), ForeignKey("extracted_data.extracted_data_id"), nullable=True)
     
     # Tracking fields
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default= datetime.now(timezone.utc), onupdate= datetime.now(timezone.utc), nullable=False)
     
     # Relationships
     user = relationship("User")

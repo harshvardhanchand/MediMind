@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum, Date, Boolean, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -78,8 +78,8 @@ class Medication(Base):
     tags = Column(JSON, nullable=True)  
     
     
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default= datetime.now(timezone.utc), onupdate= datetime.now(timezone.utc), nullable=False)
     
    
     user = relationship("User")

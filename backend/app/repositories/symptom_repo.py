@@ -5,7 +5,7 @@ Handles database operations for symptoms
 
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
 
@@ -50,7 +50,7 @@ class SymptomRepository(CRUDBase[Symptom, SymptomCreate, SymptomUpdate]):
         limit: int = 50
     ) -> List[Symptom]:
         """Get recent symptoms for a user within specified days"""
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date =  datetime.now(timezone.utc)() - timedelta(days=days)
         return db.query(self.model).filter(
             and_(
                 self.model.user_id == user_id,
@@ -110,7 +110,7 @@ class SymptomRepository(CRUDBase[Symptom, SymptomCreate, SymptomUpdate]):
         total_symptoms = db.query(self.model).filter(self.model.user_id == user_id).count()
         
        
-        recent_cutoff = datetime.utcnow() - timedelta(days=30)
+        recent_cutoff =  datetime.now(timezone.utc)() - timedelta(days=30)
         recent_symptoms = db.query(self.model).filter(
             and_(
                 self.model.user_id == user_id,

@@ -7,7 +7,7 @@ import logging
 import uuid
 import re
 from typing import Dict, Optional, Any, Tuple
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta,timezone
 from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -358,7 +358,7 @@ class AutoPopulationService:
         }
         
        
-        cutoff_date = datetime.utcnow() - timedelta(days=7)
+        cutoff_date =  datetime.now(timezone.utc)() - timedelta(days=7)
         symptoms_stmt = select(Symptom).where(
             and_(
                 Symptom.user_id == user_uuid,
@@ -372,7 +372,7 @@ class AutoPopulationService:
         }
         
         
-        today = datetime.utcnow().date()
+        today =  datetime.now(timezone.utc)().date()
         readings_stmt = select(HealthReading).where(
             and_(
                 HealthReading.user_id == user_uuid,
@@ -533,7 +533,7 @@ class AutoPopulationService:
         
         
         reported_date = self.extractor.parse_robust_datetime(event.get("date_time"))
-        event_date = reported_date.date() if reported_date else datetime.utcnow().date()
+        event_date = reported_date.date() if reported_date else  datetime.now(timezone.utc)().date()
         
         
         duplicate_key = (symptom_name.lower(), event_date)
@@ -559,7 +559,7 @@ class AutoPopulationService:
         symptom_data = SymptomCreate(
             symptom=symptom_name,
             severity=severity,
-            reported_date=reported_date or datetime.utcnow(),
+            reported_date=reported_date or  datetime.now(timezone.utc)(),
             location=location,
             notes=notes
         )
@@ -604,7 +604,7 @@ class AutoPopulationService:
         
         
         reading_date = self.extractor.parse_robust_datetime(event.get("date_time"))
-        event_date = reading_date.date() if reading_date else datetime.utcnow().date()
+        event_date = reading_date.date() if reading_date else  datetime.now(timezone.utc)().date()
         
         
         duplicate_key = (reading_type, event_date)
@@ -640,7 +640,7 @@ class AutoPopulationService:
             systolic_value=systolic_value,
             diastolic_value=diastolic_value,
             unit=units,
-            reading_date=reading_date or datetime.utcnow(),
+            reading_date=reading_date or  datetime.now(timezone.utc)(),
             notes=f"Auto-populated from document. Raw text: {event.get('raw_text_snippet', '')[:200]}",
             source="Document Upload",
             related_document_id=document_uuid

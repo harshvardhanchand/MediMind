@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, JSON, Date, Integer, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -18,8 +18,8 @@ class User(Base):
     user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     supabase_id = Column(String, unique=True, nullable=False, index=True)
     email = Column(String, unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default= datetime.now(timezone.utc), onupdate= datetime.now(timezone.utc), nullable=False)
     last_login = Column(DateTime, nullable=True)
     user_metadata = Column(JSON, nullable=True)
     app_metadata = Column(JSON, nullable=True)

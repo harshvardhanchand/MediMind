@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime,timezone
 from typing import Optional, Any, Dict
 from pydantic import BaseModel, Field
 
@@ -14,7 +14,7 @@ class HealthReadingBase(BaseModel):
     diastolic_value: Optional[int] = Field(None, description="Diastolic value for blood pressure")
     text_value: Optional[str] = Field(None, description="Text value of the reading, if applicable")
     json_value: Optional[Dict[str, Any]] = Field(None, description="JSON object for complex reading values")
-    reading_date: datetime = Field(default_factory=datetime.utcnow, description="Timestamp when the reading was taken or recorded")
+    reading_date: datetime = Field(default_factory= datetime.now(timezone.utc), description="Timestamp when the reading was taken or recorded")
     notes: Optional[str] = Field(None, description="Additional notes about the reading")
     source: Optional[str] = Field(None, description="Source of the health reading (e.g., manual, wearable)")
     related_document_id: Optional[uuid.UUID] = Field(None, description="ID of a related document")
