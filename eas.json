@@ -12,10 +12,21 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "SUPABASE_URL": "$SUPABASE_URL",
+        "SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
+        "API_URL": "$API_URL"
+      }
     }
   },
   "submit": {
