@@ -21,7 +21,10 @@ export default {
       "bundleIdentifier": "com.harshchand.medimind",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:medimind.co.in"
+      ]
     },
     "android": {
       "adaptiveIcon": {
