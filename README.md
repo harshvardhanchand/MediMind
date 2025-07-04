@@ -32,29 +32,38 @@ The AI-Powered Medical Data Hub is a mobile-first health companion that goes bey
 
 * **Frontend**: React Native, Expo, TypeScript, Zustand, NativeWind
 * **Backend**: FastAPI, SQLAlchemy, PostgreSQL, Supabase Auth
-* **AI & Cloud Services**: Google Document AI, Gemini 2.5 Flash, Google Cloud Storage
+* **AI & Cloud Services**: Google Document AI, Gemini 2.0 Flash, Google Cloud Storage
 
 ---
 
 ## 🧪 Example Use Case
 
-A user uploads a prescription, logs “fatigue” as a symptom, and receives an alert that one of their medications lists fatigue as a common side effect. They export this insight to share with their doctor.
-
+A user uploads a recent blood-test PDF, logs “fatigue” and “tingling hands,” and adds her meds list.
+• The AI cross-checks labs, symptoms, and drugs, spots that long-term Metformin can drive low B-12, and sees her B-12 is below range.
+• It sends a push card: “Metformin → low B-12 → fatigue + tingling. Consider B-12 supplementation.”
 ---
 
 ## 🏗️ Architecture
 
 ```mermaid
-graph TB
-    A[Mobile App - React Native] --> B[API Gateway - FastAPI]
-    B --> C[Auth - Supabase]
-    B --> D[Database - PostgreSQL]
-    B --> E[Storage - GCS]
-    B --> F[OCR - Document AI]
-    B --> G[Query Engine - Gemini Flash]
-    H[User Input] --> I[Structured Parsing]
-    I --> J[Alert Engine + Visualizations]
-    J --> K[UI Feedback]
+graph LR
+    subgraph Client
+        A[" React Native App"]
+    end
+    subgraph Backend
+        B["FastAPI API"]
+        C["Auth & DB (Supabase + Postgres)"]
+    end
+    subgraph AI-Core
+        D["Document AI → Medical AI → Alerts"]
+        E["NL Query → Gemini"]
+    end
+
+    A --> B
+    B --> C
+    A --> D
+    A --> E
+
 ```
 
 ---
@@ -130,8 +139,8 @@ npx expo start
 
 ## 📦 Deployment Notes
 
-* Backend deployable to GCP Cloud Run / AWS ECS
-* Frontend deployable via Expo EAS or app stores
+* Backend deployable to runpod
+* Frontend deployable to testflight via expo 
 * Requires secured environment variables and cloud config
 
 ---
