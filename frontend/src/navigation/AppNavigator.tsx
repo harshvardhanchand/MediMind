@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import * as Linking from 'expo-linking';
+import { supabaseClient } from '../services/supabase';
 
 import OnboardingNavigator from './OnboardingNavigator';
 import { NotificationProvider } from '../context/NotificationContext';
@@ -20,7 +21,7 @@ const LoginScreenWithErrorBoundary = withScreenErrorBoundary(LoginScreen, 'Login
 const SignUpScreenWithErrorBoundary = withScreenErrorBoundary(SignUpScreen, 'SignUpScreen');
 const ResetPasswordScreenWithErrorBoundary = withScreenErrorBoundary(ResetPasswordScreen, 'ResetPasswordScreen');
 
-// Auth Stack
+
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
 const AuthNavigator = ({ resetPasswordParams }: { resetPasswordParams?: ResetPasswordRouteParams }) => (
   <AuthStackNav.Navigator
@@ -32,12 +33,11 @@ const AuthNavigator = ({ resetPasswordParams }: { resetPasswordParams?: ResetPas
     <AuthStackNav.Screen
       name="ResetPassword"
       component={ResetPasswordScreenWithErrorBoundary}
-      initialParams={resetPasswordParams} // Pass params here
+      initialParams={resetPasswordParams}
     />
   </AuthStackNav.Navigator>
 );
 
-// Authenticated App Wrapper - wraps authenticated screens with NotificationProvider
 const AuthenticatedAppWrapper = ({ children }: { children: React.ReactNode }) => (
   <NotificationProvider>
     {children}
@@ -61,69 +61,53 @@ const OnboardingWithNotifications = React.memo(() => (
 const SplashScreen = () => (
   <View style={styles.splashContainer}>
     <ActivityIndicator size="large" color={theme.colors.primary} />
-    {/* Add your app logo or branding here */}
+
   </View>
 );
 
 
 const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 
-// Utility function to parse reset link parameters
-const parseResetLink = (url: string): ResetPasswordRouteParams | null => {
+
+const parseResetLink = async (url: string): Promise<ResetPasswordRouteParams | null> => {
   try {
     console.log('🔧 Parsing reset link:', url);
 
+
     const urlObj = new URL(url);
-    let params = new URLSearchParams();
-
-    // Check hash fragment first (Supabase typically uses this for recovery)
-    if (urlObj.hash && urlObj.hash.length > 1) {
-      const fragment = urlObj.hash.substring(1);
-      params = new URLSearchParams(fragment);
-    }
-
-    // If no hash params with 'type=recovery', check query parameters
-    if (params.get('type') !== 'recovery' && urlObj.search) {
-      const queryParams = new URLSearchParams(urlObj.search);
-      if (queryParams.get('type') === 'recovery') {
-        params = queryParams;
-      }
-    }
-
-    // Also check Expo Linking parsed path and query params as a fallback
-    // This handles cases like medimind://ResetPassword?type=recovery...
-    const expoParsedUrl = Linking.parse(url);
-    if (params.get('type') !== 'recovery' && expoParsedUrl.queryParams) {
-      const queryParams = expoParsedUrl.queryParams as any;
-      if (queryParams.type === 'recovery') {
-        params = new URLSearchParams(expoParsedUrl.path?.split('?')[1] || '');
-        // Manually add from expoParsedUrl.queryParams if some are missing
-        Object.entries(queryParams).forEach(([key, value]) => {
-          if (!params.has(key) && typeof value === 'string') {
-            params.set(key, value);
-          }
-        });
-      }
-    }
-
+    const fragment = urlObj.hash?.substring(1) || '';
+    const params = new URLSearchParams(fragment);
 
     const type = params.get('type');
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
     const error_description = params.get('error_description');
 
-    if (error_description) {
 
+    if (error_description) {
       console.warn('Password reset link contains error:', error_description);
       return { error_description, type };
     }
 
 
-    if (expoParsedUrl.path === 'ResetPassword' || url.includes('ResetPassword')) {
-      console.log('🔗 URL indicates ResetPassword screen - Supabase already verified the token');
-      return { type: 'recovery' }; // Any ResetPassword redirect means recovery
+    if (type === 'recovery' && access_token && refresh_token) {
+      console.log('🔐 Setting up Supabase session for password reset...');
+
+      const { error: sessionError } = await supabaseClient.auth.setSession({
+        access_token,
+        refresh_token,
+      });
+
+      if (sessionError) {
+        console.error('Failed to set up Supabase session:', sessionError);
+        return { error_description: 'Invalid or expired reset link', type };
+      }
+
+      console.log('✅ Supabase session set up successfully for password reset');
+      return { type: 'recovery' };
     }
 
-
-    console.log('🔧 Link is not a valid recovery link with tokens or known error.');
+    console.log('🔧 Link is not a valid recovery link with tokens.');
     return null;
   } catch (error) {
     console.error('Error parsing reset link:', error);
@@ -143,16 +127,16 @@ const AppNavigator = () => {
   const { session, user, isLoading, signOut } = useAuth();
 
   const [hasCheckedSession, setHasCheckedSession] = React.useState(false);
-  // Store the full params for password reset
+
   const [resetPasswordParams, setResetPasswordParams] = React.useState<ResetPasswordRouteParams | undefined>(undefined);
 
 
   React.useEffect(() => {
     let mounted = true;
 
-    const processUrl = (url: string | null) => {
+    const processUrl = async (url: string | null) => {
       if (mounted && url) {
-        const params = parseResetLink(url);
+        const params = await parseResetLink(url);
         if (params) {
           console.log('🔐 Password reset params extracted in AppNavigator:', params);
           setResetPasswordParams(params);
@@ -187,17 +171,17 @@ const AppNavigator = () => {
   }, []);
 
   React.useEffect(() => {
-    // If session becomes null (e.g., after password update and sign out) and we had reset params, clear them.
+
     if (!session && resetPasswordParams) {
       console.log('🔐 Session cleared, removing password reset params.');
       setResetPasswordParams(undefined);
     }
-  }, [session]); // Only depends on session
+  }, [session]);
 
   React.useEffect(() => {
     if (!isLoading && !hasCheckedSession) {
       setHasCheckedSession(true);
-      // If user has session, but no name (profile incomplete), and not in password reset flow
+
       if (session && !user?.name && !resetPasswordParams) {
         console.log('🔄 App restarted with incomplete profile - signing out for clean restart');
         signOut();
@@ -205,7 +189,7 @@ const AppNavigator = () => {
     }
   }, [isLoading, hasCheckedSession, session, user, resetPasswordParams, signOut]);
 
-  // Determine navigation logic
+
   let content;
   if (isLoading) {
     content = <RootStackNav.Screen name="Splash" component={SplashScreen} />;

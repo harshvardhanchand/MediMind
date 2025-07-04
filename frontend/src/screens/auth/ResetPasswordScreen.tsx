@@ -27,39 +27,24 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('')
 
 
-  const handleDeepLink = async (url: string) => {
-    try {
-      const fragment = url.split('#')[1] || ''
-      const params = new URLSearchParams(fragment)
-      const access_token = params.get('access_token')
-      const refresh_token = params.get('refresh_token')
-      const type = params.get('type')
-
-      if (type === 'recovery' && access_token && refresh_token) {
-        const { error: sessionError } = await supabaseClient.auth.setSession({
-          access_token,
-          refresh_token,
-        })
-        if (sessionError) throw sessionError
-        setReady(true)
-        setError(undefined)
-      } else {
-        setError('Invalid reset link.')
-      }
-    } catch (err: any) {
-      console.error('Error processing reset link:', err)
-      setError(err.message || 'Failed to process reset link.')
-    }
-  }
-
   useEffect(() => {
 
-    Linking.getInitialURL().then(url => {
-      if (url) handleDeepLink(url)
-    })
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession()
+        if (session) {
+          setReady(true)
+          setError(undefined)
+        } else {
+          setError('No valid reset session found. Please use the reset link from your email.')
+        }
+      } catch (err: any) {
+        console.error('Error checking session:', err)
+        setError('Failed to verify reset session.')
+      }
+    }
 
-    const sub = Linking.addEventListener('url', e => handleDeepLink(e.url))
-    return () => sub.remove()
+    checkSession()
   }, [])
 
   const handleResetPassword = async () => {
