@@ -23,7 +23,8 @@ export default {
         "ITSAppUsesNonExemptEncryption": false
       },
       "associatedDomains": [
-        "applinks:medimind.co.in"
+        "applinks:medimind.co.in",
+        "applinks:www.medimind.co.in"
       ]
     },
     "android": {
