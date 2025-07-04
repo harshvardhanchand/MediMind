@@ -38,7 +38,7 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     
     
     admin_emails = [
-       "harshvardhan335@gmail.com"  
+       "admin@example.com"  # Configure with your admin email
     ]
     
     if current_user.email in admin_emails:

@@ -278,7 +278,7 @@ const HomeScreen = () => {
       iconColor: colors.dataColor2, // Green for positive trends
       title: 'Sleep Quality Up!',
       description: 'Your average sleep quality has improved by 15% this week. Keep it up!',
-      onPress: () => console.log('Navigate to sleep details'), // Placeholder action
+      onPress: () => console.log('Navigate to sleep details'),
     });
 
     return insights;
@@ -407,7 +407,7 @@ const HomeScreen = () => {
           {upcomingMedications.length > 0 && (
             <StyledButton
               variant="textPrimary"
-              // onPress={() => navigation.navigate('MedicationsTab')} // TODO: Update to correct tab/screen name
+              // onPress={() => navigation.navigate('MedicationsTab')}
               onPress={() => navigation.navigate('MedicationsScreen')}
               className="mt-3 self-center pb-1"
             >

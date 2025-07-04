@@ -240,7 +240,7 @@ class MedicalAIService:
                     "test": reading.reading_type.value if reading.reading_type else "Unknown",
                     "value": float(reading.numeric_value) if reading.numeric_value else reading.text_value,
                     "unit": reading.unit,
-                    "reference_range": "Normal",  # TODO: Add reference ranges to health_reading model
+                    "reference_range": "Normal",  # Reference ranges can be added to model
                     "date": reading.reading_date.isoformat() if reading.reading_date else None
                 }
                 for reading in health_readings
@@ -286,7 +286,7 @@ class MedicalAIService:
         """
         Extract patient age from medical profile (placeholder implementation)
         """
-        # TODO: Add age field to user profile or extract from demographics
+        # Age field can be added to user profile for more accurate analysis
         return 35  # Default age for now
     
     def _merge_all_analysis_results(

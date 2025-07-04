@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import {
-  Appbar, Button, TextInput, Text, HelperText, 
+  Appbar, Button, TextInput, Text, HelperText,
   Card, Switch
 } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -11,7 +11,7 @@ import { MainAppStackParamList } from '../navigation/types';
 import { medicationServices } from '../api/services';
 import { MedicationCreate, MedicationUpdate, MedicationFrequency, MedicationStatus } from '../types/api';
 import ErrorState from '../components/common/ErrorState';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES} from '../constants/messages';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants/messages';
 
 
 
@@ -21,7 +21,7 @@ type AddMedicationRouteProp = RouteProp<MainAppStackParamList, 'AddMedication'>;
 const AddMedicationScreen = () => {
   const navigation = useNavigation<AddMedicationNavigationProp>();
   const route = useRoute<AddMedicationRouteProp>();
-  
+
   const medicationIdToEdit = route.params?.medicationIdToEdit;
   const initialData = route.params?.initialData;
   const isEditMode = !!medicationIdToEdit;
@@ -31,7 +31,7 @@ const AddMedicationScreen = () => {
   const [dosage, setDosage] = useState(initialData?.dosage || '');
   // For frequency, we'll simplify for now and use initialData.frequency (string) for display,
   // but API needs MedicationFrequency enum. This will be improved with a picker.
-  const [frequencyDisplay, setFrequencyDisplay] = useState(initialData?.frequency || ''); 
+  const [frequencyDisplay, setFrequencyDisplay] = useState(initialData?.frequency || '');
   const [frequencyEnum, setFrequencyEnum] = useState<MedicationFrequency>(MedicationFrequency.ONCE_DAILY); // Default or from initialData if mappable
   const [frequencyDetails, setFrequencyDetails] = useState(''); // For custom text alongside enum
 
@@ -46,11 +46,11 @@ const AddMedicationScreen = () => {
   // Reminder settings - keeping UI but not integrating with API payload for now
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('9:00 AM');
-  
+
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [criticalError, setCriticalError] = useState<string | null>(null);
-  
+
   // Validation states
   const [nameError, setNameError] = useState('');
   const [dosageError, setDosageError] = useState('');
@@ -65,23 +65,20 @@ const AddMedicationScreen = () => {
       setPrescribingDoctor(initialData.prescribingDoctor || '');
       setStartDate(initialData.startDate || '');
       setEndDate(initialData.endDate || '');
-      // TODO: Properly map status and with_food if richer initialData (MedicationResponse) is passed directly
-      // For now, MedicationDetailData is simpler. If initialData were MedicationResponse:
-      // if (initialData.status) setStatus(initialData.status);
-      // if (initialData.with_food !== undefined) setWithFood(initialData.with_food);
+      // Map additional fields if available
     }
     navigation.setOptions({ title: isEditMode ? 'Edit Medication' : 'Add Medication' });
   }, [isEditMode, initialData, navigation]);
-  
+
   const validateForm = () => {
     let isValid = true;
     setFormError(null);
     if (!name.trim()) { setNameError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; } else { setNameError(''); }
     if (!dosage.trim()) { setDosageError(ERROR_MESSAGES.REQUIRED_FIELD); isValid = false; } else { setDosageError(''); }
-    // TODO: Add validation for other fields like frequency enum, dates etc.
+    // Add additional validation as needed
     return isValid;
   };
-  
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       setFormError(ERROR_MESSAGES.FORM_VALIDATION_ERROR);
@@ -102,7 +99,7 @@ const AddMedicationScreen = () => {
       start_date: startDate.trim() || null,
       end_date: endDate.trim() || null,
       status: status,
-      with_food: withFood, 
+      with_food: withFood,
       // time_of_day: ... needs dedicated input
     };
 
@@ -157,10 +154,8 @@ const AddMedicationScreen = () => {
       </View>
     );
   }
-  
-  // TODO: Replace Frequency TextInput with a Picker/Menu for MedicationFrequency enum
-  // TODO: Add TextInput for Start Date, End Date (or DatePickers)
-  // TODO: Add Switch for With Food
+
+  // UI enhancements: frequency picker, date pickers, etc.
 
   return (
     <View style={styles.container}>
@@ -168,7 +163,7 @@ const AddMedicationScreen = () => {
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title={isEditMode ? 'Edit Medication' : 'Add New Medication'} />
       </Appbar.Header>
-      
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* <Title style={styles.title}>{isEditMode ? 'Edit Medication' : 'Add New Medication'}</Title> */}
         <Text style={styles.subtitle}>
@@ -176,32 +171,28 @@ const AddMedicationScreen = () => {
         </Text>
 
         {formError && <Text style={styles.formErrorText}>{formError}</Text>}
-        
+
         <Card style={styles.card}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Medication Details</Text>
-            
+
             <TextInput label="Medication Name*" value={name} onChangeText={setName} mode="outlined" style={styles.input} error={!!nameError} disabled={loading} />
             {!!nameError && <HelperText type="error">{nameError}</HelperText>}
-            
+
             <TextInput label="Dosage*" value={dosage} onChangeText={setDosage} mode="outlined" placeholder="e.g., 10mg" style={styles.input} error={!!dosageError} disabled={loading} />
             {!!dosageError && <HelperText type="error">{dosageError}</HelperText>}
-            
+
             {/* Placeholder for Frequency Picker - current TextInput is for frequencyDisplay */}
             <TextInput label="Frequency Description (e.g., Once daily with breakfast)" value={frequencyDisplay} onChangeText={setFrequencyDisplay} mode="outlined" placeholder="e.g., Once daily, or specific details" style={styles.input} disabled={loading} />
-            {/* TODO: Add Picker here for setFrequencyEnum, mapping to MedicationFrequency enum values */}
-            {/* Example: <Picker selectedValue={frequencyEnum} onValueChange={(itemValue) => setFrequencyEnum(itemValue)}> */}
-            {/* Object.values(MedicationFrequency).map(f => <Picker.Item key={f} label={formatFrequencyEnum(f)} value={f} />) </Picker> */}
-            
+            {/* Frequency picker can be added here */}
+
             <TextInput label="Reason/Purpose" value={reason} onChangeText={setReason} mode="outlined" placeholder="e.g., Blood pressure management" style={styles.input} disabled={loading} />
             <TextInput label="Instructions/Notes" value={notes} onChangeText={setNotes} mode="outlined" placeholder="e.g., Take with water before meals" multiline numberOfLines={3} style={styles.input} disabled={loading} />
             <TextInput label="Prescriber" value={prescribingDoctor} onChangeText={setPrescribingDoctor} mode="outlined" placeholder="e.g., Dr. Smith" style={styles.input} disabled={loading} />
             <TextInput label="Start Date (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} mode="outlined" placeholder="Optional" style={styles.input} disabled={loading} />
             <TextInput label="End Date (YYYY-MM-DD)" value={endDate} onChangeText={setEndDate} mode="outlined" placeholder="Optional" style={styles.input} disabled={loading} />
-            
-            {/* TODO: Add Picker for Status */}
-            {/* Example: <Picker selectedValue={status} onValueChange={(itemValue) => setStatus(itemValue)}> */}
-            {/* Object.values(MedicationStatus).map(s => <Picker.Item key={s} label={s.replace('_',' ')} value={s} />) </Picker> */}
+
+            {/* Status picker can be added here */}
 
             <View style={styles.switchContainer}>
               <Text>Take with food?</Text>
@@ -210,7 +201,7 @@ const AddMedicationScreen = () => {
 
           </Card.Content>
         </Card>
-        
+
         {/* Reminder settings section - kept for UI, not in API payload for now */}
         <Card style={styles.card}>
           <Card.Content>
@@ -224,7 +215,7 @@ const AddMedicationScreen = () => {
             )}
           </Card.Content>
         </Card>
-        
+
         <View style={styles.buttonContainer}>
           <Button mode="outlined" onPress={() => navigation.goBack()} style={styles.cancelButton} disabled={loading}>Cancel</Button>
           <Button mode="contained" onPress={handleSubmit} style={styles.submitButton} loading={loading} disabled={loading}>

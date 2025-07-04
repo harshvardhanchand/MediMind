@@ -111,9 +111,7 @@ const DocumentDetailScreen = () => {
 
   // Get document URL for viewing
   const getDocumentViewUrl = (doc: DocumentRead): string => {
-    // Construct the URL to view the document from your backend
-    // This assumes your backend has an endpoint to serve documents
-    const baseUrl = process.env.API_URL || 'http://192.168.1.4:8000';
+    const baseUrl = process.env.API_URL || 'http://localhost:8000';
     return `${baseUrl}/api/documents/${doc.document_id}/view`;
   };
 
@@ -187,7 +185,7 @@ const DocumentDetailScreen = () => {
 
   const getDisplayStatus = () => {
     if (extractedData?.review_status) {
-      // If we have extracted data, show its review status
+
       switch (extractedData.review_status) {
         case 'pending_review':
           return 'REVIEW REQUIRED';
@@ -199,7 +197,7 @@ const DocumentDetailScreen = () => {
           return extractedData.review_status.replace('_', ' ').toUpperCase();
       }
     }
-    // Fallback to document processing status
+
     return document.processing_status?.replace('_', ' ').toUpperCase();
   };
 
@@ -227,7 +225,7 @@ const DocumentDetailScreen = () => {
 
   return (
     <ScreenContainer scrollable={false} withPadding={false} backgroundColor={colors.backgroundPrimary}>
-      {/* Custom Header */}
+
       <StyledView className="flex-row items-center px-3 py-3 border-b border-borderSubtle bg-backgroundSecondary">
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="p-1 mr-2">
           <MaterialIcons name="chevron-left" size={28} color={colors.accentPrimary} />

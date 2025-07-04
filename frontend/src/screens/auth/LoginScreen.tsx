@@ -46,11 +46,10 @@ const LoginScreen = () => {
     }
   };
 
-  const DEV_EMAIL = 'test@example.com'; // Replace with your test user
-  const DEV_PASSWORD = 'password123'; // Replace with your test user's password
+  const DEV_EMAIL = 'test@example.com'; // Demo credentials
+  const DEV_PASSWORD = 'password123'; // Demo credentials
 
   const handleDevLogin = async () => {
-    console.warn(`Attempting DEV login with ${DEV_EMAIL}. Ensure this user exists in your Supabase auth table.`);
     setLoadingDevLogin(true);
     setError(null);
     try {

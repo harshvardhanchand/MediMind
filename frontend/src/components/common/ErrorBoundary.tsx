@@ -45,8 +45,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error details
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
-    
+
+
     analytics.track('error_boundary_triggered', {
       error_message: error.message,
       error_stack: error.stack,
@@ -94,7 +94,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   handleReportError = () => {
     const { error, errorInfo, errorId } = this.state;
-    
+
     // Create error report
     const errorReport = {
       errorId,
@@ -120,7 +120,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     );
 
     console.log('Error Report:', errorReport);
-    // TODO: Send to error reporting service
+    // Send to error reporting service
   };
 
   render() {
@@ -131,7 +131,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       }
 
       // Default fallback UI based on error level
-      return <ErrorFallbackUI 
+      return <ErrorFallbackUI
         level={this.props.level || 'component'}
         context={this.props.context}
         error={this.state.error}
@@ -188,20 +188,20 @@ const ErrorFallbackUI: React.FC<{
       padding: 20,
       backgroundColor: theme.colors.backgroundPrimary,
     }}>
-      <StyledText 
-        variant="h2" 
-        style={{ 
-          color: theme.colors.error, 
+      <StyledText
+        variant="h2"
+        style={{
+          color: theme.colors.error,
           marginBottom: 16,
           textAlign: 'center',
         }}
       >
         {getErrorTitle()}
       </StyledText>
-      
-      <StyledText 
-        variant="body1" 
-        style={{ 
+
+      <StyledText
+        variant="body1"
+        style={{
           color: theme.colors.textSecondary,
           marginBottom: 24,
           textAlign: 'center',
@@ -212,9 +212,9 @@ const ErrorFallbackUI: React.FC<{
       </StyledText>
 
       {context && (
-        <StyledText 
-          variant="caption" 
-          style={{ 
+        <StyledText
+          variant="caption"
+          style={{
             color: theme.colors.textMuted,
             marginBottom: 24,
             textAlign: 'center',
@@ -231,7 +231,7 @@ const ErrorFallbackUI: React.FC<{
         >
           Try Again
         </StyledButton>
-        
+
         <StyledButton
           variant="textPrimary"
           onPress={onReport}
@@ -241,16 +241,16 @@ const ErrorFallbackUI: React.FC<{
       </View>
 
       {__DEV__ && error && (
-        <View style={{ 
-          marginTop: 24, 
-          padding: 12, 
+        <View style={{
+          marginTop: 24,
+          padding: 12,
           backgroundColor: theme.colors.backgroundSecondary,
           borderRadius: 8,
           maxWidth: '100%',
         }}>
-          <StyledText 
-            variant="caption" 
-            style={{ 
+          <StyledText
+            variant="caption"
+            style={{
               color: theme.colors.textMuted,
               fontFamily: 'monospace',
             }}

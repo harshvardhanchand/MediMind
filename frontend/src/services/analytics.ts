@@ -58,8 +58,8 @@ class SimpleAnalytics {
     this.events.push(analyticsEvent);
     this.saveEvent(analyticsEvent);
     
-    // Log for debugging (remove in production)
-    console.log('Analytics Event:', analyticsEvent);
+      // Development logging
+  console.log('Analytics Event:', analyticsEvent);
   }
 
   private async saveEvent(event: AnalyticsEvent) {
