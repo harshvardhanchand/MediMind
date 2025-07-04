@@ -127,17 +127,6 @@ npx expo start
 * **LLM Querying**: Gemini Flash API parses user questions into structured queries
 * **Alert Engine**: Detects correlations between meds, symptoms, and lab values
 
----
-
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd backend
-python3 -m pytest tests/ -v
-```
-
----
 
 ## 📦 Deployment Notes
 
