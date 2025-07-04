@@ -116,7 +116,7 @@ npx expo start
 * Row-Level Security (RLS)
 * Encrypted storage (PostgreSQL + GCS)
 * Secure token handling (Expo SecureStore)
-* Disclaimers enforcing **no medical advice**
+
 
 ---
 
