@@ -2,6 +2,7 @@
 Integration tests for the Natural Language Query API endpoint.
 """
 import uuid
+import json
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -79,7 +80,7 @@ def sample_document(db_session: Session, test_user: User) :
     db_session.commit()
 
 @pytest.fixture
-def sample_extracted_data(db_session: Session, sample_document: Document) -> ExtractedData:
+def sample_extracted_data(db_session: Session, sample_document: Document):
     ed = ExtractedData(
         document_id=sample_document.document_id,
         content={
