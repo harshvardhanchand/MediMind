@@ -1,13 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { enableScreens } from 'react-native-screens';
 import { theme } from './src/theme';
-import AppNavigator from './src/navigation/AppNavigator';
+import AppNavigator, { linking } from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
-import DeepLinkingService from './src/services/deepLinkingService';
 import { analytics } from './src/services/analytics';
 import { crashReporting } from './src/services/crashReporting';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
@@ -16,12 +15,15 @@ enableScreens();
 
 export default function App() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  const routeNameRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    crashReporting.init();
-    const deepLinkingService = DeepLinkingService.getInstance();
-    deepLinkingService.setNavigationRef(navigationRef.current!);
-    analytics.trackAppOpen();
+    const initializeApp = async () => {
+      crashReporting.init();
+      await analytics.trackAppOpen();
+    };
+
+    initializeApp();
   }, []);
 
   return (
@@ -40,7 +42,22 @@ export default function App() {
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
           <AuthProvider>
-            <NavigationContainer ref={navigationRef}>
+            <NavigationContainer
+              ref={navigationRef}
+              linking={linking}
+              onReady={() => {
+                routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+              }}
+              onStateChange={async () => {
+                const previousRouteName = routeNameRef.current;
+                const currentRouteName = navigationRef.current?.getCurrentRoute()?.name;
+
+                if (previousRouteName !== currentRouteName && currentRouteName) {
+                  await analytics.trackScreenView(currentRouteName);
+                }
+                routeNameRef.current = currentRouteName;
+              }}
+            >
               <AppNavigator />
             </NavigationContainer>
           </AuthProvider>
