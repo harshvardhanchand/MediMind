@@ -80,7 +80,7 @@ const LoginScreen = () => {
     }
 
     try {
-      const resetPasswordURL = 'medimind://ResetPassword';
+      const resetPasswordURL = 'https://medimind.co.in/reset';
 
       const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: resetPasswordURL,
