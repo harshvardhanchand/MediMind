@@ -38,9 +38,9 @@ The AI-Powered Medical Data Hub is a mobile-first health companion that goes bey
 
 ## 🧪 Example Use Case
 
-A user uploads a recent blood-test PDF, logs “fatigue” and “tingling hands,” and adds her meds list.
-• The AI cross-checks labs, symptoms, and drugs, spots that long-term Metformin can drive low B-12, and sees her B-12 is below range.
-• It sends a push card: “Metformin → low B-12 → fatigue + tingling. Consider B-12 supplementation.”
+A user  uploads a recent blood-test PDF, logs “fatigue” and “tingling hands,” and adds her meds list.
+The AI cross-checks labs, symptoms, and drugs, spots that long-term Metformin can drive low B-12, and sees her B-12 is below range.
+It sends a push card: “Metformin → low B-12 → fatigue + tingling. Consider B-12 supplementation.”
 ---
 
 ## 🏗️ Architecture
