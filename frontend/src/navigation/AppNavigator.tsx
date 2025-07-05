@@ -22,43 +22,74 @@ const ResetPasswordScreenWithErrorBoundary = withScreenErrorBoundary(ResetPasswo
 
 const parseResetLink = async (url: string) => {
   try {
-    console.log(' Parsing reset link:', url);
+    console.log('🔍 AppNavigator: parseResetLink called with PKCE flow URL:', url);
 
     const urlObj = new URL(url);
+    console.log('🔍 AppNavigator: URL object created:', {
+      protocol: urlObj.protocol,
+      hostname: urlObj.hostname,
+      pathname: urlObj.pathname,
+      hash: urlObj.hash,
+      search: urlObj.search
+    });
+
+
+    const searchParams = new URLSearchParams(urlObj.search);
+    const code = searchParams.get('code');
+    const error_description = searchParams.get('error_description');
+
+
     const fragment = urlObj.hash?.substring(1) || '';
-    const params = new URLSearchParams(fragment);
+    const fragmentParams = new URLSearchParams(fragment);
+    const fragmentCode = fragmentParams.get('code');
+    const fragmentError = fragmentParams.get('error_description');
 
-    const type = params.get('type');
-    const access_token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
-    const error_description = params.get('error_description');
+    console.log('🔍 AppNavigator: URL params:', {
+      searchCode: code,
+      fragmentCode: fragmentCode,
+      searchError: error_description,
+      fragmentError: fragmentError
+    });
 
-    if (error_description) {
-      console.warn('Password reset link contains error:', error_description);
-      return { error_description, type };
+
+    const finalError = error_description || fragmentError;
+    if (finalError) {
+      console.warn('❌ AppNavigator: Password reset link contains error:', finalError);
+      return { error_description: finalError, type: 'recovery' };
     }
 
-    if (type === 'recovery' && access_token && refresh_token) {
-      console.log('Setting up Supabase session for password reset...');
 
-      const { error: sessionError } = await supabaseClient.auth.setSession({
-        access_token,
-        refresh_token,
-      });
+    const finalCode = code || fragmentCode;
+    if (finalCode) {
+      console.log('✅ AppNavigator: PKCE code found, exchanging for session...');
 
-      if (sessionError) {
-        console.error('Failed to set up Supabase session:', sessionError);
-        return { error_description: 'Invalid or expired reset link', type };
+      try {
+        const { data, error: sessionError } = await supabaseClient.auth.exchangeCodeForSession(finalCode);
+
+        console.log('🔍 AppNavigator: exchangeCodeForSession result:', {
+          success: !sessionError,
+          error: sessionError?.message,
+          hasUser: !!data?.user,
+          userEmail: data?.user?.email
+        });
+
+        if (sessionError) {
+          console.error('❌ AppNavigator: Failed to exchange code for session:', sessionError);
+          return { error_description: 'Invalid or expired reset link', type: 'recovery' };
+        }
+
+        console.log('✅ AppNavigator: PKCE code exchange successful for password reset');
+        return { type: 'recovery' };
+      } catch (exchangeError) {
+        console.error('❌ AppNavigator: Exception during code exchange:', exchangeError);
+        return { error_description: 'Failed to process reset link', type: 'recovery' };
       }
-
-      console.log(' Supabase session set up successfully for password reset');
-      return { type: 'recovery' };
     }
 
-    console.log('Link is not a valid recovery link with tokens.');
+    console.log('❌ AppNavigator: No valid PKCE code found in URL');
     return null;
   } catch (error) {
-    console.error('Error parsing reset link:', error);
+    console.error('❌ AppNavigator: Error parsing reset link:', error);
     return null;
   }
 };
@@ -76,23 +107,31 @@ export const linking = {
   },
   async getInitialURL() {
     try {
+      console.log('🔍 AppNavigator: getInitialURL called for PKCE flow');
       const url = await Linking.getInitialURL();
-      if (url?.includes('reset') || url?.includes('#')) {
+      console.log('🔍 AppNavigator: getInitialURL result:', url);
+
+      if (url?.includes('reset') || url?.includes('code=') || url?.includes('#')) {
+        console.log('✅ AppNavigator: URL contains reset, code, or hash - parsing with PKCE...');
         await parseResetLink(url);
         return url;
       }
+      console.log('❌ AppNavigator: URL does not contain reset, code, or hash');
       return null;
     } catch (error) {
-      console.warn('Error getting initial URL:', error);
+      console.warn('❌ AppNavigator: Error getting initial URL:', error);
       return null;
     }
   },
   subscribe(listener) {
     const subscription = Linking.addEventListener('url', async (event) => {
-      console.log(' Deep link received:', event.url);
+      console.log('🔍 AppNavigator: Deep link received for PKCE flow:', event.url);
 
-      if (event.url?.includes('reset-password') || event.url?.includes('#')) {
+      if (event.url?.includes('reset') || event.url?.includes('code=') || event.url?.includes('#')) {
+        console.log('✅ AppNavigator: URL contains reset, code, or hash - parsing with PKCE...');
         await parseResetLink(event.url);
+      } else {
+        console.log('❌ AppNavigator: URL does not contain reset, code, or hash');
       }
 
       listener(event.url);

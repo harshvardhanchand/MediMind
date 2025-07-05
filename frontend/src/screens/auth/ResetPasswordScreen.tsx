@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { AuthStackParamList } from '../../navigation/types'
 import { supabaseClient } from '../../services/supabase'
 import { useTheme } from '../../theme'
+import { useAuth } from '../../context/AuthContext'
 import ScreenContainer from '../../components/layout/ScreenContainer'
 import StyledText from '../../components/common/StyledText'
 import StyledButton from '../../components/common/StyledButton'
@@ -19,86 +20,81 @@ type NavProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>
 export default function ResetPasswordScreen() {
   const navigation = useNavigation<NavProp>()
   const theme = useTheme()
+  const { isRecoveringPassword } = useAuth()
 
-  const [ready, setReady] = useState(false)
-  const [error, setError] = useState<string>()
   const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState<string>()
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
 
-  useEffect(() => {
 
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabaseClient.auth.getSession()
-        if (session) {
-          setReady(true)
-          setError(undefined)
-        } else {
-          setError('No valid reset session found. Please use the reset link from your email.')
-        }
-      } catch (err: any) {
-        console.error('Error checking session:', err)
-        setError('Failed to verify reset session.')
-      }
-    }
-
-    checkSession()
-  }, [])
 
   const handleResetPassword = async () => {
-    if (!ready) {
-      setError('Waiting to process reset link…')
+    console.log('🔍 ResetPasswordScreen: handleResetPassword called with PKCE flow')
+    console.log('🔍 ResetPasswordScreen: isRecoveringPassword:', isRecoveringPassword)
+    console.log('🔍 ResetPasswordScreen: password length:', newPassword.length)
+    console.log('🔍 ResetPasswordScreen: passwords match:', newPassword === confirmPassword)
+
+    if (!isRecoveringPassword) {
+      console.log('❌ ResetPasswordScreen: Not in recovery state, returning early')
+      setFormError('Invalid session. Please use the link from your email again.')
       return
     }
     if (!newPassword.trim()) {
-      setError('Please enter a new password.')
+      console.log('❌ ResetPasswordScreen: No password entered')
+      setFormError('Please enter a new password.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.')
+      console.log('❌ ResetPasswordScreen: Passwords do not match')
+      setFormError('Passwords do not match.')
       return
     }
     if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters long.')
+      console.log('❌ ResetPasswordScreen: Password too short')
+      setFormError('Password must be at least 8 characters long.')
       return
     }
 
+    console.log('✅ ResetPasswordScreen: All validations passed, updating password with PKCE session')
     setLoading(true)
-    setError(undefined)
-    const { error: updateError } = await supabaseClient.auth.updateUser({ password: newPassword })
+    setFormError(undefined)
+
+    console.log('🔍 ResetPasswordScreen: calling supabaseClient.auth.updateUser() with PKCE session')
+    const { data, error: updateError } = await supabaseClient.auth.updateUser({ password: newPassword })
+    console.log('🔍 ResetPasswordScreen: updateUser result:', {
+      success: !updateError,
+      error: updateError?.message,
+      user: data?.user?.email
+    })
+
     setLoading(false)
 
     if (updateError) {
-      console.error('Password update error:', updateError)
-      setError(updateError.message)
+      console.error('❌ ResetPasswordScreen: Password update error:', updateError)
+      setFormError(updateError.message)
     } else {
+      console.log('✅ ResetPasswordScreen: Password updated successfully with PKCE flow')
       Alert.alert(
         'Success',
-        'Your password has been updated. Please log in with your new password.',
+        'Your password has been updated successfully! The new secure PKCE flow prevented email scanner issues.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       )
     }
   }
 
 
-  if (!ready) {
+  if (!isRecoveringPassword) {
     return (
       <ScreenContainer withPadding={false}>
         <StyledView className="flex-1 justify-center items-center px-4">
-          {error ? (
-            <>
-              <StyledText color="error" className="text-center mb-4">
-                {error}
-              </StyledText>
-              <StyledButton variant="textPrimary" onPress={() => navigation.navigate('Login')}>
-                Back to Login
-              </StyledButton>
-            </>
-          ) : (
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-          )}
+          <StyledText color="error" className="text-center mb-4">
+            This link is invalid or has expired. Please request a new one.
+          </StyledText>
+          <StyledButton variant="textPrimary" onPress={() => navigation.navigate('Login')}>
+            Back to Login
+          </StyledButton>
         </StyledView>
       </ScreenContainer>
     )
@@ -131,9 +127,9 @@ export default function ResetPasswordScreen() {
         editable={!loading}
       />
 
-      {error && (
+      {formError && (
         <StyledText variant="caption" color="error" className="text-center mb-4">
-          {error}
+          {formError}
         </StyledText>
       )}
 

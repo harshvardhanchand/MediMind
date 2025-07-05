@@ -13,88 +13,81 @@ import StyledInput from '../../components/common/StyledInput';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
+const RESET_PASSWORD_URL = 'https://www.medimind.co.in/reset';
+const DEV_EMAIL = 'test@example.com';
+const DEV_PASSWORD = 'password123';
+
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const theme = useTheme(); // Get theme object
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingDevLogin, setLoadingDevLogin] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async () => {
-    setLoadingLogin(true);
+  const performLogin = async (loginEmail: string, loginPassword: string, isDevLogin = false) => {
+    const setLoading = isDevLogin ? setLoadingDevLogin : setLoadingLogin;
+    const loginType = isDevLogin ? 'Dev login' : 'Login';
+
+    setLoading(true);
     setError(null);
+
     try {
+      console.log(`🔍 LoginScreen: ${loginType} attempt for:`, loginEmail);
+
       const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password,
+        email: loginEmail,
+        password: loginPassword,
       });
 
       if (authError) {
+        console.error(`❌ LoginScreen: ${loginType} error:`, authError.message);
         setError(authError.message);
       } else if (data.session) {
-        // Login successful - AuthContext will handle navigation automatically
-        console.log("Login successful, AuthContext will handle navigation");
+        console.log(`✅ LoginScreen: ${loginType} successful, AuthContext will handle navigation`);
       } else {
+        console.warn(`⚠️ LoginScreen: ${loginType} unexpected state - no session`);
         setError("An unexpected error occurred during login.");
       }
     } catch (catchError: any) {
+      console.error(`❌ LoginScreen: ${loginType} exception:`, catchError);
       setError(catchError.message || "An unexpected error occurred.");
     } finally {
-      setLoadingLogin(false);
+      setLoading(false);
     }
   };
 
-  const DEV_EMAIL = 'test@example.com'; // Demo credentials
-  const DEV_PASSWORD = 'password123'; // Demo credentials
-
-  const handleDevLogin = async () => {
-    setLoadingDevLogin(true);
-    setError(null);
-    try {
-      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
-        email: DEV_EMAIL,
-        password: DEV_PASSWORD,
-      });
-
-      if (authError) {
-        setError(authError.message);
-      } else if (data.session) {
-        console.log("Dev login successful, AuthContext will handle navigation");
-      } else {
-        setError("An unexpected error occurred during dev login.");
-      }
-    } catch (catchError: any) {
-      setError(catchError.message || "An unexpected error occurred.");
-    } finally {
-      setLoadingDevLogin(false);
-    }
-  };
+  const handleLogin = () => performLogin(email, password, false);
+  const handleDevLogin = () => performLogin(DEV_EMAIL, DEV_PASSWORD, true);
 
   const handleForgotPassword = async () => {
+    console.log('🔍 LoginScreen: Password reset attempt for:', email);
+
     if (!email.trim()) {
+      console.warn('⚠️ LoginScreen: Password reset failed - no email entered');
       setError("Please enter your email address first.");
       return;
     }
 
     try {
-      const resetPasswordURL = 'https://medimind.co.in/reset';
 
-      const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: resetPasswordURL,
+      console.log('🔍 LoginScreen: Sending password reset email with PKCE flow');
+
+      const { data, error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: RESET_PASSWORD_URL,
       });
 
       if (resetError) {
-        console.error('Reset password error:', resetError);
+        console.error('❌ LoginScreen: Password reset error:', resetError.message);
         setError(resetError.message);
       } else {
+        console.log('✅ LoginScreen: Password reset email sent successfully with PKCE flow');
         setError(null);
-        console.log('Password reset email sent successfully');
-        alert("Password reset email sent! Please check your inbox and click the link to reset your password.");
+        alert("Password reset email sent! Please check your inbox and click the link to reset your password. The link will work reliably with our improved security.");
       }
     } catch (catchError: any) {
-      console.error('Catch error in forgot password:', catchError);
+      console.error('❌ LoginScreen: Password reset exception:', catchError);
       setError(catchError.message || "An unexpected error occurred.");
     }
   };

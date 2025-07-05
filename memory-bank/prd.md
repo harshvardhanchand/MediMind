@@ -29,7 +29,7 @@ MediMind provides comprehensive medical data management with advanced AI-powered
     * Symptom logging with severity tracking
     * Health readings management (vitals, lab results)
     * Medication interaction detection
-* **Secure User Authentication & Authorization:** Supabase-based authentication with JWT tokens and row-level security (RLS).
+* **Secure User Authentication & Authorization:** Supabase-based authentication with JWT tokens, row-level security (RLS), and PKCE flow for secure password reset.
 * **User-Controlled Data Export:** Export functionality for both original documents and structured data in standard formats.
 * **Mobile-First Interface:** React Native app with intuitive UX for document upload, data review, visualizations, querying, and notification management.
 * **Clear Medical Disclaimers:** Prominent disclaimers reinforcing that the app does **not** provide medical advice, diagnosis, or treatment recommendations.

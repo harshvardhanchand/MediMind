@@ -22,6 +22,7 @@ interface AuthContextType {
   session: Session | null;
   user: ExtendedUser | null;
   isLoading: boolean;
+  isRecoveringPassword: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -32,6 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
 
   const refreshUser = async () => {
     if (!session) return;
@@ -117,6 +119,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       async (event, newSession) => {
         console.log('🔍 Auth state change:', event, !!newSession);
 
+        // Handle password recovery state
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('✅ AuthContext: PASSWORD_RECOVERY event received. Setting state.');
+          setIsRecoveringPassword(true);
+        } else if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          // Unset recovery state on other major events
+          setIsRecoveringPassword(false);
+        }
+
         setSession(newSession);
 
         // Track authentication events
@@ -178,7 +189,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, isLoading, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ session, user, isLoading, isRecoveringPassword, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

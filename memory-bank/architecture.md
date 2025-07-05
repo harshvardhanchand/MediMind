@@ -8,7 +8,7 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 
 * **Backend**: Python 3.11 with FastAPI
   * Always use `python3` command instead of `python` to ensure the correct Python version is used
-* **Authentication**: Supabase
+* **Authentication**: Supabase with PKCE flow for secure password reset
 * **Database**: PostgreSQL with SQLAlchemy ORM and advanced performance optimizations
 * **AI Document Processing (OCR)**: Google Cloud Document AI
 * **AI Language Processing (Semantic Structuring & Future Analysis)**: Google Gemini (or other LLM)
