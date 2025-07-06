@@ -31,54 +31,36 @@ export default function ResetPasswordScreen() {
 
 
   const handleResetPassword = async () => {
-    console.log('🔍 ResetPasswordScreen: handleResetPassword called with PKCE flow')
-    console.log('🔍 ResetPasswordScreen: isRecoveringPassword:', isRecoveringPassword)
-    console.log('🔍 ResetPasswordScreen: password length:', newPassword.length)
-    console.log('🔍 ResetPasswordScreen: passwords match:', newPassword === confirmPassword)
-
     if (!isRecoveringPassword) {
-      console.log('❌ ResetPasswordScreen: Not in recovery state, returning early')
       setFormError('Invalid session. Please use the link from your email again.')
       return
     }
     if (!newPassword.trim()) {
-      console.log('❌ ResetPasswordScreen: No password entered')
       setFormError('Please enter a new password.')
       return
     }
     if (newPassword !== confirmPassword) {
-      console.log('❌ ResetPasswordScreen: Passwords do not match')
       setFormError('Passwords do not match.')
       return
     }
     if (newPassword.length < 8) {
-      console.log('❌ ResetPasswordScreen: Password too short')
       setFormError('Password must be at least 8 characters long.')
       return
     }
 
-    console.log('✅ ResetPasswordScreen: All validations passed, updating password with PKCE session')
     setLoading(true)
     setFormError(undefined)
 
-    console.log('🔍 ResetPasswordScreen: calling supabaseClient.auth.updateUser() with PKCE session')
     const { data, error: updateError } = await supabaseClient.auth.updateUser({ password: newPassword })
-    console.log('🔍 ResetPasswordScreen: updateUser result:', {
-      success: !updateError,
-      error: updateError?.message,
-      user: data?.user?.email
-    })
 
     setLoading(false)
 
     if (updateError) {
-      console.error('❌ ResetPasswordScreen: Password update error:', updateError)
       setFormError(updateError.message)
     } else {
-      console.log('✅ ResetPasswordScreen: Password updated successfully with PKCE flow')
       Alert.alert(
         'Success',
-        'Your password has been updated successfully! The new secure PKCE flow prevented email scanner issues.',
+        'Your password has been updated successfully!',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       )
     }

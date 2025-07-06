@@ -8,7 +8,7 @@ The Medical Data Hub is an AI-powered patient medical data management applicatio
 
 * **Backend**: Python 3.11 with FastAPI
   * Always use `python3` command instead of `python` to ensure the correct Python version is used
-* **Authentication**: Supabase with PKCE flow for secure password reset
+* **Authentication**: Supabase with verifyOTP flow for secure password reset
 * **Database**: PostgreSQL with SQLAlchemy ORM and advanced performance optimizations
 * **AI Document Processing (OCR)**: Google Cloud Document AI
 * **AI Language Processing (Semantic Structuring & Future Analysis)**: Google Gemini (or other LLM)
@@ -1145,17 +1145,52 @@ This structure ensures clear separation of concerns, consistent database access 
 5.  If valid, endpoint handler receives the decoded token data (including `sub` which is the `auth.uid`).
 6.  Backend logic uses `auth.uid` to find the corresponding user record in the `users` table via the `supabase_id` column.
 
+## Password Reset Flow
+
+The application implements a secure password reset flow using Supabase's verifyOTP method with universal links:
+
+### 1. Email Template Configuration
+- **Supabase Email Template**: Modified to use `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery` instead of the default `{{ .ConfirmationURL }}`
+- **Direct Domain Links**: Password reset emails contain links directly to `https://www.medimind.co.in/reset?token_hash=...&type=recovery`
+- **Token Hash Security**: Uses `token_hash` parameter instead of legacy `token` to prevent email scanner consumption
+
+### 2. Universal Links Setup
+- **Apple App Site Association (AASA)**: Configured at `https://www.medimind.co.in/.well-known/apple-app-site-association`
+- **App ID**: `49ZPD6PW3F.com.harshchand.medimind` with paths `["/reset", "/reset/*"]`
+- **Bundle Identifier**: Consistent `com.harshchand.medimind` across app.config.js and app.json
+- **Fallback HTML**: Reset page serves as fallback when universal links fail
+
+### 3. App URL Handling
+- **Parameter Detection**: App detects both `token_hash` and `type` parameters in URLs
+- **Deep Linking**: Configured to recognize `token_hash=` URLs and navigate to ResetPasswordScreen
+- **Authentication Method**: Uses `supabaseClient.auth.verifyOtp({ token_hash, type: 'recovery' })`
+- **Error Handling**: Comprehensive error handling for invalid tokens and network issues
+
+### 4. Security Features
+- **Token Validation**: verifyOTP prevents email scanner token consumption
+- **Universal Links**: iOS system handles links directly, bypassing browser vulnerabilities
+- **Secure Transmission**: All tokens transmitted over HTTPS with proper validation
+- **User Experience**: Seamless flow from email to app with proper error feedback
+
+### 5. Cross-Platform Support
+- **iOS**: Universal links work in production, TestFlight may default to browser
+- **Android**: App links support with proper intent filters
+- **Web Fallback**: HTML reset page provides instructions and app download links
+- **Development**: Works in Expo development environment with proper URL scheme handling
+
 ## Security Features
 
 1.  **JWT Authentication**: Secure token-based authentication with Supabase.
-2.  **RLS**: Row Level Security enabled on all tables in the `public` schema, with policies restricting access based on the authenticated user (`auth.uid`).
-3.  **Security Headers**: Middleware protection against common web vulnerabilities.
-4.  **Rate Limiting**: Prevention of abuse and DoS attacks.
-5.  **Structured Logging**: Comprehensive logging for security events.
-6.  **Input Validation**: Pydantic schemas ensure data validation at API boundaries.
-7.  **Exception Handling**: Secure error responses that don't leak sensitive information.
-8.  **Database Connection Pooling**: Secure and efficient database access.
-9.  **Environment Variables**: Sensitive credentials (DB URL, JWT Secret) managed via `.env` file (not committed to Git).
+2.  **Password Reset Security**: Secure password reset flow using verifyOTP with token_hash validation to prevent email scanner token consumption.
+3.  **Universal Links**: Deep linking configuration with Apple App Site Association (AASA) for secure password reset URLs.
+4.  **RLS**: Row Level Security enabled on all tables in the `public` schema, with policies restricting access based on the authenticated user (`auth.uid`).
+5.  **Security Headers**: Middleware protection against common web vulnerabilities.
+6.  **Rate Limiting**: Prevention of abuse and DoS attacks.
+7.  **Structured Logging**: Comprehensive logging for security events.
+8.  **Input Validation**: Pydantic schemas ensure data validation at API boundaries.
+9.  **Exception Handling**: Secure error responses that don't leak sensitive information.
+10. **Database Connection Pooling**: Secure and efficient database access.
+
 
 ## Development Environment
 
@@ -1230,7 +1265,7 @@ alembic upgrade head
 **Frontend:**
 - ✅ React Native with Expo development environment setup
 - ✅ Navigation structure with React Navigation (stack and tab navigators)
-- ✅ Authentication flow with Supabase integration
+- ✅ Authentication flow with Supabase integration including secure password reset
 - ✅ AuthContext for centralized authentication state management
 - ✅ Comprehensive screen implementation:
   - ✅ HomeScreen with dashboard functionality
@@ -1560,7 +1595,7 @@ The application implements comprehensive error handling:
 ### Integration Status
 
 **✅ Completed**:
-- Authentication flow with Supabase
+- Authentication flow with Supabase including secure password reset
 - Navigation structure with React Navigation
 - API client with token management
 - Core screens implementation
@@ -1568,6 +1603,8 @@ The application implements comprehensive error handling:
 - Document upload and processing flow
 - Health readings and medications management
 - AI query interface
+- Universal links configuration for password reset
+- Deep linking integration with URL parameter handling
 
 **🔄 In Progress**:
 - Migration from mock data to full API integration

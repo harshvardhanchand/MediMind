@@ -28,30 +28,24 @@ const LoginScreen = () => {
 
   const performLogin = async (loginEmail: string, loginPassword: string, isDevLogin = false) => {
     const setLoading = isDevLogin ? setLoadingDevLogin : setLoadingLogin;
-    const loginType = isDevLogin ? 'Dev login' : 'Login';
 
     setLoading(true);
     setError(null);
 
     try {
-      console.log(`🔍 LoginScreen: ${loginType} attempt for:`, loginEmail);
-
       const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       });
 
       if (authError) {
-        console.error(`❌ LoginScreen: ${loginType} error:`, authError.message);
         setError(authError.message);
       } else if (data.session) {
-        console.log(`✅ LoginScreen: ${loginType} successful, AuthContext will handle navigation`);
+        // AuthContext will handle navigation
       } else {
-        console.warn(`⚠️ LoginScreen: ${loginType} unexpected state - no session`);
         setError("An unexpected error occurred during login.");
       }
     } catch (catchError: any) {
-      console.error(`❌ LoginScreen: ${loginType} exception:`, catchError);
       setError(catchError.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
@@ -62,32 +56,23 @@ const LoginScreen = () => {
   const handleDevLogin = () => performLogin(DEV_EMAIL, DEV_PASSWORD, true);
 
   const handleForgotPassword = async () => {
-    console.log('🔍 LoginScreen: Password reset attempt for:', email);
-
     if (!email.trim()) {
-      console.warn('⚠️ LoginScreen: Password reset failed - no email entered');
       setError("Please enter your email address first.");
       return;
     }
 
     try {
-
-      console.log('🔍 LoginScreen: Sending password reset email with PKCE flow');
-
       const { data, error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: RESET_PASSWORD_URL,
       });
 
       if (resetError) {
-        console.error('❌ LoginScreen: Password reset error:', resetError.message);
         setError(resetError.message);
       } else {
-        console.log('✅ LoginScreen: Password reset email sent successfully with PKCE flow');
         setError(null);
-        alert("Password reset email sent! Please check your inbox and click the link to reset your password. The link will work reliably with our improved security.");
+        alert("Password reset email sent! Please check your inbox and click the link to reset your password.");
       }
     } catch (catchError: any) {
-      console.error('❌ LoginScreen: Password reset exception:', catchError);
       setError(catchError.message || "An unexpected error occurred.");
     }
   };

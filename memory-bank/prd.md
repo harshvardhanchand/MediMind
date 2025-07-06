@@ -29,7 +29,7 @@ MediMind provides comprehensive medical data management with advanced AI-powered
     * Symptom logging with severity tracking
     * Health readings management (vitals, lab results)
     * Medication interaction detection
-* **Secure User Authentication & Authorization:** Supabase-based authentication with JWT tokens, row-level security (RLS), and PKCE flow for secure password reset.
+* **Secure User Authentication & Authorization:** Supabase-based authentication with JWT tokens, row-level security (RLS), and secure password reset flow using verifyOTP with universal links.
 * **User-Controlled Data Export:** Export functionality for both original documents and structured data in standard formats.
 * **Mobile-First Interface:** React Native app with intuitive UX for document upload, data review, visualizations, querying, and notification management.
 * **Clear Medical Disclaimers:** Prominent disclaimers reinforcing that the app does **not** provide medical advice, diagnosis, or treatment recommendations.
@@ -109,6 +109,8 @@ MediMind provides comprehensive medical data management with advanced AI-powered
 
 * **Encryption:** End-to-end encryption (HTTPS, database encryption at rest)
 * **Authentication:** Supabase-based JWT authentication with secure token handling
+* **Password Reset Security:** Secure password reset flow using verifyOTP with token_hash validation to prevent email scanner token consumption
+* **Universal Links:** Deep linking configuration with Apple App Site Association (AASA) for secure password reset URLs
 * **Authorization:** Row-level security and role-based access controls
 * **Audit Logging:** Comprehensive logging for all user actions and system events
 * **Compliance:** Implementation following HIPAA, GDPR, and DPDP Act 2023 requirements
@@ -153,7 +155,8 @@ MediMind provides comprehensive medical data management with advanced AI-powered
 MediMind has successfully implemented all core features with advanced optimizations:
 
 ### ✅ **Completed Features:**
-- Secure user authentication and profile management
+- Secure user authentication and profile management with password reset
+- Universal links configuration for secure password reset flow
 - Document upload and secure storage with GCP integration
 - AI-powered OCR and NLP data extraction
 - Comprehensive user review and correction interface
@@ -164,6 +167,7 @@ MediMind has successfully implemented all core features with advanced optimizati
 - Cross-platform mobile application
 - Real-time push notifications
 - Comprehensive health and medication tracking
+- Deep linking integration with URL parameter handling
 
 ### 🔄 **Ongoing Enhancements:**
 - Advanced analytics and reporting features
