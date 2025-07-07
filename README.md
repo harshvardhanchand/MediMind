@@ -43,30 +43,7 @@ The AI cross-checks labs, symptoms, and drugs, spots that long-term Metformin ca
 It sends a push card: “Metformin → low B-12 → fatigue + tingling. Consider B-12 supplementation.”
 ---
 
-## 🏗️ Architecture
 
-```mermaid
-graph LR
-    subgraph Client
-        A[" React Native App"]
-    end
-    subgraph Backend
-        B["FastAPI API"]
-        C["Auth & DB (Supabase + Postgres)"]
-    end
-    subgraph AI-Core
-        D["Document AI → Medical AI → Alerts"]
-        E["NL Query → Gemini"]
-    end
-
-    A --> B
-    B --> C
-    A --> D
-    A --> E
-
-```
-
----
 
 ## 🚀 Getting Started
 
