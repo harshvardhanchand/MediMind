@@ -36,26 +36,33 @@ const parseResetLink = async (url: string) => {
 
     const finalError = error_description || fragmentError;
     if (finalError) {
-      return { error_description: finalError, type: 'recovery' };
+      return { error_description: finalError, type: type || fragmentType || 'recovery' };
     }
 
     const finalTokenHash = tokenHash || fragmentTokenHash;
     const finalType = type || fragmentType;
 
-    if (finalTokenHash) {
+    if (finalTokenHash && finalType) {
       try {
+
         const { data, error: sessionError } = await supabaseClient.auth.verifyOtp({
           token_hash: finalTokenHash,
-          type: 'recovery'
+          type: finalType === 'signup' ? 'email' : 'recovery'
         });
 
         if (sessionError) {
-          return { error_description: 'Invalid or expired reset link', type: 'recovery' };
+          const errorMsg = finalType === 'signup'
+            ? 'Invalid or expired confirmation link'
+            : 'Invalid or expired reset link';
+          return { error_description: errorMsg, type: finalType };
         }
 
-        return { type: 'recovery' };
+        return { type: finalType };
       } catch (exchangeError) {
-        return { error_description: 'Failed to process reset link', type: 'recovery' };
+        const errorMsg = finalType === 'signup'
+          ? 'Failed to process confirmation link'
+          : 'Failed to process reset link';
+        return { error_description: errorMsg, type: finalType };
       }
     }
 
@@ -72,6 +79,7 @@ export const linking = {
       Auth: {
         screens: {
           ResetPassword: 'reset',
+          Login: 'confirm',
         }
       },
     }
@@ -80,7 +88,7 @@ export const linking = {
     try {
       const url = await Linking.getInitialURL();
 
-      if (url?.includes('reset') || url?.includes('token_hash=') || url?.includes('#')) {
+      if (url?.includes('reset') || url?.includes('confirm') || url?.includes('token_hash=') || url?.includes('#')) {
         await parseResetLink(url);
         return url;
       }
@@ -91,7 +99,7 @@ export const linking = {
   },
   subscribe(listener) {
     const subscription = Linking.addEventListener('url', async (event) => {
-      if (event.url?.includes('reset') || event.url?.includes('token_hash=') || event.url?.includes('#')) {
+      if (event.url?.includes('reset') || event.url?.includes('confirm') || event.url?.includes('token_hash=') || event.url?.includes('#')) {
         await parseResetLink(event.url);
       }
 
