@@ -11,6 +11,7 @@ import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import Card from '../../components/common/Card';
 import { useTheme } from '../../theme';
+import { useAuth } from '../../context/AuthContext';
 import { userServices } from '../../api/services';
 import { MedicalCondition, UserProfileUpdate } from '../../types/api';
 import { UserProfile } from '../../types/interfaces';
@@ -26,6 +27,7 @@ type CreateProfileScreenNavigationProp = NativeStackNavigationProp<OnboardingSta
 const CreateProfileScreen = () => {
   const navigation = useNavigation<CreateProfileScreenNavigationProp>();
   const { colors } = useTheme();
+  const { signOut } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
@@ -154,11 +156,43 @@ const CreateProfileScreen = () => {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? Your profile progress will be lost.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (error) {
+              console.error('Error signing out:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScreenContainer scrollable={false} withPadding={false}>
       <StyledScrollView className="flex-1 bg-gray-50">
         {/* Header */}
-        <StyledView className="px-6 pt-12 pb-6 bg-white">
+        <StyledView className="px-6 pt-12 pb-6 bg-white relative">
+          {/* Logout Button */}
+          <StyledTouchableOpacity
+            onPress={handleLogout}
+            className="absolute top-12 right-4 bg-gray-100 rounded-full p-2"
+          >
+            <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
+          </StyledTouchableOpacity>
+
           <StyledText variant="h1" className="font-bold text-2xl text-center mb-2">
             Create Your Profile
           </StyledText>

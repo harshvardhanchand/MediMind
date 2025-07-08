@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { OnboardingStackParamList } from '../../navigation/types';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import { useTheme } from '../../theme';
+import { useAuth } from '../../context/AuthContext';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -18,14 +19,50 @@ type WelcomeScreenNavigationProp = NativeStackNavigationProp<OnboardingStackPara
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
   const { colors } = useTheme();
+  const { signOut } = useAuth();
 
   const handleGetStarted = () => {
     navigation.navigate('Features');
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? Your profile progress will be lost.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (error) {
+              console.error('Error signing out:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScreenContainer scrollable={false} withPadding={false}>
       <StyledView className="flex-1 bg-gradient-to-b from-blue-500 to-purple-600" style={{ backgroundColor: '#667eea' }}>
+        {/* Logout Button */}
+        <StyledView className="absolute top-12 right-4 z-10">
+          <StyledTouchableOpacity
+            onPress={handleLogout}
+            className="bg-white/20 rounded-full p-3"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+          >
+            <Ionicons name="log-out-outline" size={24} color="white" />
+          </StyledTouchableOpacity>
+        </StyledView>
+
         <StyledView className="flex-1 justify-center items-center px-8">
           {/* Logo/Icon */}
           <StyledView className="mb-8 bg-white rounded-full p-6 shadow-lg">
