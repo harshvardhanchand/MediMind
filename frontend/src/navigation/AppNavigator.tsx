@@ -175,8 +175,6 @@ const AppNavigator = () => {
           ) : (
             <RootStackNav.Screen name="Main" component={MainWithNotifications} />
           )}
-
-          <RootStackNav.Screen name="Auth" component={AuthNavigator} />
         </RootStackNav.Group>
       )}
     </RootStackNav.Navigator>
