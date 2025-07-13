@@ -8,10 +8,17 @@ export type ResetPasswordRouteParams = {
   error_description?: string;
 };
 
+export type ConfirmRouteParams = {
+  token_hash?: string;
+  type?: string;
+  error_description?: string;
+};
+
 export type AuthStackParamList = {
   Login: undefined;
   SignUp: undefined;
-  ResetPassword: ResetPasswordRouteParams | undefined; 
+  ResetPassword: ResetPasswordRouteParams | undefined;
+  Confirm: ConfirmRouteParams | undefined;
 };
 
 export type OnboardingStackParamList = {

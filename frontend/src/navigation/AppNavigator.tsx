@@ -9,6 +9,7 @@ import { NotificationProvider } from '../context/NotificationContext';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
+import ConfirmScreen from '../screens/auth/ConfirmScreen';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
 import MainTabNavigator from './MainTabNavigator';
@@ -19,8 +20,9 @@ import { withScreenErrorBoundary } from '../utils/withErrorBoundary';
 const LoginScreenWithErrorBoundary = withScreenErrorBoundary(LoginScreen, 'LoginScreen');
 const SignUpScreenWithErrorBoundary = withScreenErrorBoundary(SignUpScreen, 'SignUpScreen');
 const ResetPasswordScreenWithErrorBoundary = withScreenErrorBoundary(ResetPasswordScreen, 'ResetPasswordScreen');
+const ConfirmScreenWithErrorBoundary = withScreenErrorBoundary(ConfirmScreen, 'ConfirmScreen');
 
-const parseResetLink = async (url: string) => {
+const parseLink = async (url: string) => {
   try {
     const urlObj = new URL(url);
     const searchParams = new URLSearchParams(urlObj.search);
@@ -47,7 +49,7 @@ const parseResetLink = async (url: string) => {
 
         const { data, error: sessionError } = await supabaseClient.auth.verifyOtp({
           token_hash: finalTokenHash,
-          type: finalType === 'signup' ? 'email' : 'recovery'
+          type: finalType as 'signup' | 'recovery'
         });
 
         if (sessionError) {
@@ -79,7 +81,7 @@ export const linking = {
       Auth: {
         screens: {
           ResetPassword: 'reset',
-          Login: 'confirm',
+          Confirm: 'confirm',
         }
       },
     }
@@ -89,7 +91,7 @@ export const linking = {
       const url = await Linking.getInitialURL();
 
       if (url?.includes('reset') || url?.includes('confirm') || url?.includes('token_hash=') || url?.includes('#')) {
-        await parseResetLink(url);
+        await parseLink(url);
         return url;
       }
       return null;
@@ -100,7 +102,7 @@ export const linking = {
   subscribe(listener) {
     const subscription = Linking.addEventListener('url', async (event) => {
       if (event.url?.includes('reset') || event.url?.includes('confirm') || event.url?.includes('token_hash=') || event.url?.includes('#')) {
-        await parseResetLink(event.url);
+        await parseLink(event.url);
       }
 
       listener(event.url);
@@ -120,6 +122,7 @@ const AuthNavigator = () => (
     <AuthStackNav.Screen name="Login" component={LoginScreenWithErrorBoundary} />
     <AuthStackNav.Screen name="SignUp" component={SignUpScreenWithErrorBoundary} />
     <AuthStackNav.Screen name="ResetPassword" component={ResetPasswordScreenWithErrorBoundary} />
+    <AuthStackNav.Screen name="Confirm" component={ConfirmScreenWithErrorBoundary} />
   </AuthStackNav.Navigator>
 );
 
