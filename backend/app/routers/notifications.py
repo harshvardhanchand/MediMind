@@ -6,10 +6,11 @@ Provides REST API for medical notifications and analysis
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Dict, Any
 import logging
 
-from app.db.session import get_db, SessionLocal
+from app.db.session import get_db, get_async_db, SessionLocal
 from app.services.notification_service import get_notification_service, get_medical_triggers
 from app.core.auth import get_current_user
 from app.models.user import User
@@ -135,15 +136,16 @@ async def get_notifications(
     include_read: bool = Query(True, description="Include read notifications"),
     include_dismissed: bool = Query(False, description="Include dismissed notifications"),
     limit: int = Query(50, le=100, description="Maximum number of notifications"),
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Get notifications for the current user
     """
     try:
-        logger.info(f"🔍 get_notifications called - user_id: {current_user.user_id}")
-        notification_service = get_notification_service(db)
+        logger.info(f" get_notifications called - user_id: {current_user.user_id}")
+        
+        with SessionLocal() as db:
+            notification_service = get_notification_service(db)
         
         logger.info(f"🔍 About to call get_user_notifications with user_id: {str(current_user.user_id)}")
         notifications = notification_service.get_user_notifications(
@@ -162,18 +164,19 @@ async def get_notifications(
 
 @router.get("/stats", response_model=NotificationStats)
 async def get_notification_stats(
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Get notification statistics for the current user
     """
     try:
-        notification_service = get_notification_service(db)
-        
-        stats = notification_service.get_notification_stats(str(current_user.user_id))
-        
-        return NotificationStats(**stats)
+       
+        with SessionLocal() as db:
+            notification_service = get_notification_service(db)
+            
+            stats = notification_service.get_notification_stats(str(current_user.user_id))
+            
+            return NotificationStats(**stats)
         
     except Exception as e:
         logger.error(f"Failed to get notification stats: {str(e)}")
@@ -182,14 +185,15 @@ async def get_notification_stats(
 @router.post("/{notification_id}/read")
 async def mark_notification_read(
     notification_id: str,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Mark a notification as read
     """
     try:
-        notification_service = get_notification_service(db)
+        
+        with SessionLocal() as db:
+            notification_service = get_notification_service(db)
         
         success = notification_service.mark_notification_read(
             notification_id=notification_id,
@@ -210,24 +214,25 @@ async def mark_notification_read(
 @router.post("/{notification_id}/dismiss")
 async def dismiss_notification(
     notification_id: str,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Dismiss a notification
     """
     try:
-        notification_service = get_notification_service(db)
         
-        success = notification_service.dismiss_notification(
-            notification_id=notification_id,
-            user_id=str(current_user.user_id)
-        )
-        
-        if not success:
-            raise HTTPException(status_code=404, detail="Notification not found")
-        
-        return {"message": "Notification dismissed"}
+        with SessionLocal() as db:
+            notification_service = get_notification_service(db)
+            
+            success = notification_service.dismiss_notification(
+                notification_id=notification_id,
+                user_id=str(current_user.user_id)
+            )
+            
+            if not success:
+                raise HTTPException(status_code=404, detail="Notification not found")
+            
+            return {"message": "Notification dismissed"}
         
     except HTTPException:
         raise
@@ -347,34 +352,24 @@ async def trigger_manual_analysis(
 # Admin endpoints (if needed)
 @router.get("/admin/stats")
 async def get_system_notification_stats(
-    db: Session = Depends(get_db),
     admin_user: User = Depends(require_admin)  
 ):
     """
     Get system-wide notification statistics (admin only)
     """
     try:
-        
-        result = db.execute("""
-            SELECT 
-                COUNT(*) as total_notifications,
-                COUNT(DISTINCT user_id) as active_users,
-                AVG(CASE WHEN is_read = false THEN 1 ELSE 0 END) as avg_unread_rate,
-                COUNT(CASE WHEN severity = 'high' THEN 1 END) as high_severity_count
-            FROM notifications 
-            WHERE expires_at > NOW()
-        """).fetchone()
-        
-        return {
-                "total_notifications": result[0],
-                "active_users": result[1],
-                "average_unread_rate": float(result[2]) if result[2] else 0.0,
-                "high_severity_count": result[3]
-            }
-        
+       
+        with SessionLocal() as db:
+            notification_service = get_notification_service(db)
+            
+            
+            stats = notification_service.get_system_notification_stats()
+            
+            return stats
+            
     except Exception as e:
-        logger.error(f"Failed to get system stats: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve system statistics")
+        logger.error(f"Failed to get system notification stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve system notification statistics")
 
 @router.post("/admin/cleanup")
 async def cleanup_expired_notifications(

@@ -128,7 +128,7 @@ export const userServices = {
     apiClient.get('/api/users/me'),
     
   updateProfile: (profileData: UserProfileUpdate): Promise<AxiosResponse<UserResponse>> => 
-    apiClient.put('/api/users/me', profileData),
+    apiClient.patch('/api/users/me/profile', profileData),
 };
 
 // Notification services

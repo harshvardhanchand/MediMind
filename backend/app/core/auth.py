@@ -4,11 +4,12 @@ import jwt
 from fastapi import Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError, ErrorCode
-from app.db.session import get_db
+from app.db.session import get_db, get_async_db
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -105,16 +106,38 @@ def get_user_id_from_token(db: Session, token_data: dict) -> uuid.UUID:
     
     return user.user_id
 
+async def get_user_id_from_token_async(db: AsyncSession, token_data: dict) -> uuid.UUID:
+    """Extract and validate internal application user ID from decoded token data (async version)."""
+    supabase_id = token_data.get("sub")
+    if not supabase_id:
+        logger.error("Supabase ID (sub) not found in token payload.")
+        raise AuthenticationError(
+            "Invalid authentication token payload: Missing 'sub' claim.",
+            ErrorCode.INVALID_TOKEN
+        )
+    
+    from app.repositories.user_repo import user_repo 
+    
+    user = await user_repo.get_by_supabase_id(db, supabase_id=supabase_id)
+    if not user:
+        logger.warning(f"User with Supabase ID '{supabase_id}' not found in the database.")
+        raise AuthenticationError(
+            "User associated with this token not found in the application.",
+            ErrorCode.USER_NOT_FOUND
+        )
+    
+    return user.user_id
+
 async def get_current_user(
     token_data: Dict[str, Any] = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> User:
     """Get the current authenticated user from the database."""
     try:
-        user_id = get_user_id_from_token(db, token_data)
+        user_id = await get_user_id_from_token_async(db, token_data)
         
         from app.repositories.user_repo import user_repo
-        user = user_repo.get(db, id=user_id)
+        user = await user_repo.get(db, id=user_id)
         if not user:
             raise AuthenticationError(
                 "User not found in database",

@@ -517,6 +517,139 @@ class NotificationService:
             logger.error(f"Failed to cleanup expired notifications: {str(e)}")
             return 0
 
+    def get_system_notification_stats(self) -> Dict[str, Any]:
+        """
+        Get system-wide notification statistics (admin only)
+        """
+        try:
+            
+            basic_result = self.db.execute(
+                text("""
+                    SELECT 
+                        COUNT(*) as total_count,
+                        COUNT(CASE WHEN is_read = false THEN 1 END) as unread_count,
+                        COUNT(DISTINCT user_id) as unique_users
+                    FROM notifications 
+                    WHERE expires_at > NOW() 
+                    AND is_dismissed = false
+                """)
+            ).fetchone()
+            
+            
+            severity_result = self.db.execute(
+                text("""
+                    SELECT 
+                        severity,
+                        COUNT(*) as count
+                    FROM notifications 
+                    WHERE expires_at > NOW() 
+                    AND is_dismissed = false
+                    GROUP BY severity
+                """)
+            ).fetchall()
+            
+            
+            type_result = self.db.execute(
+                text("""
+                    SELECT 
+                        type,
+                        COUNT(*) as count
+                    FROM notifications 
+                    WHERE expires_at > NOW() 
+                    AND is_dismissed = false
+                    GROUP BY type
+                """)
+            ).fetchall()
+            
+            
+            by_severity = {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            }
+            
+            for row in severity_result:
+                severity = row[0].lower() if row[0] else "low"
+                count = row[1]
+                if severity in by_severity:
+                    by_severity[severity] = count
+                else:
+                    
+                    if severity in ["urgent", "emergency"]:
+                        by_severity["critical"] += count
+                    else:
+                        by_severity["low"] += count
+            
+            
+            by_type = {
+                "interaction_alert": 0,
+                "risk_alert": 0,
+                "medication_reminder": 0,
+                "lab_followup": 0,
+                "symptom_monitoring": 0,
+                "general_info": 0
+            }
+            
+            for row in type_result:
+                notification_type = row[0].lower() if row[0] else "general_info"
+                count = row[1]
+                
+                
+                if notification_type in ["drug_interaction", "interaction_alert", "medication_interaction"]:
+                    by_type["interaction_alert"] += count
+                elif notification_type in ["risk_alert", "health_risk", "medical_risk"]:
+                    by_type["risk_alert"] += count
+                elif notification_type in ["medication_reminder", "dose_reminder", "refill_reminder"]:
+                    by_type["medication_reminder"] += count
+                elif notification_type in ["lab_followup", "lab_result", "test_followup"]:
+                    by_type["lab_followup"] += count
+                elif notification_type in ["symptom_monitoring", "symptom_alert", "symptom_tracking"]:
+                    by_type["symptom_monitoring"] += count
+                else:
+                    by_type["general_info"] += count
+            
+            if basic_result:
+                return {
+                    "total_count": basic_result[0] or 0,
+                    "unread_count": basic_result[1] or 0,
+                    "unique_users": basic_result[2] or 0,
+                    "by_severity": by_severity,
+                    "by_type": by_type
+                }
+            
+            
+            return {
+                "total_count": 0,
+                "unread_count": 0,
+                "unique_users": 0,
+                "by_severity": by_severity,
+                "by_type": by_type
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get system notification stats: {str(e)}")
+            
+            return {
+                "total_count": 0,
+                "unread_count": 0,
+                "unique_users": 0,
+                "by_severity": {
+                    "critical": 0,
+                    "high": 0,
+                    "medium": 0,
+                    "low": 0
+                },
+                "by_type": {
+                    "interaction_alert": 0,
+                    "risk_alert": 0,
+                    "medication_reminder": 0,
+                    "lab_followup": 0,
+                    "symptom_monitoring": 0,
+                    "general_info": 0
+                }
+            }
+
 class MedicalEventTriggers:
     """
     Handles triggering medical analysis for various events
@@ -536,7 +669,7 @@ class MedicalEventTriggers:
             event_data={
                 "type": "new_medication",
                 "medication": medication_data,
-                "medication_id": medication_id,  # Link to specific medication
+                "medication_id": medication_id, 
                 "timestamp": datetime.now().isoformat()
             }
         )
@@ -565,7 +698,7 @@ class MedicalEventTriggers:
             event_data={
                 "type": "lab_result",
                 "lab_result": lab_data,
-                "health_reading_id": health_reading_id,  # Link to specific health reading
+                "health_reading_id": health_reading_id,  
                 "timestamp": datetime.now().isoformat()
             }
         )
@@ -580,7 +713,7 @@ class MedicalEventTriggers:
             event_data={
                 "type": "health_reading",
                 "reading": reading_data,
-                "health_reading_id": health_reading_id,  # Link to specific health reading
+                "health_reading_id": health_reading_id,  
                 "timestamp": datetime.now().isoformat()
             }
         )

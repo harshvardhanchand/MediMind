@@ -39,6 +39,13 @@ class UserRepository(AsyncCRUDBase[User, Any, Any]):
         result = db.execute(stmt)
         return result.scalar_one_or_none()
     
+    def get_by_id_sync(self, db: Session, *, id: Any) -> Optional[User]:
+        """Synchronous version of get for compatibility with existing endpoints."""
+        pk_col = next(iter(self.model.__mapper__.primary_key))
+        stmt = select(self.model).where(pk_col == id)
+        result = db.execute(stmt)
+        return result.scalar_one_or_none()
+    
     async def update_profile(self, db: AsyncSession, *, user_id: str, profile_data: UserProfileUpdate) -> Optional[User]:
         """Update user profile fields."""
         stmt = select(self.model).where(self.model.user_id == user_id)

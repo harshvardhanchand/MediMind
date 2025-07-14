@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import verify_token
+from app.core.auth import verify_token, get_current_user
 from app.middleware.rate_limit import limiter
 from app.db.session import get_async_db
 from app.repositories.user_repo import user_repo
@@ -43,7 +43,7 @@ async def update_user_profile(
     request: Request,
     profile_data: UserProfileUpdate,
     db: AsyncSession = Depends(get_async_db),
-    token_data: dict = Depends(verify_token)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Update the current user's profile information.
@@ -57,17 +57,9 @@ async def update_user_profile(
     Returns:
         UserRead: Updated user profile information
     """
-    supabase_id = token_data.get("sub")
-    if not supabase_id:
-        raise HTTPException(status_code=401, detail="Invalid token: Missing sub claim")
-
-    user: User | None = await user_repo.get_by_supabase_id(db, supabase_id=supabase_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found in database")
-    
     updated_user = await user_repo.update_profile(
         db, 
-        user_id=str(user.user_id), 
+        user_id=str(current_user.user_id), 
         profile_data=profile_data
     )
     
