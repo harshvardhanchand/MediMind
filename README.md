@@ -1,4 +1,4 @@
-# 🏥 MediMind
+#  MediMind
 
 > **A  mobile health platform that helps users track symptoms, medications, lab results, and prescriptions—surfacing early insights and potential side effects using AI.**
 
@@ -10,13 +10,13 @@
 
 ---
 
-## 📱 Overview
+##  Overview
 
 The AI-Powered Medical Data Hub is a mobile-first health companion that goes beyond storage and search. It enables users to **log health events**, **analyze medical documents**, and **proactively identify correlations**, such as possible side effects from medications. Natural language querying unlocks an intuitive way to explore structured medical data—all while ensuring security and privacy.
 
 ---
 
-## 🔑 Key Features
+## Key Features
 
 * **📄 Smart Document Parsing**: OCR + NLP pipeline extracts structured information from prescriptions, lab results, and test reports
 * **💬 Natural Language Queries**: “Show all glucose tests in 2024” or “Which meds might cause dizziness?”
@@ -28,7 +28,7 @@ The AI-Powered Medical Data Hub is a mobile-first health companion that goes bey
 
 ---
 
-## 🧰 Tech Stack Overview
+## Tech Stack Overview
 
 * **Frontend**: React Native, Expo, TypeScript, Zustand, NativeWind
 * **Backend**: FastAPI, SQLAlchemy, PostgreSQL, Supabase Auth
@@ -36,7 +36,7 @@ The AI-Powered Medical Data Hub is a mobile-first health companion that goes bey
 
 ---
 
-## 🧪 Example Use Case
+##  Example Use Case
 
 A user  uploads a recent blood-test PDF, logs “fatigue” and “tingling hands,” and adds her meds list.
 The AI cross-checks labs, symptoms, and drugs, spots that long-term Metformin can drive low B-12, and sees her B-12 is below range.
@@ -96,7 +96,7 @@ npx expo start
 
 ---
 
-## 🛡️ Security Highlights
+##  Security Highlights
 
 * Supabase-based JWT Auth
 * Row-Level Security (RLS)
@@ -106,7 +106,7 @@ npx expo start
 
 ---
 
-## 🧠 AI Capabilities
+##  AI Capabilities
 
 * **OCR**: Google Document AI for high-accuracy parsing
 * **Medical NLP**: Extracts medications, dosages, test names/values, and doctors
@@ -114,7 +114,7 @@ npx expo start
 * **Alert Engine**: Detects correlations between meds, symptoms, and lab values
 
 
-## 📦 Deployment Notes
+##  Deployment Notes
 
 * Backend deployable to runpod
 * Frontend deployable to testflight via expo 
@@ -122,7 +122,7 @@ npx expo start
 
 ---
 
-## 👨‍💻 Author
+##  Author
 
 **Harshvardhan Chand**
 [LinkedIn](https://www.linkedin.com/in/harshvardhan-chand/)
