@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.security import HTTPBearer
 from typing import List, Dict, Any
 import logging
-from app.db.session import SessionLocal
+
+from app.db.session import get_db, get_async_db, SessionLocal
 from app.services.notification_service import (
     get_notification_service,
     get_medical_triggers,
@@ -37,11 +38,12 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.app_metadata and current_user.app_metadata.get("role") == "admin":
         return current_user
 
-    admin_emails = ["admin@example.com"]
+    admin_emails = ["admin@example.com"]  # Configure with your admin email
 
     if current_user.email in admin_emails:
         return current_user
 
+    # If neither check passes, deny access
     logger.warning(
         f"Non-admin user {current_user.email} attempted to access admin endpoint"
     )
