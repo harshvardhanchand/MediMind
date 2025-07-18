@@ -51,7 +51,7 @@ class Document(Base):
         ),
         nullable=False
     )
-    upload_timestamp = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
+    upload_timestamp = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), nullable=False)
     processing_status = Column(
         SQLAlchemyEnum(
             ProcessingStatus,

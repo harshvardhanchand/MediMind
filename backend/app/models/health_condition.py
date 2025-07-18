@@ -66,8 +66,8 @@ class HealthCondition(Base):
     related_extracted_data_id = Column(UUID(as_uuid=True), ForeignKey("extracted_data.extracted_data_id"), nullable=True)
     
     # Tracking fields
-    created_at = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default= datetime.now(timezone.utc), onupdate= datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), nullable=False)
     
     # Relationships
     user = relationship("User")

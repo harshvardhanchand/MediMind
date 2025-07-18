@@ -35,11 +35,16 @@ AsyncSessionLocal = None
 
 if settings.ASYNC_DATABASE_URL:
     try:
-        async_engine = create_async_engine(str(settings.ASYNC_DATABASE_URL), pool_pre_ping=True)
+        # Disable prepared statements for PGBouncer compatibility
+        async_engine = create_async_engine(
+            str(settings.ASYNC_DATABASE_URL), 
+            pool_pre_ping=True,
+            connect_args={"prepared_statement_cache_size": 0}
+        )
         AsyncSessionLocal = sessionmaker(
             bind=async_engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False
         )
-        logger.info("Asynchronous database engine initialized.")
+        logger.info("Asynchronous database engine initialized with PGBouncer compatibility.")
     except Exception as e:
         logger.error(f"Failed to initialize asynchronous database engine: {e}", exc_info=True)
        

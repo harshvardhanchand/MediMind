@@ -32,7 +32,7 @@ class ExtractedData(Base):
     content = Column(JSONB, nullable=False)
     
     raw_text = Column(Text, nullable=True)
-    extraction_timestamp = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
+    extraction_timestamp = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), nullable=False)
     review_status = Column(
         SQLAlchemyEnum(
             ReviewStatus,

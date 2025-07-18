@@ -78,8 +78,8 @@ class Medication(Base):
     tags = Column(JSON, nullable=True)  
     
     
-    created_at = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default= datetime.now(timezone.utc), onupdate= datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), nullable=False)
     
    
     user = relationship("User")

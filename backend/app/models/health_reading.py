@@ -54,13 +54,13 @@ class HealthReading(Base):
     text_value = Column(Text, nullable=True)
     json_value = Column(JSONB, nullable=True)
 
-    reading_date = Column(DateTime, default= datetime.now(timezone.utc), nullable=False, index=True)
+    reading_date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), nullable=False, index=True)
     notes = Column(Text, nullable=True)
     source = Column(String, nullable=True)
     related_document_id = Column(PG_UUID(as_uuid=True), ForeignKey("documents.document_id", ondelete="SET NULL"), nullable=True)
 
-    created_at = Column(DateTime, default= datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default= datetime.now(timezone.utc), onupdate= datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), nullable=False)
 
     user = relationship("User")
     related_document = relationship("Document")
