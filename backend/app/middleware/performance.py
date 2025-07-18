@@ -12,6 +12,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
+logger = logging.getLogger(__name__)
+
 # Prometheus metrics
 REQUEST_COUNT = Counter(
     'http_requests_total',
@@ -51,8 +53,7 @@ CACHE_OPERATIONS = Counter(
     ['operation', 'cache_type', 'result']
 )
 
-# Standard logger
-logger = logging.getLogger(__name__)
+
 
 
 class PerformanceMiddleware(BaseHTTPMiddleware):
@@ -83,33 +84,37 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         client_ip = self._get_client_ip(request)
         user_agent = request.headers.get('user-agent', 'unknown')
         
-        # Start timing
+       
         start_time = time.time()
         
-        # Track active requests
+       
         ACTIVE_REQUESTS.labels(method=method, endpoint=endpoint).inc()
         
-        # Initialize response variables
+        
         response = None
         status_code = 500
         user_id = None
         
         try:
-            # Process request
+            
             response = await call_next(request)
             status_code = response.status_code
             
-            # Extract user ID from response context if available
+            
             user_id = getattr(request.state, 'user_id', None)
             
         except Exception as e:
             logger.error(
                 "Request processing failed",
-                correlation_id=correlation_id,
-                method=method,
-                path=path,
-                client_ip=client_ip,
-                error=str(e),
+                extra={
+                    "structured_data": {
+                        "correlation_id": correlation_id,
+                        "method": method,
+                        "path": path,
+                        "client_ip": client_ip,
+                        "error": str(e)
+                    }
+                },
                 exc_info=True
             )
             raise
@@ -148,13 +153,13 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
             
             if self.enable_detailed_logging:
                 if status_code >= 500:
-                    logger.error("Request failed with server error", **log_data)
+                    logger.error("Request failed with server error", extra={"structured_data": log_data})
                 elif status_code >= 400:
-                    logger.warning("Request failed with client error", **log_data)
+                    logger.warning("Request failed with client error", extra={"structured_data": log_data})
                 elif duration > 5.0:  # Slow requests
-                    logger.warning("Slow request detected", **log_data)
+                    logger.warning("Slow request detected", extra={"structured_data": log_data})
                 else:
-                    logger.info("Request completed", **log_data)
+                    logger.info("Request completed", extra={"structured_data": log_data})
             
             # Add correlation ID to response headers
             if response:
@@ -224,10 +229,14 @@ class DatabasePerformanceTracker:
             if duration > 1.0:
                 logger.warning(
                     "Slow database query detected",
-                    query_type=self.query_type,
-                    table=self.table,
-                    duration_seconds=duration,
-                    user_id=self.user_id
+                    extra={
+                        "structured_data": {
+                            "query_type": self.query_type,
+                            "table": self.table,
+                            "duration_seconds": duration,
+                            "user_id": self.user_id
+                        }
+                    }
                 )
 
 
@@ -245,9 +254,13 @@ class CachePerformanceTracker:
         
         logger.debug(
             "Cache operation",
-            operation=operation,
-            cache_type=cache_type,
-            result=result
+            extra={
+                "structured_data": {
+                    "operation": operation,
+                    "cache_type": cache_type,
+                    "result": result
+                }
+            }
         )
 
 

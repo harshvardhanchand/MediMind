@@ -5,12 +5,10 @@ Provides REST API for medical notifications and analysis
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.security import HTTPBearer
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional, Dict, Any
+from typing import List,  Dict, Any
 import logging
 
-from app.db.session import get_db, get_async_db, SessionLocal
+from app.db.session import  SessionLocal
 from app.services.notification_service import get_notification_service, get_medical_triggers
 from app.core.auth import get_current_user
 from app.models.user import User
@@ -39,20 +37,20 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     
     
     admin_emails = [
-       "admin@example.com"  # Configure with your admin email
+       "admin@example.com"  
     ]
     
     if current_user.email in admin_emails:
         return current_user
         
-    # If neither check passes, deny access
+    
     logger.warning(f"Non-admin user {current_user.email} attempted to access admin endpoint")
     raise HTTPException(
         status_code=403, 
         detail="Admin access required. Contact system administrator."
     )
 
-# Background task wrappers with proper DB session management
+
 def run_medication_analysis_task(user_id: str, medication_data: Dict[str, Any]):
     """Background task wrapper for medication analysis with its own DB session."""
     db = SessionLocal()

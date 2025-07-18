@@ -29,7 +29,7 @@ class HealthReadingRepository(CRUDBase[HealthReading, HealthReadingCreate, Healt
 
     def get_multi_by_owner(
         self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100,
-        reading_type: Optional[HealthReadingType] = None # Optional filter by type
+        reading_type: Optional[HealthReadingType] = None 
     ) -> List[HealthReading]:
         statement = select(self.model).where(self.model.user_id == user_id)
         if reading_type:
@@ -54,13 +54,13 @@ class HealthReadingRepository(CRUDBase[HealthReading, HealthReadingCreate, Healt
         stmt = (
             select(self.model)
             .options(
-                # Load document info efficiently (joinedload for 1-to-1)
+                
                 joinedload(self.model.related_document).load_only(
                     Document.original_filename,
                     Document.document_type,
                     Document.document_date
                 ),
-                # Load notifications efficiently (selectinload for 1-to-many)
+                
                 selectinload(self.model.notifications).load_only(
                     Notification.title,
                     Notification.severity,
@@ -71,7 +71,7 @@ class HealthReadingRepository(CRUDBase[HealthReading, HealthReadingCreate, Healt
             .where(self.model.user_id == user_id)
         )
         
-        # Add reading type filter if provided
+       
         if reading_type:
             stmt = stmt.where(self.model.reading_type == reading_type)
             
@@ -93,11 +93,11 @@ class HealthReadingRepository(CRUDBase[HealthReading, HealthReadingCreate, Healt
         stmt = (
             select(self.model)
             .options(
-                # Load full document details
+                
                 joinedload(self.model.related_document),
-                # Load all notifications
+                
                 selectinload(self.model.notifications),
-                # Load AI analysis logs
+                
                 selectinload(self.model.ai_analysis_logs).load_only(
                     AIAnalysisLog.created_at,
                     AIAnalysisLog.trigger_type,
@@ -160,10 +160,10 @@ class HealthReadingRepository(CRUDBase[HealthReading, HealthReadingCreate, Healt
             .where(self.model.user_id == user_id)
         )
         
-        # Add search filter if provided
+        
         if search_query:
             search_term = f"%{search_query}%"
-            # Only search in text fields, skip enum field to avoid casting issues
+            
             search_conditions = []
             if self.model.notes:
                 search_conditions.append(self.model.notes.ilike(search_term))
@@ -173,11 +173,11 @@ class HealthReadingRepository(CRUDBase[HealthReading, HealthReadingCreate, Healt
             if search_conditions:
                 stmt = stmt.where(or_(*search_conditions))
             
-        # Add reading type filter if provided
+        
         if reading_type:
             stmt = stmt.where(self.model.reading_type == reading_type)
             
-        # Add ordering, offset, and limit
+        
         stmt = stmt.order_by(self.model.reading_date.desc()).offset(skip).limit(limit)
         
         result = db.execute(stmt)
