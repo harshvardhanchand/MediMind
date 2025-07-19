@@ -83,18 +83,6 @@ npx expo start
 
 ---
 
-## 📚 API Reference
-
-| Endpoint                | Method   | Description                  |
-| ----------------------- | -------- | ---------------------------- |
-| `/api/users/me`         | GET      | Get current user profile     |
-| `/api/documents/upload` | POST     | Upload medical documents     |
-| `/api/medications`      | GET/POST | Manage medications           |
-| `/api/symptoms`         | GET/POST | Log and view symptoms        |
-| `/api/alerts`           | GET      | View generated alerts        |
-| `/api/query`            | POST     | Run natural language queries |
-
----
 
 ##  Security Highlights
 
