@@ -16,7 +16,11 @@ Base = declarative_base()  # For synchronous operations
 AsyncBase = declarative_base()  # For asynchronous operations
 
 
-engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
+engine = create_engine(
+    str(settings.DATABASE_URL), 
+    pool_pre_ping=True,
+    connect_args={"prepared_statement_cache_size": 0}
+)
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -35,7 +39,7 @@ AsyncSessionLocal = None
 
 if settings.ASYNC_DATABASE_URL:
     try:
-        # Disable prepared statements for PGBouncer compatibility
+        
         async_engine = create_async_engine(
             str(settings.ASYNC_DATABASE_URL), 
             pool_pre_ping=True,
