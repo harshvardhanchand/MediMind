@@ -15,16 +15,13 @@ logger = logging.getLogger(__name__)
 Base = declarative_base()  # For synchronous operations
 AsyncBase = declarative_base()  # For asynchronous operations
 
-
+# Create synchronous database engine (PostgreSQL)
 engine = create_engine(
     str(settings.DATABASE_URL), 
-    pool_pre_ping=True,
-    connect_args={"prepared_statement_cache_size": 0}
+    pool_pre_ping=True
 )
 
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
@@ -33,25 +30,22 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
-
+# Async database setup
 async_engine = None
 AsyncSessionLocal = None
 
 if settings.ASYNC_DATABASE_URL:
     try:
-        
         async_engine = create_async_engine(
             str(settings.ASYNC_DATABASE_URL), 
-            pool_pre_ping=True,
-            connect_args={"prepared_statement_cache_size": 0}
+            pool_pre_ping=True
         )
         AsyncSessionLocal = sessionmaker(
             bind=async_engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False
         )
-        logger.info("Asynchronous database engine initialized with PGBouncer compatibility.")
+        logger.info("Asynchronous database engine initialized successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize asynchronous database engine: {e}", exc_info=True)
-       
 else:
     logger.warning("ASYNC_DATABASE_URL not configured. Asynchronous database features will be unavailable.")
 
@@ -64,31 +58,28 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
         raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
     async with AsyncSessionLocal() as session:
         try:
-            
+            # Set search_path for PostgreSQL
             await session.execute(text("SET search_path TO public, extensions"))
             yield session
             # Auto-commit successful transactions
             await session.commit()
         except Exception:
-            
             await session.rollback()
             raise
         finally:
             await session.close()
 
+# Context manager for async database operations
 @asynccontextmanager
-async def get_async_db_manual() -> AsyncGenerator[AsyncSession, None]:
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Context manager for manual transaction control. 
-    Caller is responsible for commit/rollback.
-    Use this when you need explicit transaction boundaries.
+    Context manager for async database sessions. Useful for direct async operations
+    outside of FastAPI dependency injection.
     """
     if AsyncSessionLocal is None:
         raise RuntimeError("Async database session not initialized. Check ASYNC_DATABASE_URL configuration.")
     async with AsyncSessionLocal() as session:
         try:
-            
-            await session.execute(text("SET search_path TO public, extensions"))
             yield session
         finally:
             await session.close()

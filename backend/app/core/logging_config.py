@@ -95,15 +95,14 @@ def setup_logging(level: Optional[str] = None) -> None:
             os.path.exists(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", ""))):
         try:
             client = google.cloud.logging.Client(
-                project=settings.GCP_PROJECT_ID,
-                quota_project_id=settings.GCP_PROJECT_ID
+                project=settings.GCP_PROJECT_ID
             )
             handler = CloudLoggingHandler(client)
             logger.addHandler(handler)
             logger.info("Google Cloud Logging configured", 
                       extra={"structured_data": {"environment": settings.ENVIRONMENT,"project_id": settings.GCP_PROJECT_ID}})
         except Exception as e:
-            
+            # Fallback to standard logging
             handler = logging.StreamHandler(sys.stdout)
             formatter = StructuredFormatter()
             handler.setFormatter(formatter)
