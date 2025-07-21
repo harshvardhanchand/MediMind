@@ -9,6 +9,7 @@ import { MainAppStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';
 import StyledText from '../../components/common/StyledText';
 import { Message } from '../../types/interfaces';
+import { queryServices } from '../../api/services';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -32,7 +33,7 @@ const AssistantScreen = () => {
   const flatListRef = useRef<FlatList<Message>>(null);
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputText.trim() === '') return;
 
     const newUserMessage: Message = {
@@ -51,30 +52,34 @@ const AssistantScreen = () => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
-    setTimeout(() => {
-      setIsTyping(false);
+    try {
+
+      const response = await queryServices.askQuestion({
+        query_text: inputText
+      });
+
       const assistantResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: getAssistantResponse(inputText),
+        text: response.data.answer,
         sender: 'assistant',
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, assistantResponse]);
-    }, 1500);
-  };
 
-  const getAssistantResponse = (input: string) => {
-    const lowercaseInput = input.toLowerCase();
-    if (lowercaseInput.includes('blood pressure') || lowercaseInput.includes('bp')) {
-      return "Your most recent blood pressure reading was 120/80 mmHg, taken yesterday at 9:00 AM. This is within the normal range. Would you like to see your blood pressure trends over the past month?";
-    } else if (lowercaseInput.includes('medication') || lowercaseInput.includes('medicine')) {
-      return "You have 3 medications scheduled for today: Lisinopril (10mg) at 9:00 AM, Metformin (500mg) at 7:00 PM, and your multivitamin. Would you like me to set a reminder?";
-    } else if (lowercaseInput.includes('lab') || lowercaseInput.includes('test') || lowercaseInput.includes('results')) {
-      return "Your most recent lab results from May 10 show normal blood glucose levels (98 mg/dL) and cholesterol within target range. Your doctor has left a note that everything looks good.";
-    } else if (lowercaseInput.includes('appointment') || lowercaseInput.includes('doctor')) {
-      return "Your next appointment is with Dr. Smith on June 15th at 10:30 AM. Would you like me to add this to your calendar or set a reminder?";
-    } else {
-      return `I understand you're asking about: "${input}". I'm still learning to respond to this type of query. For now, I can help with medications, lab results, vital readings, and appointment information. Is there something specific about your health data you'd like to know?`;
+      setMessages(prev => [...prev, assistantResponse]);
+    } catch (error) {
+      console.error('Error calling AI assistant:', error);
+
+
+      const fallbackResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm sorry, I'm having trouble connecting to my AI service right now. Please try again in a moment, or check your internet connection.",
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, fallbackResponse]);
+    } finally {
+      setIsTyping(false);
     }
   };
 

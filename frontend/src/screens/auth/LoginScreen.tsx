@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
@@ -8,8 +9,6 @@ import ScreenContainer from '../../components/layout/ScreenContainer';
 import StyledText from '../../components/common/StyledText';
 import StyledButton from '../../components/common/StyledButton';
 import StyledInput from '../../components/common/StyledInput';
-
-
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -80,81 +79,94 @@ const LoginScreen = () => {
   const isLoading = loadingLogin || loadingDevLogin;
 
   return (
-    <ScreenContainer withPadding>
-      <StyledText variant="h1" color="primary" className="mb-4 text-center">Welcome Back!</StyledText>
-      <StyledText variant="body1" color="textSecondary" className="mb-8 text-center">
-        Sign in to access your health dashboard.
-      </StyledText>
-
-      <StyledInput
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoComplete="username"
-        textContentType="emailAddress"
-        autoCapitalize="none"
-        className="mb-4"
-        editable={!isLoading}
-      />
-      <StyledInput
-        label="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoComplete="current-password"
-        textContentType="password"
-        autoCorrect={false}
-        spellCheck={false}
-        className="mb-6"
-        editable={!isLoading}
-      />
-
-      {error && (
-        <StyledText variant="caption" color="error" className="text-center mb-4">
-          {error}
+    <ScreenContainer scrollable={true} withPadding>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        {/* Header Section */}
+        <StyledText variant="h1" color="primary" className="mb-4 text-center">Welcome Back!</StyledText>
+        <StyledText variant="body1" color="textSecondary" className="mb-8 text-center">
+          Sign in to access your health dashboard.
         </StyledText>
-      )}
 
-      <StyledButton
-        variant="filledPrimary"
-        onPress={handleLogin}
-        className="w-full mb-4"
-        disabled={isLoading}
-        loading={loadingLogin}
-      >
-        Log In
-      </StyledButton>
+        {/* Form Section */}
+        <StyledInput
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoComplete="username"
+          textContentType="emailAddress"
+          autoCapitalize="none"
+          className="mb-4"
+          editable={!isLoading}
+          returnKeyType="next"
+        />
+        <StyledInput
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="current-password"
+          textContentType="password"
+          autoCorrect={false}
+          spellCheck={false}
+          className="mb-6"
+          editable={!isLoading}
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
+        />
 
-      <StyledButton
-        variant="textPrimary"
-        onPress={handleForgotPassword}
-        className="w-full mb-4"
-        disabled={isLoading}
-      >
-        Forgot Password
-      </StyledButton>
+        {error && (
+          <StyledText variant="caption" color="error" className="text-center mb-4">
+            {error}
+          </StyledText>
+        )}
 
-      <StyledButton
-        variant="textPrimary"
-        onPress={() => navigation.navigate('SignUp')}
-        className="w-full mb-4"
-        disabled={isLoading}
-      >
-        Don't have an account? Sign Up
-      </StyledButton>
-
-      {__DEV__ && (
+        {/* Button Section */}
         <StyledButton
-          variant="filledSecondary"
-          onPress={handleDevLogin}
-          className="w-full mt-4"
+          variant="filledPrimary"
+          onPress={handleLogin}
+          className="w-full mb-4"
           disabled={isLoading}
-          loading={loadingDevLogin}
+          loading={loadingLogin}
         >
-          Dev: Quick Login (User: {DEV_EMAIL})
+          Log In
         </StyledButton>
-      )}
+
+        <StyledButton
+          variant="textPrimary"
+          onPress={handleForgotPassword}
+          className="w-full mb-4"
+          disabled={isLoading}
+        >
+          Forgot Password
+        </StyledButton>
+
+        <StyledButton
+          variant="textPrimary"
+          onPress={() => navigation.navigate('SignUp')}
+          className="w-full mb-6"
+          disabled={isLoading}
+        >
+          Don't have an account? Sign Up
+        </StyledButton>
+
+        {/* Dev Section */}
+        {__DEV__ && (
+          <StyledButton
+            variant="filledSecondary"
+            onPress={handleDevLogin}
+            className="w-full"
+            disabled={isLoading}
+            loading={loadingDevLogin}
+          >
+            Dev: Quick Login (User: {DEV_EMAIL})
+          </StyledButton>
+        )}
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 };

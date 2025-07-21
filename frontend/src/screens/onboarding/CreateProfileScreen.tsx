@@ -27,7 +27,7 @@ type CreateProfileScreenNavigationProp = NativeStackNavigationProp<OnboardingSta
 const CreateProfileScreen = () => {
   const navigation = useNavigation<CreateProfileScreenNavigationProp>();
   const { colors } = useTheme();
-  const { signOut } = useAuth();
+  const { signOut, refreshUser } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
@@ -69,7 +69,6 @@ const CreateProfileScreen = () => {
 
       await userServices.updateProfile(updateData);
 
-      // Navigate to main app
       navigation.reset({
         index: 0,
         routes: [{ name: 'Main' as any }],

@@ -305,7 +305,6 @@ export interface QueryResponse {
   query_text: string;
   answer: string;
   relevant_document_ids?: string[];
-  // Add other fields as per actual backend response
 }
 
 // --- Notification ---

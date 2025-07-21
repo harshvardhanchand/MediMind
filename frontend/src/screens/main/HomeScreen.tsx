@@ -115,6 +115,7 @@ const HomeScreen = () => {
       ]);
 
       let hasRealData = false;
+      let hasApiError = false;
 
       // Process documents
       if (docsResult.status === 'fulfilled' && docsResult.value.data?.length > 0) {
@@ -123,7 +124,12 @@ const HomeScreen = () => {
         console.log(`Loaded ${docsResult.value.data.length} real documents`);
       } else {
         setDocuments(dummyDocuments);
-        console.log('Using dummy documents');
+        if (docsResult.status === 'rejected') {
+          hasApiError = true;
+          console.log('Documents API error, using dummy data');
+        } else {
+          console.log('No documents found, showing sample data');
+        }
       }
 
       // Process medications
@@ -133,7 +139,12 @@ const HomeScreen = () => {
         console.log(`Loaded ${medsResult.value.data.length} real medications`);
       } else {
         setMedications(dummyMedications);
-        console.log('Using dummy medications');
+        if (medsResult.status === 'rejected') {
+          hasApiError = true;
+          console.log('Medications API error, using dummy data');
+        } else {
+          console.log('No medications found, showing sample data');
+        }
       }
 
       // Process health readings
@@ -143,13 +154,20 @@ const HomeScreen = () => {
         console.log(`Loaded ${healthResult.value.data.length} real health readings`);
       } else {
         setHealthReadings(dummyHealthReadings);
-        console.log('Using dummy health readings');
+        if (healthResult.status === 'rejected') {
+          hasApiError = true;
+          console.log('Health readings API error, using dummy data');
+        } else {
+          console.log('No health readings found, showing sample data');
+        }
       }
 
+      // Set dummy data state based on whether we have real data or API errors
       setUsingDummyData(!hasRealData);
 
-    } catch (err: any) {
-      console.log('Dashboard API calls failed, using dummy data:', err.message);
+    } catch (error) {
+      console.error('Dashboard data fetch error:', error);
+      // Fallback to dummy data on any unexpected error
       setDocuments(dummyDocuments);
       setMedications(dummyMedications);
       setHealthReadings(dummyHealthReadings);
@@ -310,9 +328,12 @@ const HomeScreen = () => {
           </StyledView>
 
           {usingDummyData && (
-            <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-              <StyledText className="text-yellow-800 text-sm text-center">
-                Showing sample data (API not connected)
+            <StyledView className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <StyledText className="text-blue-800 text-sm text-center font-medium">
+                📚 Exploring MediMind? This is sample data to show you how it works!
+              </StyledText>
+              <StyledText className="text-blue-700 text-xs text-center mt-1">
+                Upload documents or add medications to see your real data here.
               </StyledText>
             </StyledView>
           )}

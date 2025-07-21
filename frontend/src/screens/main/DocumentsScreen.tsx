@@ -121,7 +121,7 @@ const DocumentsScreen = () => {
         setApiDocuments(response.data);
         setUsingDummyData(false);
       } else {
-        console.log('API returned empty data, using dummy documents');
+        console.log('API connected but no documents found, showing sample data');
         setApiDocuments(dummyDocuments);
         setUsingDummyData(true);
       }
@@ -333,9 +333,12 @@ const DocumentsScreen = () => {
           </StyledText>
 
           {usingDummyData && (
-            <StyledView className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-              <StyledText className="text-yellow-800 text-sm text-center">
-                Showing sample data (API not connected)
+            <StyledView className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+              <StyledText className="text-green-800 text-sm text-center font-medium">
+                🚀 Ready to get started? Upload your first document!
+              </StyledText>
+              <StyledText className="text-green-700 text-xs text-center mt-1">
+                These are sample documents to show you what's possible. Tap the + button to add your own.
               </StyledText>
             </StyledView>
           )}
