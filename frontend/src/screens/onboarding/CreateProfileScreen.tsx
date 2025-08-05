@@ -69,6 +69,9 @@ const CreateProfileScreen = () => {
 
       await userServices.updateProfile(updateData);
 
+
+      await refreshUser();
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Main' as any }],

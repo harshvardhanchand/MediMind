@@ -1,11 +1,10 @@
 import os
 import sys
 from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
 from alembic import context
+from app.db.session import Base
 
 
 config = context.config
@@ -14,25 +13,14 @@ config = context.config
 config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
 
 
-
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
-from app.db.session import Base  
-from app.models.user import User
-from app.models.document import Document
-from app.models.extracted_data import ExtractedData
-from app.models.medication import Medication
-
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 target_metadata = Base.metadata
-
-
 
 
 def run_migrations_offline() -> None:
@@ -71,11 +59,9 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-    
+
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
