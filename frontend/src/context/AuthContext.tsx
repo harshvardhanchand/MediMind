@@ -142,21 +142,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           crashReporting.setUser(newSession.user.id, newSession.user.email);
           crashReporting.addBreadcrumb('User signed in', 'auth', 'info');
 
+          console.log('🔍 SIGN_IN: Starting user profile fetch...');
+          console.log('🔍 SIGN_IN: Session user data:', {
+            id: newSession.user.id,
+            email: newSession.user.email,
+            hasName: !!newSession.user.user_metadata?.name
+          });
 
           try {
+            console.log('🔍 SIGN_IN: Calling userServices.getMe()...');
             const userProfile = await userServices.getMe();
+
+            console.log('🔍 SIGN_IN: API response received:', {
+              hasData: !!userProfile.data,
+              userName: userProfile.data?.name,
+              userId: userProfile.data?.user_id
+            });
 
             const extendedUser = {
               ...newSession.user,
               ...userProfile.data,
             };
+
+            console.log('🔍 SIGN_IN: Setting extended user:', {
+              hasName: !!extendedUser.name,
+              userName: extendedUser.name,
+              source: 'api_success'
+            });
+
             setUser(extendedUser);
           } catch (error) {
-            console.error('Failed to fetch user profile:', error);
+            console.error('🔍 SIGN_IN: Failed to fetch user profile:', error);
+            console.log('🔍 SIGN_IN: Error details:', {
+              message: error.message,
+              status: error.response?.status,
+              data: error.response?.data
+            });
+
             crashReporting.captureException(error as Error, {
               context: 'auth_user_profile_fetch',
               userId: newSession.user.id,
             });
+
+            console.log('🔍 SIGN_IN: Falling back to session user data:', {
+              userId: newSession.user.id,
+              email: newSession.user.email,
+              source: 'fallback_session'
+            });
+
             // Fallback to session user data
             setUser(newSession.user);
           }
