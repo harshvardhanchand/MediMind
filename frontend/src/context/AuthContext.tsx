@@ -22,6 +22,7 @@ interface AuthContextType {
   session: Session | null;
   user: ExtendedUser | null;
   isLoading: boolean;
+  isLoadingProfile: boolean;
   isRecoveringPassword: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -33,6 +34,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
 
   const refreshUser = async () => {
@@ -151,12 +153,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           try {
             console.log('🔍 SIGN_IN: Calling userServices.getMe()...');
+            setIsLoadingProfile(true);
             const userProfile = await userServices.getMe();
 
-            console.log('🔍 SIGN_IN: API response received:', {
+            console.log('🔍 SIGN_IN: Raw API response structure:', JSON.stringify(userProfile.data, null, 2));
+            console.log('🔍 SIGN_IN: API response fields:', {
               hasData: !!userProfile.data,
               userName: userProfile.data?.name,
-              userId: userProfile.data?.user_id
+              userId: userProfile.data?.user_id,
+              allFields: Object.keys(userProfile.data || {})
             });
 
             const extendedUser = {
@@ -164,13 +169,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               ...userProfile.data,
             };
 
-            console.log('🔍 SIGN_IN: Setting extended user:', {
+            console.log('🔍 SIGN_IN: Extended user after merge:', JSON.stringify(extendedUser, null, 2));
+            console.log('🔍 SIGN_IN: Extended user navigation check:', {
               hasName: !!extendedUser.name,
               userName: extendedUser.name,
+              nameField: extendedUser.name,
               source: 'api_success'
             });
 
             setUser(extendedUser);
+            setIsLoadingProfile(false);
           } catch (error) {
             console.error('🔍 SIGN_IN: Failed to fetch user profile:', error);
             console.log('🔍 SIGN_IN: Error details:', {
@@ -192,6 +200,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             // Fallback to session user data
             setUser(newSession.user);
+            setIsLoadingProfile(false);
           }
         } else if (event === 'SIGNED_OUT') {
           analytics.trackUserAction('user_logout');
@@ -222,7 +231,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, isLoading, isRecoveringPassword, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ session, user, isLoading, isLoadingProfile, isRecoveringPassword, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

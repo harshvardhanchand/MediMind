@@ -153,7 +153,7 @@ const SplashScreen = () => (
 const RootStackNav = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-  const { session, user, isLoading } = useAuth();
+  const { session, user, isLoading, isLoadingProfile } = useAuth();
 
   return (
     <RootStackNav.Navigator screenOptions={{ headerShown: false }}>
@@ -167,14 +167,20 @@ const AppNavigator = () => {
         <RootStackNav.Group>
           <RootStackNav.Screen name="Auth" component={AuthNavigator} />
         </RootStackNav.Group>
+      ) : isLoadingProfile ? (
+
+        <RootStackNav.Group>
+          <RootStackNav.Screen name="Splash" component={SplashScreen} />
+        </RootStackNav.Group>
+      ) : !user?.name ? (
+
+        <RootStackNav.Group>
+          <RootStackNav.Screen name="Onboarding" component={OnboardingWithNotifications} />
+        </RootStackNav.Group>
       ) : (
 
         <RootStackNav.Group>
-          {!user?.name ? (
-            <RootStackNav.Screen name="Onboarding" component={OnboardingWithNotifications} />
-          ) : (
-            <RootStackNav.Screen name="Main" component={MainWithNotifications} />
-          )}
+          <RootStackNav.Screen name="Main" component={MainWithNotifications} />
         </RootStackNav.Group>
       )}
     </RootStackNav.Navigator>

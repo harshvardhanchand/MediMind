@@ -1,28 +1,39 @@
 import logging
+from typing import Generator, AsyncGenerator
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
-from typing import Generator, AsyncGenerator
-from contextlib import asynccontextmanager
-from sqlalchemy.sql import text
-
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.pool import NullPool
+from sqlalchemy.sql import text
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Define separate Base classes for sync and async to avoid engine mixing
-Base = declarative_base()  # For synchronous operations
-AsyncBase = declarative_base()  # For asynchronous operations
+# -------------------------------------------------------------------
+# ORM base and synchronous engine/session
+# -------------------------------------------------------------------
+Base = declarative_base()
 
-# Create synchronous database engine (PostgreSQL)
-engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
+engine = create_engine(
+    str(settings.DATABASE_URL),
+    pool_pre_ping=True,
+    poolclass=NullPool,
+    execution_options={"compiled_cache_size": 0},
+)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
 
 
 def get_db() -> Generator[Session, None, None]:
+    """
+    Sync DB session generator for FastAPI dependencies.
+    """
     db = SessionLocal()
     try:
         yield db
@@ -30,20 +41,15 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-# Async database setup
-async_engine = None
-AsyncSessionLocal = None
-
+# -------------------------------------------------------------------
+# Asynchronous engine/session setup
+# -------------------------------------------------------------------
 if settings.ASYNC_DATABASE_URL:
     try:
         async_engine = create_async_engine(
             str(settings.ASYNC_DATABASE_URL),
             poolclass=NullPool,
-            pool_pre_ping=True,
-            connect_args={
-                "statement_cache_size": 0,
-                "prepared_statement_cache_size": 0,
-            },
+            connect_args={"statement_cache_size": 0},
         )
         AsyncSessionLocal = sessionmaker(
             bind=async_engine,
@@ -52,45 +58,28 @@ if settings.ASYNC_DATABASE_URL:
             autoflush=False,
         )
         logger.info("Asynchronous database engine initialized successfully.")
-    except Exception as e:
+    except Exception:
         logger.error(
-            f"Failed to initialize asynchronous database engine: {e}", exc_info=True
+            "Failed to initialize asynchronous database engine",
+            exc_info=True,
         )
+        AsyncSessionLocal = None
 else:
-    logger.warning(
-        "ASYNC_DATABASE_URL not configured. Asynchronous database features will be unavailable."
-    )
+    logger.warning("ASYNC_DATABASE_URL not configured; async features unavailable.")
+    AsyncSessionLocal = None
 
 
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    FastAPI dependency that provides async database session with automatic transaction management.
-    Uses modern SQLAlchemy 2.0 patterns with automatic commit/rollback.
+    Async DB session generator for FastAPI dependencies.
+    Handles BEGIN/COMMIT/ROLLBACK and sets the search_path.
     """
     if AsyncSessionLocal is None:
         raise RuntimeError(
-            "Async database session not initialized. Check ASYNC_DATABASE_URL configuration."
+            "Async DB not configured. Check settings.ASYNC_DATABASE_URL."
         )
-
     async with AsyncSessionLocal() as session:
         async with session.begin():
+            # adjust schema search path if needed
             await session.execute(text("SET search_path TO public, extensions"))
             yield session
-
-
-# Context manager for async database operations
-@asynccontextmanager
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Context manager for async database sessions. Useful for direct async operations
-    outside of FastAPI dependency injection.
-    """
-    if AsyncSessionLocal is None:
-        raise RuntimeError(
-            "Async database session not initialized. Check ASYNC_DATABASE_URL configuration."
-        )
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
