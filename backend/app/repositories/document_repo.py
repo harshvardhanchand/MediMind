@@ -217,7 +217,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         Get documents with optimized eager loading for list views (async version).
 
         Loads:
-        - Extracted data (content summary only, not full raw_text)
+        - Extracted data (basic fields only)
         - Recent notifications (title and severity only)
 
         Performance: ~85% fewer database queries
@@ -227,12 +227,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
             select(self.model)
             .options(
                 joinedload(self.model.extracted_data).load_only(
-                    ExtractedData.extraction_timestamp,
-                    ExtractedData.processing_status,
-                    ExtractedData.review_status,
-                    ExtractedData.summary,
-                    ExtractedData.confidence_score,
-                    ExtractedData.flags,
+                    ExtractedData.extraction_timestamp, ExtractedData.review_status
                 ),
                 selectinload(self.model.notifications)
                 .options(
