@@ -2,23 +2,19 @@ import { DocumentType, ProcessingStatus, DocumentFileMetadata } from '../types/a
 
 export interface MockDocument {
   document_id: string;
-  user_id: string; // Added
+  user_id: string;
   original_filename: string;
-  document_type: DocumentType; // Changed to use enum
+  document_type: DocumentType; 
   upload_timestamp: string;
-  processing_status: ProcessingStatus; // Changed to use enum
-  storage_path: string; // Added
+  processing_status: ProcessingStatus;
+  storage_path: string;
   document_date?: string;
   source_name?: string;
   tags?: string[];
-  file_metadata?: DocumentFileMetadata; // Added optional
-  file_hash?: string; // Added optional
-  created_at: string; // Added
-  updated_at: string; // Added
-  // Add other optional fields from DocumentRead if needed for mocks
-  // metadata_overrides?: Partial<DocumentBase>;
-  // user_added_tags?: string[];
-  // related_to_health_goal_or_episode?: string;
+  file_metadata?: DocumentFileMetadata;
+  file_hash?: string; 
+  created_at: string; 
+  updated_at: string; 
 }
 
 const MOCK_USER_ID = 'user_mock_uuid_12345';
@@ -73,9 +69,9 @@ export const mockDocuments: MockDocument[] = [
     document_id: 'doc_4',
     user_id: MOCK_USER_ID,
     original_filename: 'MRI_Brain_Scan_Images.zip',
-    document_type: DocumentType.OTHER, // Kept as OTHER
+    document_type: DocumentType.OTHER,
     upload_timestamp: '2024-05-10T11:00:00Z',
-    processing_status: ProcessingStatus.PENDING, // Changed from PROCESSING to PENDING as per available frontend enum values
+    processing_status: ProcessingStatus.PENDING, 
     storage_path: 'mock/storage/doc_4_mri_brain.zip',
     document_date: '2024-05-09',
     source_name: 'Neurology Associates',
@@ -86,6 +82,6 @@ export const mockDocuments: MockDocument[] = [
   },
 ];
 
-// Add more mock data for other screens later
+
 export const mockMedications = [];
 export const mockHealthReadings = []; 

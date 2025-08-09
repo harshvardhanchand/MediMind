@@ -2,7 +2,7 @@ import uuid
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db

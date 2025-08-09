@@ -40,7 +40,7 @@ class DeepLinkingService {
       case 'risk_alert':
         // Navigate to notifications screen and highlight specific notification
         return {
-          screen: 'NotificationsTab',
+          screen: 'NotificationScreen',
           params: { 
             highlightNotification: data.notificationId,
             filterType: data.type 
@@ -61,10 +61,10 @@ class DeepLinkingService {
         };
 
       case 'lab_followup':
-        // Navigate to specific lab result or health data screen
+        // Navigate to health data tab; pass lab result id if available
         if (data.entityId) {
           return {
-            screen: 'LabResultDetail',
+            screen: 'DataTab',
             params: { labResultId: data.entityId }
           };
         }
@@ -84,7 +84,7 @@ class DeepLinkingService {
       default:
         // Navigate to notifications screen
         return {
-          screen: 'NotificationsTab',
+          screen: 'NotificationScreen',
           params: { highlightNotification: data.notificationId }
         };
     }
@@ -93,18 +93,35 @@ class DeepLinkingService {
   private navigateToScreen(screenName: string, params?: Record<string, any>) {
     try {
       console.log(`Navigating to ${screenName} with params:`, params);
-      
-      // Handle tab navigation vs stack navigation
-      if (this.isTabScreen(screenName)) {
-        this.navigationRef?.navigate(screenName, params);
-      } else {
-        // For stack screens, we might need to navigate to a tab first
-        this.navigationRef?.navigate(screenName, params);
+
+      const tabScreens = ['DashboardTab', 'DocumentsTab', 'DataTab', 'AssistantTab', 'SettingsTab'];
+      const dashboardStackScreens = new Set([
+        'Home', 'Upload', 'Vitals', 'SymptomTracker', 'MedicationsScreen', 'AddMedication',
+        'MedicationDetail', 'AddSymptom', 'HealthReadings', 'AddHealthReading', 'Query',
+        'DocumentDetail', 'DataReview', 'NotificationScreen', 'EditProfile'
+      ]);
+
+      if (tabScreens.includes(screenName)) {
+        // Navigate to a tab inside Main
+        this.navigationRef?.navigate('Main', { screen: screenName, params });
+        return;
       }
+
+      if (dashboardStackScreens.has(screenName)) {
+        // Navigate to a screen inside Dashboard stack
+        this.navigationRef?.navigate('Main', {
+          screen: 'DashboardTab',
+          params: { screen: screenName, params }
+        });
+        return;
+      }
+
+      // Fallback: try direct navigation
+      this.navigationRef?.navigate(screenName as any, params as any);
     } catch (error) {
       console.error('Error navigating to screen:', error);
-      // Fallback to notifications tab
-      this.navigationRef?.navigate('NotificationsTab');
+      // Fallback to main dashboard
+      this.navigationRef?.navigate('Main', { screen: 'DashboardTab' });
     }
   }
 
@@ -113,7 +130,6 @@ class DeepLinkingService {
       'DashboardTab',
       'DocumentsTab', 
       'DataTab',
-      'NotificationsTab',
       'AssistantTab',
       'SettingsTab'
     ];
@@ -135,7 +151,7 @@ class DeepLinkingService {
 
   // Generate deep link URLs for sharing
   generateNotificationDeepLink(notificationData: PushNotificationData): string {
-    const baseUrl = 'medimind://';
+    const baseUrl = 'https://www.medimind.co.in/';
     const linkData = this.parseNotificationData(notificationData);
     
     if (!linkData) return baseUrl;

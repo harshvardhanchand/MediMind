@@ -300,7 +300,7 @@ def get_document(
 
     Only returns documents belonging to the authenticated user.
     """
-    user = get_or_create_user(db, token_data)
+    user_id = get_user_id_from_token(db, token_data)
 
     document = document_repo.get_by_id(db=db, document_id=document_id)
 
@@ -309,9 +309,9 @@ def get_document(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
 
-    if document.user_id != user.user_id:
+    if document.user_id != user_id:
         logger.warning(
-            f"User {user.user_id} attempted to access document {document_id} owned by {document.user_id}"
+            f"User {user_id} attempted to access document {document_id} owned by {document.user_id}"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -338,16 +338,16 @@ def update_document_metadata(
     To clear an override, provide the field with a null value (though Pydantic
     optional fields might need specific handling or explicit `None` checking).
     """
-    user = get_or_create_user(db, token_data)
+    user_id = get_user_id_from_token(db, token_data)
 
     document = document_repo.get_by_id(db=db, document_id=document_id)
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
-    if document.user_id != user.user_id:
+    if document.user_id != user_id:
         logger.warning(
-            f"User {user.user_id} attempted to update metadata for document {document_id} owned by {document.user_id}"
+            f"User {user_id} attempted to update metadata for document {document_id} owned by {document.user_id}"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -391,7 +391,7 @@ async def delete_document(
     Also removes the document file from storage.
     Only allows deleting documents belonging to the authenticated user.
     """
-    user = get_or_create_user(db, token_data)
+    user_id = get_user_id_from_token(db, token_data)
 
     document = document_repo.get_by_id(db=db, document_id=document_id)
 
@@ -400,9 +400,9 @@ async def delete_document(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
 
-    if document.user_id != user.user_id:
+    if document.user_id != user_id:
         logger.warning(
-            f"User {user.user_id} attempted to delete document {document_id} owned by {document.user_id}"
+            f"User {user_id} attempted to delete document {document_id} owned by {document.user_id}"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

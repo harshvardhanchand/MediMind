@@ -9,6 +9,7 @@ import AppNavigator, { linking } from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { analytics } from './src/services/analytics';
 import { crashReporting } from './src/services/crashReporting';
+import DeepLinkingService from './src/services/deepLinkingService';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 
 enableScreens();
@@ -47,6 +48,10 @@ export default function App() {
               linking={linking}
               onReady={() => {
                 routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+                const deepLinkService = DeepLinkingService.getInstance();
+                if (navigationRef.current) {
+                  deepLinkService.setNavigationRef(navigationRef.current);
+                }
               }}
               onStateChange={async () => {
                 const previousRouteName = routeNameRef.current;

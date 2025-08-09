@@ -1,8 +1,3 @@
-/**
- * Symptom API Services
- * Frontend services for symptom tracking and management
- */
-
 import { AxiosResponse } from 'axios';
 import apiClient from '../client';
 

@@ -447,9 +447,16 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
             ):  # Skip empty/null filters
                 continue
 
-            if key == "document_type" and value in DocumentType.__members__:
-
-                conditions.append(self.model.document_type == DocumentType[value])
+            if key == "document_type":
+                # Accept either enum value (e.g., "lab_result") or name (e.g., "LAB_RESULT")
+                try:
+                    enum_val = DocumentType(value)
+                    conditions.append(self.model.document_type == enum_val)
+                except ValueError:
+                    if isinstance(value, str) and value in DocumentType.__members__:
+                        conditions.append(
+                            self.model.document_type == DocumentType[value]
+                        )
 
             elif (
                 key == "document_date_range"

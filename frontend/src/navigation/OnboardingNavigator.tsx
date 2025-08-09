@@ -10,10 +10,10 @@ const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
 
 const OnboardingNavigator = () => {
   return (
-    <OnboardingStack.Navigator 
-      screenOptions={{ 
+    <OnboardingStack.Navigator
+      screenOptions={{
         headerShown: false,
-        gestureEnabled: false, // Prevent swipe back during onboarding
+        gestureEnabled: false,
       }}
       initialRouteName="Welcome"
     >

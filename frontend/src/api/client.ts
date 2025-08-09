@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { API_URL } from '../config';
 import { supabaseClient } from '../services/supabase';
 
-// Generate a simple UUID for correlation IDs
+
 const generateCorrelationId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2);
 };
@@ -52,7 +52,7 @@ apiClient.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       } else {
-        console.warn('⚠️ No token found in Supabase session');
+        console.warn(' No token found in Supabase session');
       }
     } catch (error) {
       console.error('Error getting session for API request:', error);
@@ -95,7 +95,7 @@ apiClient.interceptors.response.use(
         const { data: refreshed, error: refreshError } = await supabaseClient.auth.getSession();
         
         if (refreshError || !refreshed.session?.access_token) {
-          console.error('❌ Token refresh failed:', refreshError);
+          console.error(' Token refresh failed:', refreshError);
           processQueue(refreshError || new Error('No session after refresh'), null);
           
          
@@ -107,11 +107,11 @@ apiClient.interceptors.response.use(
         
         processQueue(null, newToken);
         
-        console.log('✅ Token refreshed successfully, retrying original request');
+        console.log('Token refreshed successfully, retrying original request');
         return apiClient(originalRequest);
         
       } catch (refreshError) {
-        console.error('❌ Token refresh failed with exception:', refreshError);
+        console.error(' Token refresh failed with exception:', refreshError);
         processQueue(refreshError, null);
         return Promise.reject(error);
       } finally {

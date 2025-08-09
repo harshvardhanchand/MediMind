@@ -48,7 +48,7 @@ export const documentServices = {
   deleteDocument: (id: string): Promise<AxiosResponse<void>> => 
     apiClient.delete(`/api/documents/${id}`),
     
-  uploadDocument: (documentData: FormData): Promise<AxiosResponse<DocumentRead>> => 
+  uploadDocument: (documentData: FormData): Promise<AxiosResponse<DocumentRead[]>> => 
     apiClient.post('/api/documents/upload', documentData, {
       headers: {
         'Content-Type': 'multipart/form-data',
