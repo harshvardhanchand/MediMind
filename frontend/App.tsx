@@ -11,6 +11,7 @@ import { analytics } from './src/services/analytics';
 import { crashReporting } from './src/services/crashReporting';
 import DeepLinkingService from './src/services/deepLinkingService';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 enableScreens();
 
@@ -28,47 +29,49 @@ export default function App() {
   }, []);
 
   return (
-    <ErrorBoundary
-      level="global"
-      context="App"
-      onError={(error, errorInfo) => {
-        console.error(' Global Error Boundary triggered:', error);
-        crashReporting.captureException(error, {
-          componentStack: errorInfo.componentStack,
-          level: 'global',
-          context: 'App',
-        });
-      }}
-    >
-      <SafeAreaProvider>
-        <PaperProvider theme={theme}>
-          <AuthProvider>
-            <NavigationContainer
-              ref={navigationRef}
-              linking={linking}
-              onReady={() => {
-                routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
-                const deepLinkService = DeepLinkingService.getInstance();
-                if (navigationRef.current) {
-                  deepLinkService.setNavigationRef(navigationRef.current);
-                }
-              }}
-              onStateChange={async () => {
-                const previousRouteName = routeNameRef.current;
-                const currentRouteName = navigationRef.current?.getCurrentRoute()?.name;
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary
+        level="global"
+        context="App"
+        onError={(error, errorInfo) => {
+          console.error(' Global Error Boundary triggered:', error);
+          crashReporting.captureException(error, {
+            componentStack: errorInfo.componentStack,
+            level: 'global',
+            context: 'App',
+          });
+        }}
+      >
+        <SafeAreaProvider>
+          <PaperProvider theme={theme}>
+            <AuthProvider>
+              <NavigationContainer
+                ref={navigationRef}
+                linking={linking}
+                onReady={() => {
+                  routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+                  const deepLinkService = DeepLinkingService.getInstance();
+                  if (navigationRef.current) {
+                    deepLinkService.setNavigationRef(navigationRef.current);
+                  }
+                }}
+                onStateChange={async () => {
+                  const previousRouteName = routeNameRef.current;
+                  const currentRouteName = navigationRef.current?.getCurrentRoute()?.name;
 
-                if (previousRouteName !== currentRouteName && currentRouteName) {
-                  await analytics.trackScreenView(currentRouteName);
-                }
-                routeNameRef.current = currentRouteName;
-              }}
-            >
-              <AppNavigator />
-            </NavigationContainer>
-          </AuthProvider>
-          <StatusBar style="auto" />
-        </PaperProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+                  if (previousRouteName !== currentRouteName && currentRouteName) {
+                    await analytics.trackScreenView(currentRouteName);
+                  }
+                  routeNameRef.current = currentRouteName;
+                }}
+              >
+                <AppNavigator />
+              </NavigationContainer>
+            </AuthProvider>
+            <StatusBar style="auto" />
+          </PaperProvider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

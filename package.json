@@ -75,7 +75,8 @@
     "url": "^0.11.4",
     "vm-browserify": "^1.1.2",
     "web-streams-polyfill": "^3.2.0",
-    "zustand": "^4.5.1"
+    "zustand": "^4.5.1",
+    "react-native-gesture-handler": "~2.24.0"
   },
   "devDependencies": {
     "@babel/core": "^7.23.9",
