@@ -163,13 +163,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
                     ExtractedData.confidence_score,
                     ExtractedData.flags,
                 ),
-                selectinload(self.model.notifications)
-                .options(
-                    joinedload(Notification.ai_analysis_log).load_only(
-                        AIAnalysisLog.summary, AIAnalysisLog.severity_assessment
-                    )
-                )
-                .load_only(
+                selectinload(self.model.notifications).load_only(
                     Notification.title,
                     Notification.severity,
                     Notification.created_at,
@@ -229,13 +223,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
                 joinedload(self.model.extracted_data).load_only(
                     ExtractedData.extraction_timestamp, ExtractedData.review_status
                 ),
-                selectinload(self.model.notifications)
-                .options(
-                    joinedload(Notification.ai_analysis_log).load_only(
-                        AIAnalysisLog.summary, AIAnalysisLog.severity_assessment
-                    )
-                )
-                .load_only(
+                selectinload(self.model.notifications).load_only(
                     Notification.title,
                     Notification.severity,
                     Notification.created_at,
