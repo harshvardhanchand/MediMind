@@ -168,7 +168,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
                     Notification.severity,
                     Notification.created_at,
                     Notification.is_read,
-                    Notification.notification_type,
+                    Notification.type,
                 ),
             )
             .where(self.model.user_id == user_id)
@@ -228,7 +228,7 @@ class DocumentRepository(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
                     Notification.severity,
                     Notification.created_at,
                     Notification.is_read,
-                    Notification.notification_type,
+                    Notification.type,
                 ),
             )
             .where(self.model.user_id == user_id)
