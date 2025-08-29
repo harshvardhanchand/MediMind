@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ScrollView, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import { ScrollView, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { OnboardingStackParamList } from '../../navigation/types';
@@ -21,6 +21,7 @@ const StyledView = styled(View);
 const StyledTextInput = styled(TextInput);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledModal = styled(Modal);
+const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView);
 
 type CreateProfileScreenNavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'CreateProfile'>;
 
@@ -184,225 +185,238 @@ const CreateProfileScreen = () => {
 
   return (
     <ScreenContainer scrollable={false} withPadding={false}>
-      <StyledScrollView className="flex-1 bg-gray-50">
-        {/* Header */}
-        <StyledView className="px-6 pt-12 pb-6 bg-white relative">
-          {/* Logout Button */}
-          <StyledTouchableOpacity
-            onPress={handleLogout}
-            className="absolute top-12 right-4 bg-gray-100 rounded-full p-2"
-          >
-            <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
-          </StyledTouchableOpacity>
+      <StyledKeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <StyledScrollView
+          className="flex-1 bg-gray-50"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <StyledView className="px-6 pt-12 pb-6 bg-white relative">
+            {/* Logout Button */}
+            <StyledTouchableOpacity
+              onPress={handleLogout}
+              className="absolute top-12 right-4 bg-gray-100 rounded-full p-2"
+            >
+              <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
+            </StyledTouchableOpacity>
 
-          <StyledText variant="h1" className="font-bold text-2xl text-center mb-2">
-            Create Your Profile
-          </StyledText>
-          <StyledText variant="body1" className="text-gray-600 text-center">
-            Help us personalize your health experience
-          </StyledText>
-        </StyledView>
+            <StyledText variant="h1" className="font-bold text-2xl text-center mb-2">
+              Create Your Profile
+            </StyledText>
+            <StyledText variant="body1" className="text-gray-600 text-center">
+              Help us personalize your health experience
+            </StyledText>
+          </StyledView>
 
-        {/* Profile Form */}
-        <StyledView className="mt-6 mx-4">
-          <Card>
-            <StyledView className="p-4 space-y-4">
-              {/* Name */}
-              <StyledView>
-                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
-                  Full Name *
-                </StyledText>
-                <StyledTextInput
-                  value={profile.name}
-                  onChangeText={(text) => setProfile(prev => ({ ...prev, name: text }))}
-                  placeholder="Enter your full name"
-                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
-                  style={{ color: colors.textPrimary }}
-                />
-              </StyledView>
-
-              {/* Date of Birth */}
-              <StyledView>
-                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
-                  Date of Birth (Optional)
-                </StyledText>
-                <StyledTouchableOpacity
-                  onPress={() => setShowDatePicker(true)}
-                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
-                >
-                  <StyledText style={{ color: profile.dateOfBirth ? colors.textPrimary : colors.textSecondary }}>
-                    {formatDate(profile.dateOfBirth)}
+          {/* Profile Form */}
+          <StyledView className="mt-6 mx-4">
+            <Card>
+              <StyledView className="p-4 space-y-4">
+                {/* Name */}
+                <StyledView>
+                  <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
+                    Full Name *
                   </StyledText>
-                  <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
-                </StyledTouchableOpacity>
-                {profile.dateOfBirth && (
-                  <StyledText variant="caption" className="text-gray-500 mt-1">
-                    Age: {calculateAge(profile.dateOfBirth)} years
-                  </StyledText>
-                )}
-              </StyledView>
+                  <StyledTextInput
+                    value={profile.name}
+                    onChangeText={(text) => setProfile(prev => ({ ...prev, name: text }))}
+                    placeholder="Enter your full name"
+                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
+                    style={{ color: colors.textPrimary }}
+                  />
+                </StyledView>
 
-              {/* Gender */}
-              <StyledView>
-                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
-                  Gender (Optional)
-                </StyledText>
-                <StyledView className="flex-row space-x-2">
-                  {['male', 'female', 'other'].map((genderOption) => (
-                    <StyledTouchableOpacity
-                      key={genderOption}
-                      onPress={() => setProfile(prev => ({ ...prev, gender: genderOption as any }))}
-                      className={`flex-1 py-3 px-4 rounded-lg border ${profile.gender === genderOption
-                        ? 'bg-blue-500 border-blue-500'
-                        : 'bg-white border-gray-300'
-                        }`}
-                    >
-                      <StyledText
-                        className={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                {/* Date of Birth */}
+                <StyledView>
+                  <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
+                    Date of Birth (Optional)
+                  </StyledText>
+                  <StyledTouchableOpacity
+                    onPress={() => setShowDatePicker(true)}
+                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
+                  >
+                    <StyledText style={{ color: profile.dateOfBirth ? colors.textPrimary : colors.textSecondary }}>
+                      {formatDate(profile.dateOfBirth)}
+                    </StyledText>
+                    <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+                  </StyledTouchableOpacity>
+                  {profile.dateOfBirth && (
+                    <StyledText variant="caption" className="text-gray-500 mt-1">
+                      Age: {calculateAge(profile.dateOfBirth)} years
+                    </StyledText>
+                  )}
+                </StyledView>
+
+                {/* Gender */}
+                <StyledView>
+                  <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
+                    Gender (Optional)
+                  </StyledText>
+                  <StyledView className="flex-row space-x-2">
+                    {['male', 'female', 'other'].map((genderOption) => (
+                      <StyledTouchableOpacity
+                        key={genderOption}
+                        onPress={() => setProfile(prev => ({ ...prev, gender: genderOption as any }))}
+                        className={`flex-1 py-3 px-4 rounded-lg border ${profile.gender === genderOption
+                          ? 'bg-blue-500 border-blue-500'
+                          : 'bg-white border-gray-300'
                           }`}
                       >
-                        {genderOption}
-                      </StyledText>
-                    </StyledTouchableOpacity>
-                  ))}
+                        <StyledText
+                          className={`text-center font-medium capitalize ${profile.gender === genderOption ? 'text-white' : 'text-gray-700'
+                            }`}
+                        >
+                          {genderOption}
+                        </StyledText>
+                      </StyledTouchableOpacity>
+                    ))}
+                  </StyledView>
                 </StyledView>
-              </StyledView>
 
-              {/* Weight */}
-              <StyledView>
-                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
-                  Weight (kg)
-                </StyledText>
-                <StyledTextInput
-                  value={profile.weight}
-                  onChangeText={(text) => setProfile(prev => ({ ...prev, weight: text }))}
-                  placeholder="Enter weight in kg"
-                  keyboardType="numeric"
-                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
-                  style={{ color: colors.textPrimary }}
-                />
-              </StyledView>
-
-              {/* Height */}
-              <StyledView>
-                <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
-                  Height (cm)
-                </StyledText>
-                <StyledTextInput
-                  value={profile.height}
-                  onChangeText={(text) => setProfile(prev => ({ ...prev, height: text }))}
-                  placeholder="Enter height in cm"
-                  keyboardType="numeric"
-                  className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
-                  style={{ color: colors.textPrimary }}
-                />
-              </StyledView>
-            </StyledView>
-          </Card>
-        </StyledView>
-
-        {/* Medical Conditions */}
-        <StyledView className="mt-6 mx-4">
-          <Card>
-            <StyledView className="p-4">
-              <StyledView className="flex-row items-center justify-between mb-4">
-                <StyledText variant="body2" className="font-semibold text-gray-700">
-                  Medical Conditions (Optional)
-                </StyledText>
-                <StyledTouchableOpacity
-                  onPress={handleAddCondition}
-                  className="bg-blue-500 px-3 py-2 rounded-lg flex-row items-center"
-                >
-                  <Ionicons name="add" size={16} color="white" />
-                  <StyledText className="text-white font-medium ml-1">Add</StyledText>
-                </StyledTouchableOpacity>
-              </StyledView>
-
-              {profile.medicalConditions.length === 0 ? (
-                <StyledView className="py-6 items-center">
-                  <Ionicons name="medical-outline" size={32} color={colors.textSecondary} />
-                  <StyledText className="text-gray-500 mt-2 text-center text-sm">
-                    Add any current medical conditions to get personalized health insights
+                {/* Weight */}
+                <StyledView>
+                  <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
+                    Weight (kg)
                   </StyledText>
+                  <StyledTextInput
+                    value={profile.weight}
+                    onChangeText={(text) => setProfile(prev => ({ ...prev, weight: text }))}
+                    placeholder="Enter weight in kg"
+                    keyboardType="numeric"
+                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
+                    style={{ color: colors.textPrimary }}
+                  />
                 </StyledView>
-              ) : (
-                <StyledView className="space-y-3">
-                  {profile.medicalConditions.map((condition, index) => (
-                    <StyledView key={index} className="bg-gray-50 rounded-lg p-3">
-                      <StyledView className="flex-row items-start justify-between">
-                        <StyledView className="flex-1">
-                          <StyledText className="font-semibold text-gray-900 mb-1">
-                            {condition.condition_name}
-                          </StyledText>
 
-                          <StyledView className="flex-row items-center space-x-2 mb-2">
-                            <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
-                              <StyledText className="text-xs font-medium capitalize">
-                                {condition.status || 'active'}
-                              </StyledText>
-                            </StyledView>
-                            {condition.severity && (
-                              <StyledView className={`px-2 py-1 rounded-full ${getSeverityColor(condition.severity)}`}>
+                {/* Height */}
+                <StyledView>
+                  <StyledText variant="body2" className="font-semibold mb-2 text-gray-700">
+                    Height (cm)
+                  </StyledText>
+                  <StyledTextInput
+                    value={profile.height}
+                    onChangeText={(text) => setProfile(prev => ({ ...prev, height: text }))}
+                    placeholder="Enter height in cm"
+                    keyboardType="numeric"
+                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
+                    style={{ color: colors.textPrimary }}
+                  />
+                </StyledView>
+              </StyledView>
+            </Card>
+          </StyledView>
+
+          {/* Medical Conditions */}
+          <StyledView className="mt-6 mx-4">
+            <Card>
+              <StyledView className="p-4">
+                <StyledView className="flex-row items-center justify-between mb-4">
+                  <StyledText variant="body2" className="font-semibold text-gray-700">
+                    Medical Conditions (Optional)
+                  </StyledText>
+                  <StyledTouchableOpacity
+                    onPress={handleAddCondition}
+                    className="bg-blue-500 px-3 py-2 rounded-lg flex-row items-center"
+                  >
+                    <Ionicons name="add" size={16} color="white" />
+                    <StyledText className="text-white font-medium ml-1">Add</StyledText>
+                  </StyledTouchableOpacity>
+                </StyledView>
+
+                {profile.medicalConditions.length === 0 ? (
+                  <StyledView className="py-6 items-center">
+                    <Ionicons name="medical-outline" size={32} color={colors.textSecondary} />
+                    <StyledText className="text-gray-500 mt-2 text-center text-sm">
+                      Add any current medical conditions to get personalized health insights
+                    </StyledText>
+                  </StyledView>
+                ) : (
+                  <StyledView className="space-y-3">
+                    {profile.medicalConditions.map((condition, index) => (
+                      <StyledView key={index} className="bg-gray-50 rounded-lg p-3">
+                        <StyledView className="flex-row items-start justify-between">
+                          <StyledView className="flex-1">
+                            <StyledText className="font-semibold text-gray-900 mb-1">
+                              {condition.condition_name}
+                            </StyledText>
+
+                            <StyledView className="flex-row items-center space-x-2 mb-2">
+                              <StyledView className={`px-2 py-1 rounded-full ${getStatusColor(condition.status || 'active')}`}>
                                 <StyledText className="text-xs font-medium capitalize">
-                                  {condition.severity}
+                                  {condition.status || 'active'}
                                 </StyledText>
                               </StyledView>
+                              {condition.severity && (
+                                <StyledView className={`px-2 py-1 rounded-full ${getSeverityColor(condition.severity)}`}>
+                                  <StyledText className="text-xs font-medium capitalize">
+                                    {condition.severity}
+                                  </StyledText>
+                                </StyledView>
+                              )}
+                            </StyledView>
+
+                            {condition.diagnosing_doctor && (
+                              <StyledText className="text-sm text-gray-600 mb-1">
+                                Doctor: {condition.diagnosing_doctor}
+                              </StyledText>
+                            )}
+
+                            {condition.notes && (
+                              <StyledText className="text-sm text-gray-600">
+                                {condition.notes}
+                              </StyledText>
                             )}
                           </StyledView>
 
-                          {condition.diagnosing_doctor && (
-                            <StyledText className="text-sm text-gray-600 mb-1">
-                              Doctor: {condition.diagnosing_doctor}
-                            </StyledText>
-                          )}
-
-                          {condition.notes && (
-                            <StyledText className="text-sm text-gray-600">
-                              {condition.notes}
-                            </StyledText>
-                          )}
+                          <StyledTouchableOpacity
+                            onPress={() => handleDeleteCondition(index)}
+                            className="p-2"
+                          >
+                            <Ionicons name="trash" size={16} color="#ef4444" />
+                          </StyledTouchableOpacity>
                         </StyledView>
-
-                        <StyledTouchableOpacity
-                          onPress={() => handleDeleteCondition(index)}
-                          className="p-2"
-                        >
-                          <Ionicons name="trash" size={16} color="#ef4444" />
-                        </StyledTouchableOpacity>
                       </StyledView>
-                    </StyledView>
-                  ))}
-                </StyledView>
-              )}
-            </StyledView>
-          </Card>
-        </StyledView>
-
-        {/* Action Buttons */}
-        <StyledView className="mt-8 mx-4 mb-8">
-          <StyledTouchableOpacity
-            onPress={handleCreateProfile}
-            disabled={loading || !profile.name.trim()}
-            className={`rounded-lg py-4 shadow-lg ${!profile.name.trim() ? 'bg-gray-400' : 'bg-blue-500'
-              }`}
-            style={{ elevation: 3 }}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <StyledText className="text-white font-bold text-lg text-center">
-                Complete Profile & Continue
-              </StyledText>
-            )}
-          </StyledTouchableOpacity>
-
-          <StyledView className="mt-4 px-4">
-            <StyledText className="text-gray-500 text-center text-sm leading-relaxed">
-              Your profile helps us provide personalized health insights and ensure medication safety. All information is securely encrypted.
-            </StyledText>
+                    ))}
+                  </StyledView>
+                )}
+              </StyledView>
+            </Card>
           </StyledView>
-        </StyledView>
-      </StyledScrollView>
+
+          {/* Action Buttons */}
+          <StyledView className="mt-8 mx-4 mb-8">
+            <StyledTouchableOpacity
+              onPress={handleCreateProfile}
+              disabled={loading || !profile.name.trim()}
+              className={`rounded-lg py-4 shadow-lg ${!profile.name.trim() ? 'bg-gray-400' : 'bg-blue-500'
+                }`}
+              style={{ elevation: 3 }}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <StyledText className="text-white font-bold text-lg text-center">
+                  Complete Profile & Continue
+                </StyledText>
+              )}
+            </StyledTouchableOpacity>
+
+            <StyledView className="mt-4 px-4">
+              <StyledText className="text-gray-500 text-center text-sm leading-relaxed">
+                Your profile helps us provide personalized health insights and ensure medication safety. All information is securely encrypted.
+              </StyledText>
+            </StyledView>
+          </StyledView>
+
+          {/* Add extra padding at bottom for keyboard */}
+          <StyledView className="h-20" />
+        </StyledScrollView>
+      </StyledKeyboardAvoidingView>
 
       {/* Date Picker Modal */}
       {showDatePicker && (
@@ -421,7 +435,11 @@ const CreateProfileScreen = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <StyledView className="flex-1 bg-white">
+        <StyledKeyboardAvoidingView
+          className="flex-1 bg-white"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
           <StyledView className="flex-row items-center justify-between px-4 py-4 border-b border-gray-200">
             <StyledTouchableOpacity onPress={() => setShowConditionModal(false)}>
               <StyledText className="text-blue-500 font-medium">Cancel</StyledText>
@@ -432,7 +450,13 @@ const CreateProfileScreen = () => {
             </StyledTouchableOpacity>
           </StyledView>
 
-          <StyledScrollView className="flex-1 px-4 py-6">
+          <StyledScrollView
+            className="flex-1 px-4 py-6"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentInsetAdjustmentBehavior="automatic"
+            keyboardDismissMode="interactive"
+          >
             <StyledView className="mb-4">
               <StyledText className="font-semibold mb-2 text-gray-700">
                 Condition Name *
@@ -509,7 +533,7 @@ const CreateProfileScreen = () => {
               />
             </StyledView>
 
-            <StyledView className="mb-4">
+            <StyledView className="mb-6">
               <StyledText className="font-semibold mb-2 text-gray-700">
                 Notes (Optional)
               </StyledText>
@@ -518,13 +542,16 @@ const CreateProfileScreen = () => {
                 onChangeText={(text) => setNewCondition(prev => ({ ...prev, notes: text || null }))}
                 placeholder="Additional notes about this condition"
                 multiline
-                numberOfLines={3}
-                className="border border-gray-300 rounded-lg px-3 py-3 bg-white"
-                style={{ color: colors.textPrimary, textAlignVertical: 'top' }}
+                numberOfLines={4}
+                className="border border-gray-300 rounded-lg px-3 py-3 bg-white min-h-[100px]"
+                style={{ color: colors.textPrimary }}
               />
             </StyledView>
+
+            {/* Add extra padding at bottom to ensure content is visible above keyboard */}
+            <StyledView className="h-20" />
           </StyledScrollView>
-        </StyledView>
+        </StyledKeyboardAvoidingView>
       </StyledModal>
     </ScreenContainer>
   );
